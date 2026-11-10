@@ -877,3 +877,4 @@ a { color: var(--vw-azul); }
   .painel-lateral { position: static; max-height: none; }
   .vendas-topo { grid-template-columns: 1fr; }
 }
+.kanban-cartao, .kanban-cartao *, .kanban-cartao:hover, .kanban-cartao:hover * { text-decoration: none !important; }
