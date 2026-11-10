@@ -1,0 +1,9 @@
+# texto com fim de linha LF no repositório; binários nunca convertidos
+* text=auto eol=lf
+*.pdf binary
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.ico binary
+*.xlsx binary
+*.ps1 text eol=crlf

@@ -1,0 +1,17 @@
+# gitleaks — rodar SEMPRE antes do primeiro deploy: npm run lint:secrets
+[extend]
+useDefault = true
+
+[[rules]]
+id = "anthropic-api-key"
+description = "Chave da API Anthropic"
+regex = '''sk-ant-[a-zA-Z0-9_\-]{20,}'''
+
+[[rules]]
+id = "meta-access-token"
+description = "Token de acesso Meta / WhatsApp Cloud API"
+regex = '''EAA[a-zA-Z0-9]{60,}'''
+
+[allowlist]
+# secrets/ = chaves LOCAIS de desenvolvimento, de propósito (pasta no .gitignore, nunca versionada)
+paths = ['''\.env\.example$''', '''tests/''', '''node_modules''', '''\.next''', '''comauto-whatsapp''', '''tsconfig\.tsbuildinfo''', '''secrets[/\\]''']

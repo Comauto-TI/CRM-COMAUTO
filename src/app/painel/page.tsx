@@ -1,0 +1,80 @@
+import Link from "next/link";
+import { exigirPapel } from "@/lib/auth";
+import { db } from "@/lib/supabase/admin";
+import { getConfig } from "@/lib/config";
+import { formatarBRL, formatarDataHora, localParaUtc, dataLocalISO } from "@/lib/time";
+import { Cabecalho, Kpi, Status } from "./_components/ui";
+
+export default async function VisaoGeral({ searchParams }: { searchParams: Promise<{ erro?: string }> }) {
+  const u = await exigirPapel();
+  const { erro } = await searchParams;
+  const cfg = await getConfig();
+  const off = cfg.fuso_offset;
+  const hoje = dataLocalISO(new Date(), off);
+  const iniHoje = localParaUtc(hoje, "00:00", off).toISOString();
+  const fimHoje = new Date(new Date(iniHoje).getTime() + 86400_000).toISOString();
+  const iniMes = localParaUtc(`${hoje.slice(0, 7)}-01`, "00:00", off).toISOString();
+
+  const [agHoje, fila, conversasHoje, custosMes, bloqueios, proximos] = await Promise.all([
+    db().from("agendamentos").select("status").gte("inicio", iniHoje).lt("inicio", fimHoje),
+    db().from("conversas").select("id", { count: "exact", head: true }).eq("status", "humano").is("assumida_por", null),
+    db().from("mensagens").select("cliente_id").eq("direcao", "entrada").gte("criado_em", iniHoje),
+    db().rpc("resumo_custos", { p_inicio: iniMes, p_fim: new Date().toISOString() }),
+    db().from("eventos_seguranca").select("id", { count: "exact", head: true }).gte("criado_em", iniHoje),
+    db()
+      .from("agendamentos")
+      .select("id, inicio, status, confirmado_por, clientes(nome), servicos(nome), recursos(nome)")
+      .in("status", ["pendente", "confirmado"])
+      .gte("inicio", new Date().toISOString())
+      .order("inicio")
+      .limit(8),
+  ]);
+
+  const ags = agHoje.data ?? [];
+  const confirmados = ags.filter((a) => a.status === "confirmado").length;
+  const totalMes = (custosMes.data ?? []).reduce((s: number, r: { total_brl: number }) => s + Number(r.total_brl), 0);
+  const contatosHoje = new Set((conversasHoje.data ?? []).map((m) => m.cliente_id)).size;
+
+  return (
+    <>
+      <Cabecalho titulo={`Olá, ${u.nome.split(" ")[0]}`} sub={`Resumo de hoje, ${formatarDataHora(new Date(), off).split(" às")[0]}`} />
+      {erro === "sem_permissao" && <div className="alerta aviso">Seu perfil não tem acesso a essa área.</div>}
+      {!cfg.bot_ativo && <div className="alerta erro">O assistente virtual está DESLIGADO. Todas as conversas estão indo para a recepção.</div>}
+
+      <div className="grade g4">
+        <Kpi rotulo="Agendamentos hoje" valor={ags.length} sub={`${confirmados} confirmados · ${ags.length - confirmados} pendentes`} />
+        <Kpi rotulo="Aguardando atendimento" valor={<span style={{ color: (fila.count ?? 0) ? "var(--erro)" : undefined }}>{fila.count ?? 0}</span>} sub={<Link href="/painel/conversas?aba=espera">abrir fila</Link>} />
+        <Kpi rotulo="Clientes que falaram hoje" valor={contatosHoje} />
+        {u.papel !== "atendente" ? (
+          <Kpi rotulo="Custo do mês" valor={formatarBRL(totalMes)} sub={<Link href="/painel/financeiro">ver detalhes</Link>} />
+        ) : (
+          <Kpi rotulo="Bloqueios de segurança hoje" valor={bloqueios.count ?? 0} />
+        )}
+      </div>
+
+      <div className="secao card">
+        <h2>Próximos agendamentos</h2>
+        <div className="tabela-wrap">
+          <table className="tabela">
+            <thead>
+              <tr><th>Quando</th><th>Cliente</th><th>Serviço</th><th>Box</th><th>Status</th><th>Quem confirmou</th></tr>
+            </thead>
+            <tbody>
+              {((proximos.data ?? []) as unknown as { id: string; inicio: string; status: string; confirmado_por: string | null; clientes: { nome: string | null } | null; servicos: { nome: string } | null; recursos: { nome: string } | null }[]).map((a) => (
+                <tr key={a.id}>
+                  <td className="num">{formatarDataHora(a.inicio, off)}</td>
+                  <td>{a.clientes?.nome ?? "—"}</td>
+                  <td>{a.servicos?.nome}</td>
+                  <td>{a.recursos?.nome}</td>
+                  <td><Status valor={a.status} /></td>
+                  <td className="mudo">{a.confirmado_por ?? "—"}</td>
+                </tr>
+              ))}
+              {!proximos.data?.length && <tr><td colSpan={6} className="mudo">Nenhum agendamento futuro.</td></tr>}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </>
+  );
+}

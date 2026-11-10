@@ -1,0 +1,1 @@
+{"name":"comauto-lint","version":"1.0.0","private":true,"devDependencies":{"eslint":"10.14.0","eslint-config-next":"16.4.6","typescript":"6.0.3"},"overrides":{"minimatch@10":"11.0.1"}}

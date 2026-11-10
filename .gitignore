@@ -1,0 +1,25 @@
+# dependências e build
+node_modules/
+.next/
+out/
+*.tsbuildinfo
+next-env.d.ts
+
+# SEGREDOS — nunca versionar
+.env
+.env.*
+!.env.example
+*.key
+*.pem
+secrets/
+
+# sistema
+.DS_Store
+Thumbs.db
+.vercel
+
+# scaffold paralelo antigo (não usar)
+comauto-whatsapp/
+
+# configuração pessoal do Claude Code (permissões locais)
+.claude/settings.local.json

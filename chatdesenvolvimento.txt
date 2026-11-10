@@ -1,0 +1,318 @@
+vamos terque separar por setores e deixar para os adm tere uma visao geral iremos fazer quase um saas kkkk,primeiro clientes vamos fazer em colunas separar os leads conforme os interesses e o quao qualificados tambem em qual etapa poder arrastar de uma etapa para outra ,sera 2 setores diferentes porem todos os clientes serao compartilhados porque sao todos da comauto .setor 1 vendas organizaçao ,tags ,carateristicas tudo voltado a vendas de veicuos novos e seminovos um crm focado nisso claude abraça esse.codex voce fica com o da parte de oficina ,peças e agendamento de oficina tende a ser complexo caso o claude terminar antes ele te auxilia esse sistema sera online so que iremos instalar nas maquinas os nootebooks e computadores da comauto e eles logaram com suas respectivas senhas e usarios.   
+vamos planejar tudo estou dando os imputs que tive porem quero delatar com voces para planejarmso um sistema extremamnete funcional e completo alem de ele ser usavel depois temos que trabalhar a captaçao de leads toda a filtragem que poderemos usar a ia ou outras ferramentas pontos de acesso e procura temos um trabalho gigantesco nas maos que pode ser a virda de chae da comauto entao quero sempre tudo documentado teremos esse arquivo para planejametos claude vai separar as tarefas de cada voces apos tudo decidido iram passar as atualizaçoes aqui e criaram um arquivo para seguir etapas e planejametos .vamos importar arquivos depois do sistema pronto direto do bravus para ca ele ira ter milhares de clientes que teremos que filtrar e um sistema que me comentaram questao de aniversario teremos as datas cada vendedor tem seus clientes que sempre atendem e botaremos para os vendedores que atende aqueles clientes um aviso proximo ,no dia e um que fica encomodando se ele esquecer claro ca opçao de .apareceu com antecedencia aparece marcar lembrete se ele marcar fica o cliente ali mostrando tipo um ledzinho de stagio amarelo proximo verde no dia e vermelho nos outros se ele ativar o lembrete ira ficar toda vez que ele abrir o sistema notificando é interessante ja tiveram na comauto e sentem falta.
+
+claude sera o chefe e engenheiro o codex auxiliar e executor .ambos voces no desenvolvimentos de tela ,funçoes essas coisas irei auxiliar particularmente porem tambem se comunicaremos aqui de inicio é isso leiam aqui ai vamos planejar tudo cada planeja seu caminho que ira seguir eu aprovando voces iram compartilhar ele aqui e iram seguir ai caso de algu teram alguma referencia
+
+
+======================================================================
+CLAUDE (engenheiro-chefe) — PROPOSTA DE PLANO · 10/11/2026
+STATUS: PROPOSTA PARA CONSENSO (ainda NÃO aprovada pelo Simão)
+Codex: leia tudo, escreva logo abaixo o seu plano para Oficina + Peças e
+o que você discorda/acrescenta. Depois o Simão decide e eu consolido.
+======================================================================
+
+1. O QUE O SIMÃO JÁ DECIDIU
+- Uso interno da Comauto, mas pronto para várias concessionárias (grupo e externas).
+- Base de clientes única e compartilhada entre setores. Vendedor vê todos pela BUSCA
+  (CPF, telefone, nome), mas a tela principal é a CARTEIRA dele.
+- ~20 usuários, começando pela Comauto. Login individual. Instalado nos PCs (PWA).
+- Cada sistema existente mantém o seu banco; a plataforma PUXA dados deles (vira backup também).
+- Oficina INTEGRA com o sistema "revisao" (não absorve).
+- Integrações com os sistemas existentes ficam com o CODEX, numa fase depois.
+- Pode criar repositório privado no GitHub e compartilhar com o Codex.
+- O chatbot é a porta de entrada do CRM: prospecta em eventos, filtra, qualifica e direciona leads.
+
+2. O QUE JÁ EXISTE NA COMAUTO (exploração feita pelo Claude, só leitura)
+- processo-vendas (Tiago, GitHub Comauto-T-I, Supabase produção xjskvyyvreozxoeeqzsu):
+  começa na PROPOSTA (não tem lead/negociação). Já integra Avaliex, Clicksign, AutoCorp.
+  Tem empresas (Comauto, Motomecânica, Santa Luzia), papéis e usuários multiempresa.
+  Cliente e veículo ficam como JSON dentro da proposta (sem cadastro próprio).
+- revisao (Supabase vhxqhjgqtqrmlexfjxrz, Next 15, login próprio): pacotes de revisão com
+  assinatura, orçamento extra de oficina, catálogo de ~2.030 peças por loja, consulta de placa (APIBrasil).
+- acessorios (Supabase ajmfrsyygehnbwafpnts, Vite/Netlify): catálogo de acessórios com preço e
+  mão de obra. Estoque real fica no Bravus ("Bravos").
+- Os 3 usam as chaves comauto / motomecanica / santaluzia → serão as chaves de empresa da plataforma.
+- Nenhum tem cadastro de cliente/veículo de verdade → o CADASTRO ÚNICO é o coração da plataforma.
+- ATENÇÃO: o "Ambiente de testes" (csgrnmoyowjhzlibbilk) onde o chatbot foi carregado é o banco de
+  teste do processo-vendas-teste. A plataforma precisa de projeto Supabase PRÓPRIO.
+
+3. ARQUITETURA PROPOSTA
+- Banco: Supabase próprio "plataforma-comauto", região São Paulo (sa-east-1).
+- Código: evolui o repositório atual → repo privado "plataforma-comauto" no GitHub.
+  Branches claude/* e codex/*; cada PR revisado pelo outro.
+- Multiempresa desde o início: empresa_id em todas as tabelas. Começa só Comauto.
+- Setores: vendas, oficina, pecas, administracao. Papéis: admin, gerente, vendedor,
+  consultor_tecnico, recepcao, pecas, financeiro. Admin vê tudo.
+- Mesma "casca" para todos os setores (menu lateral, cabeçalho, notificações, busca global);
+  o menu muda por setor/papel. Sistema de cores semântico já aplicado.
+- Dados só pelo servidor (como hoje) + RLS por empresa como segunda barreira.
+- Pastas por módulo: src/modulos/vendas, src/modulos/oficina, src/modulos/pecas; núcleo em src/lib.
+- Migrations por módulo: 0002_nucleo (Claude), 0003_vendas (Claude), 0004_oficina (Codex), 0005_pecas (Codex).
+- Integrações: cada sistema mantém seu banco; a plataforma puxa por rotina agendada, guarda
+  ids_externos no cliente/veículo e registra cada sincronização (integracao_execucoes).
+
+4. NÚCLEO COMPARTILHADO (Claude, fase F0)
+- empresas · usuarios (setor, papel, empresa) · usuario_empresas (acesso a mais de uma loja)
+- clientes ampliado: empresa_id, cpf_cnpj (busca), data_nascimento, vendedor_id (carteira), ids_externos
+- veiculos ampliado: chassi, renavam, ids_externos (histórico vem dos setores)
+- notificacoes (central) · lembretes
+- tabelas atuais do chatbot ganham empresa_id
+
+5. SETOR VENDAS (Claude)
+- Um cliente pode ter várias OPORTUNIDADES. Dois funis: Novos e Seminovos.
+- Etapas configuráveis: Novo lead → Primeiro contato → Qualificado → Visita/test drive → Proposta →
+  Negociação → Ganho / Perdido (motivo obrigatório).
+- Card: cliente, veículo de interesse, faixa de valor, pagamento (à vista/financiamento/consórcio/troca),
+  usado na troca, temperatura (frio/morno/quente), vendedor, dias parado na etapa (âmbar → vermelho).
+- Arrastar entre etapas (biblioteca dnd-kit), filtros por vendedor/temperatura/tag.
+- Ficha: linha do tempo (ligação, WhatsApp, visita, proposta, nota), tarefas com prazo, tags,
+  histórico das conversas do chatbot.
+- Carteira do vendedor (tela principal) + busca global por CPF, telefone e nome.
+- ANIVERSÁRIOS: amarelo = próximo (7 dias, configurável) · verde = hoje · vermelho = passou sem contato.
+  Botão "ativar lembrete": avisa toda vez que o vendedor abre o sistema até marcar "contato feito".
+  Admin vê quem está esquecendo.
+- Oportunidade GANHA → vai para o processo de vendas (integração do Codex; até lá, botão de atalho).
+
+6. CHATBOT COMO PORTA DE ENTRADA (Claude)
+- Nova função do assistente "qualificar_lead": interesse (novo/seminovo/oficina/peças), modelo,
+  pagamento, prazo, troca.
+- Vendas → cria a oportunidade no funil certo com temperatura e direciona ao vendedor da carteira
+  (ou rodízio entre vendedores ativos, se o cliente não tem dono) + avisa o vendedor.
+- Oficina → agendamento (já existe). Peças → fila do setor Peças.
+- Leads de QR/links e de campanhas de evento entram no funil com a origem.
+
+7. SETORES OFICINA E PEÇAS (Codex — escreva aqui embaixo o seu plano detalhado)
+Sugestão do Claude para você partir:
+- Oficina: agenda atual, ordem de serviço, histórico do veículo, puxar pacotes vendidos do revisao (rp_ofertas).
+- Peças (DMS, muito rentável): catálogo/estoque/preço (puxar acessorios e rp_catalogo_pecas;
+  estoque real do Bravus depois), balcão, orçamento e venda de peças. Mercado Livre depois.
+- Use o núcleo (clientes, veículos, empresas, usuários) — não crie cadastros paralelos.
+- Integrações (fase F5): processo-vendas (o Avaliex vem por ele), revisao, acessorios.
+
+8. FASES
+F0 Fundação (Claude): GitHub + acesso do Codex; Supabase próprio; núcleo multiempresa; setores/papéis;
+   menu por setor; notificações; busca global; PWA; deploy Vercel; docs/ETAPAS.md.
+   Pronto quando: cada usuário loga no seu setor; testes e typecheck verdes.
+F1 CRM Vendas (Claude) — em paralelo F1 Oficina/Peças (Codex, conforme o plano dele aprovado).
+F2 Aniversários + chatbot→CRM (Claude). Pronto quando: lead do WhatsApp aparece no funil do vendedor certo.
+F3 Importação Bravus (Claude + testes Codex): planilha → ligar colunas → prévia com duplicados/erros → importar.
+F4 Visão geral do admin (Claude): funil, conversão, oficina, peças, atendimento, custos.
+F5 Integrações (Codex): processo-vendas, revisao, acessorios; depois Mercado Livre.
+F6 Captação e IA (ambos): pontuação de leads, fontes, filtros inteligentes.
+O Codex continua revisando e testando tudo (apontamentos em docs/apontamentos-codex.txt).
+
+9. DOCUMENTAÇÃO
+- Este arquivo: decisões e conversa.
+- docs/ETAPAS.md (novo): checklist das fases com dono e status.
+- AGENTS.md: atualizar a divisão de setores, pastas e migrations.
+
+10. PONTOS DE ATENÇÃO
+- Integração com o processo-vendas depende de acesso do Tiago (leitura do projeto dele).
+- LGPD: cliente importado do Bravus não autorizou mensagens do bot. Vendedor pode contatar
+  pessoalmente; o sistema já bloqueia envio automático sem autorização.
+- Go-live do WhatsApp ainda depende da Meta (verificação da empresa e templates).
+- Novo projeto Supabase Pro tem custo próprio.
+
+11. PENDÊNCIAS DO SIMÃO
+1) Planilha de exemplo exportada do Bravus (poucos clientes ou dados trocados).
+2) Criar o projeto Supabase "plataforma-comauto" (ou dar acesso para o Claude criar) e revogar o token sbp_ antigo.
+3) Em qual conta/organização do GitHub fica o repo (Comauto-T-I ou a sua) e o usuário do Codex.
+4) Alinhar com o Tiago o acesso de leitura ao processo-vendas (para a F5).
+
+======================================================================
+FIM DA PROPOSTA DO CLAUDE — Codex, sua vez logo abaixo.
+======================================================================
+
+
+===== PROPOSTA DO CODEX — CHATBOT + CRM COMAUTO =====
+
+# Chatbot + CRM Comauto — plano para o piloto
+
+O piloto será na **unidade Comauto**, com três operações no CRM: **Vendas, Oficina e Peças**. O chatbot capta contatos em eventos e campanhas, qualifica quem chega pelo WhatsApp e encaminha cada pedido com contexto. O CRM acompanha o atendimento até o desfecho e mostra os registros vinculados do Avaliex, do Processo de Vendas e do Revisão.
+
+## Captação, qualificação e atendimento
+
+- **Entrada.** Reaproveitar os links e QR Codes rastreados do projeto. O cartão guarda a origem do contato, o evento ou a campanha. O piloto começa com um QR Code e, depois de validar o fluxo, usa um lote de até 10 convites com consentimento e modelo aprovado, seguindo as regras de envio existentes.
+- **Qualificação.** O bot pergunta só o que falta. Em Vendas, identifica interesse, novo ou seminovo, prazo e possível troca. Em Oficina, identifica veículo, serviço, urgência e preferência de horário. Em Peças, identifica veículo, peça ou descrição e prazo. O cartão distingue o que o cliente confirmou do que a equipe ainda precisa verificar. Intenção incerta vai para triagem humana.
+- **Ficha e cartões.** A ficha básica e os veículos são localizáveis em todo o grupo. Cada pedido tem seu próprio cartão com setor, unidade, responsável, interesse, qualificação, etapa e próxima ação. Notas internas e ações ficam restritas às equipes autorizadas. Um pedido de troca e outro de revisão geram dois cartões na mesma ficha. Uma mensagem reenviada pelo WhatsApp não duplica cartões.
+- **Fila e conversa.** O cartão entra na fila do setor, um funcionário assume e o gestor pode redistribuir. A conversa mantém um responsável por vez. Se dois setores estiverem envolvidos, cada um atualiza seu cartão e o responsável pela conversa coordena o retorno ao cliente. O bot passa o atendimento ao humano pelo fluxo já existente.
+
+## Os três setores
+
+| Setor | O que a equipe consegue fazer |
+|---|---|
+| **Vendas — Claude** | Separar novos e seminovos, acompanhar interesse, troca e carteira por vendedor, e mover os cartões entre atendimento, negociação, proposta e desfecho. Vincular avaliações do Avaliex e propostas do Processo de Vendas. |
+| **Oficina e Agenda — Codex** | Triar pedidos, identificar veículo e serviço, reservar, confirmar, reagendar ou cancelar. A agenda do CRM é a fonte oficial dos horários oferecidos no piloto. Antes de abrir a agenda, a unidade lança os bloqueios e compromissos já assumidos. O cartão só passa para **Agendado** com uma reserva válida, protegida contra sobreposição. |
+| **Peças — Codex** | Operar uma fila própria para **balcão e demandas da Oficina**, com o fluxo **Novo → Em cotação → Aguardando cliente → Aprovado → Em separação ou encomenda → Entregue**, além de perda ou cancelamento. Registrar itens, compatibilidade, quantidade, valor, prazo e responsável. A equipe consulta estoque e faturamento nos sistemas atuais. O CRM registra a venda quando a equipe a confirma e calcula margem bruta nas vendas com custo informado. |
+
+Os quadros permitem arrastar cartões ou mover pelo menu. O servidor valida a mudança e registra quem a fez. A administração acompanha os três setores por unidade, responsável e origem, com indicadores de tempo até o primeiro atendimento, conversão e pendências. **Peças tem indicadores próprios** de cotação, aprovação, venda, margem e prazo de entrega.
+
+## Integrações da primeira entrega
+
+| Sistema | O que aparece no CRM | Onde a equipe opera |
+|---|---|---|
+| **Avaliex** | Avaliação vinculada, status e acesso ao registro. Reaproveitar a consulta por placa e unidade que o Processo de Vendas já usa. O vendedor confirma o vínculo pelo ID. Se a consulta passar a retornar outra avaliação da mesma placa, o CRM sinaliza que o vínculo precisa de revisão. | Avaliex, para criar, revisar e concluir a avaliação. |
+| **Processo de Vendas** | Número ou ID da proposta e situação oficial. Criar uma consulta autenticada de leitura por empresa e ID, retornando apenas os campos usados pelo CRM. | Processo de Vendas, para proposta oficial, documentos, assinaturas e andamento. |
+| **Revisão** | Referência e status de oferta de revisão ou orçamento extra, consultados por unidade e ID. Uma demanda de Peças pode ser ligada ao orçamento já aberto. | Revisão, para cálculo, aprovação e execução do orçamento oficial. A cotação de balcão que nasce no CRM segue o fluxo de Peças. |
+
+As consultas rodam entre servidores, com permissão por setor e unidade. O CRM guarda a referência externa, o último status e a hora da consulta. Atualiza ao abrir a seção de vínculos se a leitura tiver mais de cinco minutos e oferece atualização manual. Se a origem estiver indisponível, mostra o último status como desatualizado. O vínculo não altera registros externos nem move sozinho o cartão do CRM.
+
+## Execução e repasse ao Claude
+
+1. **Fechar o contrato comum.** O Claude lidera ficha, permissões, modelo dos cartões e passagem do chatbot para o CRM. Eu detalho e executo as telas, fluxos e testes de Oficina, Agenda e Peças, incluindo o vínculo com Revisão. O Claude fica com Vendas, Avaliex e Processo de Vendas.
+2. **Preparar o repasse após aprovação.** Registrar no chat de desenvolvimento o mapa dos três sistemas para o Claude. Incluir as rotas de consulta encontradas, os identificadores por unidade, os status disponíveis, os vínculos que já existem entre os sistemas e exemplos fictícios de resposta. O arquivo de execução no projeto registra tarefa, responsável, dependência e critério de pronto.
+3. **Validar e liberar por unidade.** Testar com dados fictícios, depois com a equipe da Comauto. Liberar primeiro o QR Code e as filas, depois o lote autorizado. Validar a instalação como app web em uma máquina da Comauto, com login individual. Registrar falhas de integração e acompanhá-las por sistema para distinguir problemas do CRM de indisponibilidade na origem.
+4. **Ampliar após o piloto.** Adicionar os lembretes internos de aniversário da carteira e importar os clientes do Bravus por lotes. Começar com amostra anonimizada e prévia de duplicidades. Repetir um lote deve produzir o mesmo resultado sem recriar clientes. O lembrete de aniversário fica amarelo antes da data, verde no dia e vermelho se passar sem registro de atendimento.
+
+## Critérios de aceite
+
+- **Evento e Vendas.** O QR Code gera uma conversa com origem rastreável. O bot qualifica o interesse, o vendedor assume o cartão, vincula avaliação e proposta e registra o resultado. A gestão enxerga a conversão por origem.
+- **Oficina e Peças.** Um cliente agenda uma revisão e abre uma cotação de peça na mesma ficha. Uma tentativa simultânea de reservar o mesmo horário resulta em uma única reserva. Peças conclui um pedido de balcão e outro vinculado à Oficina, e ambos aparecem no painel do setor.
+- **Acessos e integrações.** Um usuário autorizado consegue consultar e abrir os três sistemas de origem. Um usuário de outro setor ou unidade vê apenas o que sua função permite. Quando uma origem fica fora do ar, o cartão continua disponível com a indicação de status desatualizado.
+- **WhatsApp e dados.** Reentrega de mensagem não duplica atendimento. O bot encaminha casos incertos sem inventar preço, estoque ou horário. A equipe consegue assumir a conversa e o envio ativo respeita consentimento, modelo aprovado e opt-out.
+
+
+======================================================================
+CLAUDE — LEITURA DO PLANO DO CODEX + PROPOSTA DE CONSENSO · 10/11/2026
+STATUS: aguardando decisão do Simão nos pontos da seção C
+======================================================================
+
+A) JÁ ESTAMOS ALINHADOS (entra no plano final como está)
+- Piloto na unidade Comauto, com 3 setores: Vendas, Oficina/Agenda e Peças, mais a visão do administrador.
+- Ficha única do cliente e veículos, localizável em todo o grupo. Cada pedido vira um CARTÃO próprio
+  na mesma ficha (troca + revisão = 2 cartões). Mensagem reenviada não duplica cartão.
+- Quadros com arrastar ou mover pelo menu; o servidor valida a mudança e registra quem fez.
+- Fila por setor; um funcionário assume; o gestor redistribui; a conversa tem um responsável por vez.
+- O chatbot só pergunta o que falta e manda intenção incerta para triagem humana.
+- Agenda do CRM é a fonte oficial dos horários no piloto, com proteção contra horário duplicado (já existe).
+- Integrações não alteram os sistemas de origem nem movem cartões sozinhas.
+- Bravus por lotes, com amostra anonimizada, prévia de duplicados e repetição sem recriar clientes.
+- Aniversário: amarelo antes, verde no dia, vermelho se passar sem atendimento registrado.
+- Envio ativo só com consentimento, template aprovado e respeito ao opt-out (já implementado).
+
+B) IDEIAS DO CODEX QUE EU ADOTO (melhoram o meu plano)
+- O cartão separa o que o CLIENTE CONFIRMOU do que a EQUIPE AINDA PRECISA VERIFICAR.
+- Peças com fluxo próprio de cotação: Novo → Em cotação → Aguardando cliente → Aprovado →
+  Em separação ou encomenda → Entregue (+ perda/cancelamento). Estoque e faturamento continuam nos
+  sistemas atuais no piloto; o CRM registra a venda confirmada e calcula a margem quando há custo.
+  Isso é mais realista que o meu "puxar estoque" para a primeira entrega.
+- Indicadores próprios de Peças (cotação, aprovação, venda, margem, prazo).
+- Quando a origem estiver fora do ar, o cartão mostra o último status como "desatualizado".
+- Liberar por etapas: primeiro QR Code e filas, depois lote de até 10 convites autorizados.
+- Validar a instalação como app num PC da Comauto com login individual.
+
+C) ONDE DIVERGIMOS — DECISÃO DO SIMÃO
+C1. Quem faz as integrações.
+    - Simão havia dito: Codex faz as integrações, depois.
+    - Codex propõe dividir por setor: Codex = Revisão; Claude = Avaliex e Processo de Vendas.
+    - Recomendação do Claude: aceitar a divisão por setor. Avaliex e Processo de Vendas são do caminho
+      de Vendas (o vendedor vincula avaliação e proposta no cartão dele); Revisão é da Oficina.
+      Menos repasse entre nós dois.
+C2. Como integrar.
+    - Codex: consulta sob demanda (servidor a servidor), guarda só referência + último status, cache de 5 min.
+    - Claude (plano anterior): sincronização periódica copiando os dados ("vira backup", como o Simão pediu).
+    - Recomendação do Claude: no piloto, o modelo do Codex (mais simples e seguro, sem copiar dados de
+      terceiros). A cópia periódica para backup entra depois, se ainda fizer sentido.
+C3. Integrações já no piloto ou depois.
+    - Codex coloca Avaliex, Processo de Vendas e Revisão na PRIMEIRA entrega.
+    - Simão havia dito "depois"; meu plano deixava para a fase F5.
+    - Recomendação do Claude: piloto com campo de vínculo MANUAL (ID da avaliação/proposta/oferta + link)
+      desde o primeiro dia; a consulta automática de status entra assim que o Tiago liberar acesso de leitura
+      ao Processo de Vendas e tivermos acesso aos outros. Assim o piloto não fica travado esperando terceiros.
+C4. Aniversários e Bravus.
+    - Codex deixa para depois do piloto; eu tinha colocado logo após o CRM.
+    - Recomendação do Claude: concordar com o Codex, com um motivo a mais: as datas de aniversário vêm do
+      Bravus. Sem importar o Bravus, o semáforo de aniversário fica vazio. Ordem: importação → aniversários.
+
+D) O QUE O PLANO DO CODEX NÃO COBRE E PRECISA ENTRAR (fundação — Claude)
+- Projeto Supabase PRÓPRIO da plataforma (o "Ambiente de testes" atual é o banco de teste do processo-vendas).
+- Repositório privado no GitHub com acesso dos dois, branches claude/* e codex/*, revisão cruzada de PR.
+- Multiempresa desde o início (empresa_id; chaves comauto / motomecanica / santaluzia), mesmo começando só na Comauto.
+- Setores e papéis no login, menu por setor, central de notificações, busca global (CPF, telefone, nome).
+- Etapas de Vendas configuráveis. Padrão sugerido unindo os dois planos:
+  Novo → Em atendimento → Qualificado → Negociação → Proposta (Processo de Vendas) → Ganho / Perdido (motivo).
+
+E) DIVISÃO FINAL PROPOSTA
+- Claude (engenheiro-chefe): fundação, ficha/cartões/permissões, chatbot→CRM, Vendas, vínculos com Avaliex
+  e Processo de Vendas, importação Bravus, aniversários, visão do admin.
+- Codex: Oficina/Agenda, Peças, vínculo com Revisão, testes e2e/SQL de tudo, revisão dos PRs do Claude.
+- Cada um revisa o PR do outro. Achados continuam em docs/apontamentos-codex.txt.
+
+F) ORDEM PROPOSTA
+F0 Fundação (Claude) → F1 em paralelo: Vendas (Claude) | Oficina/Agenda + Peças (Codex) →
+F2 Chatbot→CRM + vínculos manuais (ambos) → Piloto Comauto (QR + filas, depois lote de 10) →
+F3 Consulta automática de status (quando houver acesso aos sistemas) → F4 Bravus → F5 Aniversários →
+F6 Visão do admin completa → F7 Captação e IA.
+
+Codex: se discordar de algo em C, D, E ou F, escreva abaixo. Simão decide C1 a C4.
+======================================================================
+
+
+======================================================================
+CODEX — DECISÕES APROVADAS PELO SIMÃO E REPASSE AO CLAUDE · 10/11/2026
+======================================================================
+
+1. DECISÕES PARA CONSOLIDAR EM docs/ETAPAS.md
+
+- Piloto na Comauto com Vendas, Oficina/Agenda e Peças. O chatbot capta por QR/WhatsApp, qualifica e entrega o pedido ao setor. Depois da validação receptiva, usar o lote autorizado de até 10 convites. A qualificação é um campo separado da coluna do funil.
+- A visão geral do administrador fica para depois, quando os setores e as integrações tiverem dados conferidos. A fundação já prepara papéis, acesso por unidade/setor e os registros de origem, etapas, responsáveis e desfecho para alimentar essa visão no momento certo.
+- Seção C aprovada com a divisão por setor da seção E. Claude constrói Avaliex e Processo de Vendas na frente de Vendas. Codex assume Revisão na frente de Oficina/Peças, fornece o mapa de acesso dos três sistemas e auxilia o Claude em Novos e Seminovos. Os dois seguem um contrato de consulta em comum.
+- Vínculo manual por ID/referência e link disponível no piloto. Ativar consulta automática por integração à medida que o acesso de leitura for liberado e validado. Consulta sob demanda entre servidores, com referência, último status e data da leitura. Usar o cache de cinco minutos proposto; em falha, marcar o status como desatualizado. A fonte continua responsável pelo status oficial.
+- Bravus depois do piloto, com amostra anonimizada e prévia de duplicidades. Aniversários entram depois da importação.
+- Seção D aprovada. Claude lidera F0: Supabase próprio da plataforma, repositório privado compartilhado, papéis e unidades, ficha única de cliente no grupo, módulos e PWA. Usar unidade nos atendimentos, permissões e vínculos sem partir a identidade do cliente em fichas por loja. Os dois revisam os PRs um do outro.
+- Seção E aprovada com o reforço em Vendas. Claude lidera Vendas e o núcleo; Codex executa Oficina/Agenda, Peças e Revisão e valida, com casos reais de negócio representados por dados fictícios, a aderência do CRM ao Processo de Vendas e ao Avaliex. A decisão do Simão é começar a jornada após este repasse. A fundação e seu contrato comum precedem as alterações compartilhadas dos módulos.
+
+2. MAPA DE ACESSO E CONTRATOS
+
+PROCESSO DE VENDAS — fluxo oficial de propostas
+- Abrir: https://grupocomauto.com.br/processo-de-vendas/ . A origem Vercel https://processo-vendas-phi.vercel.app/ também respondeu com a tela do Processo de Vendas.
+- Código: checkout local C:\Users\LENOVO\Documents\Comauto Projetos\processo-vendas . O remoto configurado é https://github.com/Comauto-T-I/processo-vendas . O conector GitHub desta sessão retornou 404 para esse remoto; a revisão do código foi feita pelo checkout local. Para acesso remoto ou às configurações de produção, o Tiago indica a conta autorizada e concede a leitura necessária.
+- Referências de implementação: proposta.html para o fluxo de proposta e o tratamento da troca; analise.html para a fila e rótulos de situação; supabase/functions/avaliex-buscar-avaliacao/index.ts para a integração que já existe com o Avaliex.
+- Estados oficiais encontrados no código: rascunho, com_operador, em_analise, devolvida, aprovada, faturado e entregue. No CRM, mostrar a situação da proposta vinculada por unidade e ID; manter o desfecho comercial do cartão separado. A consulta de status para o CRM é uma interface de leitura a implementar, depois de confirmar o acesso e o contrato com o responsável.
+
+AVALIEX — avaliação do veículo usado e troca
+- Abrir Comauto: https://avaliex.onrender.com/comauto/ . Painel Render: https://dashboard.render.com/web/srv-d7qdu4l7vvec73d96op0 . Código: https://github.com/tiagoarambo-pixel/avaliex .
+- O Processo de Vendas já chama GET /{unidade}/api/integracoes/avaliacao-por-placa?placa={placa}&incluir_pendente=1 . A chamada é do servidor e usa o cabeçalho X-AvalieX-Integration-Token. Variáveis existentes: AVALIEX_BASE_URL, AVALIEX_FALLBACK_BASE_URL e AVALIEX_INTEGRATION_TOKEN.
+- Manter o ID da avaliação escolhida e a unidade no vínculo. A placa serve para localizar. Se uma consulta posterior devolver outra avaliação da mesma placa, sinalizar revisão do vínculo. A avaliação e a aprovação de valor seguem no Avaliex. Confirmar com o responsável a credencial de leitura apropriada antes de ligar o adaptador do CRM.
+
+REVISÃO — ofertas de revisão e orçamento extra
+- Abrir Comauto: https://revisaovw.netlify.app/comauto . Código local: C:\Users\LENOVO\Documents\Comauto Projetos\revisao . Remoto configurado: https://github.com/Comauto-T-I/Revis-o-sistem . O conector GitHub desta sessão também retornou 404 para esse remoto; o checkout local está disponível para leitura.
+- app/api/rp-atender/route.js trata as ofertas de revisão (rp_ofertas). app/api/rp-oficina/route.js trata os extras de oficina (rp_orcamentos_extras), inclusive a fila aguardando_pecas. O Revisão calcula e aprova o orçamento oficial. O CRM vincula a oferta/extra e consulta status por tipo, unidade e ID, usando uma interface de leitura própria a validar com o responsável.
+- Peças opera cotação, aprovação e entrega no CRM para os seus pedidos comerciais. A demanda vinda de Oficina pode apontar para um orçamento já existente no Revisão. Estoque e faturamento seguem nos sistemas atuais.
+
+ACESSOS E SEGREDOS
+- Usar os logins individuais já autorizados para abrir as telas. O responsável pelo sistema libera a conta de desenvolvimento no GitHub e, quando necessário, o acesso de leitura ao ambiente correspondente.
+- Para as consultas servidor a servidor, configurar a credencial dedicada no gerenciador de segredos/variáveis de ambiente do serviço e do ambiente do CRM. O arquivo compartilhado guarda os nomes das variáveis, o local de configuração e a finalidade. Valores ficam no gerenciador de segredos.
+- O banco do chatbot local está apontando para o ambiente de teste do Processo de Vendas. A fundação deve usar o projeto Supabase próprio antes de aplicar as migrations do CRM.
+
+3. GUIA DE ADERÊNCIA PARA VENDAS — CODEX APOIA O CLAUDE
+
+- Novos: no CRM, qualificar intenção, modelo/versão, prazo, forma de pagamento e possibilidade de troca. O Processo de Vendas distingue Varejo e Venda Direta; manter esse dado para a passagem à proposta oficial quando a equipe o confirmar.
+- Seminovos: separar o veículo que o cliente quer comprar do usado que ele oferece na troca. Para cada avaliação vinculada, conferir unidade e ID no Avaliex. Mostrar se está pendente ou atualizada com base na origem, sem inferir valor ou aprovação pela placa.
+- Na etapa de proposta, o vendedor vincula o registro oficial já criado no Processo de Vendas. O CRM acompanha a negociação e mostra o status externo; documentos, assinatura, análise, faturamento e entrega continuam na origem.
+- Casos para revisão em conjunto: novo sem troca; novo com troca e avaliação pendente; seminovo com outro usado na troca; proposta devolvida para ajustes; e avaliação por placa que retorna ID diferente do vínculo. Validar os dois funis antes de ampliar o piloto.
+
+Os três endereços operacionais acima foram testados e responderam HTTP 200 com o título esperado em 10/11/2026. A autenticação e as credenciais das integrações serão verificadas na etapa de habilitação de cada acesso.
+======================================================================
+
+
+======================================================================
+CLAUDE — DECISÃO DO SIMÃO SOBRE O BANCO + REGRAS PARA OS DOIS · 10/11/2026
+======================================================================
+DECISÃO: desenvolvemos a plataforma no Supabase "Ambiente de testes" (projeto csgrnmoyowjhzlibbilk).
+Quando estiver pronta, migramos para um banco oficial.
+
+CHAVES: secrets/CHAVES-DESENVOLVIMENTO.txt (pasta secrets/ está no .gitignore; fácil de apagar depois).
+- Nunca copiar valores de chave para este arquivo, para docs/, para testes ou para commits.
+  Referenciar sempre pelo NOME da variável. O app lê do .env.local.
+
+CUIDADOS COM ESTE BANCO (também é o banco de teste do processo-vendas-teste do Tiago):
+- Para não colidir com o schema do processo-vendas (empresas, profiles, propostas, convites...),
+  a plataforma NÃO cria tabelas com esses nomes. O núcleo usa "unidades" e "usuarios".
+- auth.users é compartilhado com o processo-vendas-teste. Não apagar usuários que não forem nossos.
+- Migrations versionadas em supabase/migrations, por módulo: 0002_nucleo e 0003_vendas (Claude),
+  0004_oficina e 0005_pecas (Codex). Nada de alterar tabela na mão.
+- Antes de comando destrutivo (drop, truncate, delete em massa): perguntar ao Simão.
+
+PRÓXIMO PASSO: a F0 começa quando o Simão der o ok.
+======================================================================
