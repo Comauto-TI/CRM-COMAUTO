@@ -1,7 +1,7 @@
 import "server-only";
 import { db } from "@/lib/supabase/admin";
 import { getConfig } from "@/lib/config";
-import { normalizarTelefone } from "@/lib/phone";
+import { normalizarTelefone, variantesTelefone } from "@/lib/phone";
 import { dentroHorarioEnvio, formatarDataHora } from "@/lib/time";
 import { notificar } from "@/lib/messaging/outbound";
 import { precoMeta } from "@/lib/costs";
@@ -62,7 +62,7 @@ async function publico(c: Campanha) {
   // C7-004: sem a lista de bloqueio não existe público seguro — aborta em vez de considerar todos liberados
   const { data: opts, error: errOpt } = await db().from("optouts").select("telefone");
   if (errOpt) throw new Error(`lista de bloqueio indisponível: ${errOpt.message}`);
-  const bloqueados = new Set((opts ?? []).map((o) => o.telefone));
+  const bloqueados = new Set((opts ?? []).flatMap((o) => variantesTelefone(o.telefone))); // com e sem o 9º dígito
 
   const vistos = new Set<string>();
   const aptos: { id: string; telefone: string; nome: string | null }[] = [];
@@ -72,7 +72,7 @@ async function publico(c: Campanha) {
     if (!tel) { cont.invalidos++; continue; }
     if (bloqueados.has(tel)) { cont.optout++; continue; }
     if (!consentidos.has(cl.id)) { cont.semConsentimento++; continue; }
-    if (vistos.has(tel)) { cont.duplicados++; continue; }
+    if (vistos.has(tel) || variantesTelefone(tel).some((v) => vistos.has(v))) { cont.duplicados++; continue; }
     vistos.add(tel);
     aptos.push({ id: cl.id, telefone: tel, nome: cl.nome });
   }

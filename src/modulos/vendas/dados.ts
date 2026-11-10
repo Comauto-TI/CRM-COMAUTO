@@ -1,6 +1,7 @@
 import "server-only";
 import { db } from "@/lib/supabase/admin";
 import { auditar } from "@/lib/audit";
+import { buscarClientePorTelefone } from "@/lib/clientes-telefone";
 import { normalizarTelefone, mascararTelefone } from "@/lib/phone";
 import type { Usuario } from "@/lib/auth";
 import { veTodasOportunidades, podeMexer, podeAssumir, type EtapaResumo } from "./regras";
@@ -187,7 +188,8 @@ export async function criarOportunidade(
   if (!primeira) return { ok: false, motivo: "Funil sem etapas" };
 
   // Ficha única: reaproveita o cliente pelo telefone (cadastro manual NÃO gera consentimento de mensagem)
-  let { data: cliente } = await db().from("clientes").select("id, nome, anonimizado").eq("telefone", telefone).maybeSingle();
+  let cliente: { id: string; nome: string | null; anonimizado: boolean } | null =
+    await buscarClientePorTelefone<{ nome: string | null; anonimizado: boolean }>(telefone, "nome, anonimizado");
   if (cliente?.anonimizado) return { ok: false, motivo: "Cliente anonimizado (LGPD) — não pode ser reaberto" };
   if (!cliente) {
     const { data: novo, error } = await db()

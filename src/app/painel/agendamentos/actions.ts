@@ -11,6 +11,7 @@ import { criarAgendamento, confirmarAgendamento, cancelarAgendamento } from "@/l
 import { notificar } from "@/lib/messaging/outbound";
 import { auditar } from "@/lib/audit";
 import { nucleoAplicado } from "@/lib/usuarios";
+import { buscarClientePorTelefone } from "@/lib/clientes-telefone";
 
 const STATUS_VALIDOS = ["pendente", "confirmado", "compareceu", "nao_compareceu", "cancelado"];
 
@@ -61,7 +62,7 @@ export async function novoAgendamento(formData: FormData) {
     if (!srvOk) redirect("/painel/agendamentos?msg=erro");
   }
 
-  const { data: existente } = await db().from("clientes").select("id, nome").eq("telefone", telefone!).maybeSingle();
+  const existente = await buscarClientePorTelefone<{ nome: string | null }>(telefone!, "nome");
   const cliente = existente ?? (await db().from("clientes").insert({ telefone, origem: "painel", nome }).select("id, nome").single()).data;
   if (!cliente) redirect("/painel/agendamentos?msg=erro");
   if (nome && !cliente.nome) await db().from("clientes").update({ nome }).eq("id", cliente.id);

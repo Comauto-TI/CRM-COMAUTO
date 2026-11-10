@@ -1,6 +1,6 @@
 import "server-only";
 import { db } from "@/lib/supabase/admin";
-import { mascararTelefone } from "@/lib/phone";
+import { mascararTelefone, variantesTelefone } from "@/lib/phone";
 import { mascararDocumento } from "@/lib/busca";
 import { nucleoAplicado } from "@/lib/usuarios";
 import type { Usuario } from "@/lib/auth";
@@ -44,7 +44,7 @@ export async function listarClientes(u: Usuario, f: FiltrosClientes): Promise<Li
   else if (nucleo && f.vendedor && /^[0-9a-f-]{36}$/i.test(f.vendedor)) q = q.eq("vendedor_id", f.vendedor);
 
   const [{ data }, { data: opts }] = await Promise.all([q, db().from("optouts").select("telefone")]);
-  const bloqueados = new Set((opts ?? []).map((o) => o.telefone as string));
+  const bloqueados = new Set((opts ?? []).flatMap((o) => variantesTelefone(o.telefone as string)));
   const linhas = ((data ?? []) as unknown as (Omit<LinhaCliente, "autorizacoes" | "optout" | "vendedor_id"> & { vendedor_id?: string | null; consentimentos: { tipo: string; status: string }[] })[]).map((c) => ({
     id: c.id, nome: c.nome, telefone: mascararTelefone(c.telefone), cidade: c.cidade, origem: c.origem, tags: c.tags ?? [],
     ultimo_contato_em: c.ultimo_contato_em, criado_em: c.criado_em, anonimizado: c.anonimizado, vendedor_id: c.vendedor_id ?? null,
@@ -78,7 +78,7 @@ export async function fichaCliente(u: Usuario, id: string) {
 
   const [consent, opt, veiculos, agend, ops] = await Promise.all([
     db().from("consentimentos").select("tipo, status, origem, concedido_em, revogado_em").eq("cliente_id", id).order("concedido_em", { ascending: false }),
-    db().from("optouts").select("criado_em, origem").eq("telefone", cli.telefone).order("criado_em", { ascending: false }).limit(1).maybeSingle(),
+    db().from("optouts").select("criado_em, origem").in("telefone", variantesTelefone(cli.telefone)).order("criado_em", { ascending: false }).limit(1).maybeSingle(),
     db().from("veiculos").select("modelo, ano, placa, km_atual, proxima_revisao_em").eq("cliente_id", id),
     db().from("agendamentos").select("id, inicio, status, servicos!agendamentos_servico_id_fkey(nome)").eq("cliente_id", id).order("inicio", { ascending: false }).limit(6),
     nucleo

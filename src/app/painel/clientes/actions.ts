@@ -4,12 +4,13 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { exigirAcesso } from "@/lib/auth";
 import { db } from "@/lib/supabase/admin";
-import { normalizarTelefone } from "@/lib/phone";
+import { normalizarTelefone, variantesTelefone } from "@/lib/phone";
 import { auditar } from "@/lib/audit";
 import { registrarConsentimento, aplicarOptout } from "@/lib/consent";
 import { getConfig } from "@/lib/config";
 import { localParaUtc } from "@/lib/time";
 import { agendarLembrete, agendarMensagem } from "@/lib/agendados";
+import { buscarClientePorTelefone } from "@/lib/clientes-telefone";
 
 /** LGPD: anonimiza o titular (mantém só o mínimo para comprovar opt-out/consentimentos). */
 export async function anonimizar(formData: FormData) {
@@ -77,8 +78,8 @@ export async function importarCSV(formData: FormData) {
     if (!tel || /telefone/i.test(tel)) continue;
     const telefone = normalizarTelefone(tel);
     if (!telefone) { invalidos++; continue; }
-    if (bloqueados.has(telefone)) { optout++; continue; }
-    const { data: existente } = await db().from("clientes").select("id").eq("telefone", telefone).maybeSingle();
+    if (variantesTelefone(telefone).some((v) => bloqueados.has(v))) { optout++; continue; }
+    const existente = await buscarClientePorTelefone(telefone);
     const id =
       existente?.id ??
       (await db().from("clientes").insert({ telefone, nome: nome || null, cidade: cidade || null, tags: tags ? tags.split("|").map((t) => t.trim().toLowerCase()) : [], origem: "importacao" }).select("id").single()).data?.id;

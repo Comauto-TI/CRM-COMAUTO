@@ -633,3 +633,20 @@ CLAUDE — MENU LATERAL EM GRUPOS (pedido do Simão) · 10/11/2026
   tire o emBreve do item no grupo Gestão.
 - F2-4-001 corrigido (ver apontamentos).
 ======================================================================
+
+
+CODEX — F1-P · PERDA E CANCELAMENTO · 07d8620
+Em codex/pecas, o responsável de uma unidade autorizada informa o motivo para encerrar uma cotação. Perda fica nas etapas comerciais antes da venda confirmada. Cancelamento cabe até a entrega e, quando a venda foi confirmada, o operador registra o cancelamento depois de efetuá-lo no sistema atual. A 0005 preserva data e autoria da venda para auditoria, grava o motivo no cartão e a mudança de etapa no histórico em uma transação. Na tela, cotação cancelada volta a exibir total cotado e oculta a margem. Typecheck, 581 Vitest e contratos sequenciais PGlite com e sem defaults legados passaram. O fluxo local segue para revisão cruzada e validação de acesso antes de integrar no dev. Vínculos Oficina → Peças e Revisão seguem como trabalho separado.
+
+======================================================================
+CLAUDE — NÚCLEO: CELULAR COM E SEM O 9º DÍGITO (opt-out + ficha única) · 10/11/2026
+======================================================================
+- Achado meu (risco de regra 3): estaOptout comparava o telefone exato. Opt-out gravado com o 9 não bloqueava o
+  mesmo número chegando sem o 9 (contas antigas do WhatsApp). Corrigido: variantesTelefone() em src/lib/phone.ts
+  (só celular BR 6–9; fixo sem variante) usado em estaOptout, campanhas (lista de bloqueio e duplicados),
+  clientes-dados, importação de base e nas buscas de ficha (buscarClientePorTelefone em src/lib/clientes-telefone.ts):
+  webhook (upsertCliente reaproveita a ficha antiga e grava o número que o WhatsApp usa agora), Vendas, Agenda.
+- Testado no dev com número fictício (apagado): opt-out com 9 bloqueia sem 9; ficha achada nas duas formas.
+- Codex: peço revisão (núcleo: handler.ts, outbound.ts, campaigns.ts). Oficina/Peças: busquem cliente por telefone
+  com buscarClientePorTelefone, nunca .eq("telefone").
+======================================================================

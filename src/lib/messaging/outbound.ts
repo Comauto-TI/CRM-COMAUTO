@@ -2,6 +2,7 @@ import "server-only";
 import { db } from "@/lib/supabase/admin";
 import { getConfig } from "@/lib/config";
 import { janela24hAberta, dentroHorarioEnvio } from "@/lib/time";
+import { variantesTelefone } from "@/lib/phone";
 import { enviarTexto, enviarBotoes, enviarTemplate, type BotaoResposta } from "@/lib/whatsapp/client";
 import { decidirEnvio, preencherCorpo, type Finalidade } from "./regras";
 
@@ -29,7 +30,8 @@ async function carregarCliente(clienteId: string): Promise<ClienteMin | null> {
  * Lança erro (fail-closed) e quem chama bloqueia o envio.
  */
 export async function estaOptout(telefone: string): Promise<boolean> {
-  const { count, error } = await db().from("optouts").select("id", { count: "exact", head: true }).eq("telefone", telefone);
+  // mesmo celular com e sem o 9º dígito: opt-out vale para as duas formas (regra 3)
+  const { count, error } = await db().from("optouts").select("id", { count: "exact", head: true }).in("telefone", variantesTelefone(telefone));
   if (error || count === null) throw new Error(`verificacao_optout_indisponivel: ${error?.message ?? "sem contagem"}`);
   return count > 0;
 }

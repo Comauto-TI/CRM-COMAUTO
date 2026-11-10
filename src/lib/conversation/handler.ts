@@ -18,6 +18,7 @@ import { verificarPausaCampanha } from "@/lib/campaigns";
 import { rodarAgente, type MensagemHistorico } from "@/lib/agent/run";
 import { extrairCodigo, removerCodigo } from "@/lib/links";
 import { vincularLink } from "@/lib/links-db";
+import { buscarClientePorTelefone } from "@/lib/clientes-telefone";
 
 type Cliente = { id: string; telefone: string; nome: string | null };
 
@@ -26,6 +27,24 @@ const MSG_SO_TEXTO = "Por aqui eu consigo ler apenas mensagens de texto. Pode es
 const MSG_FALHA = "Desculpe, tive uma instabilidade agora. Já chamei alguém da nossa equipe para continuar com você.";
 
 async function upsertCliente(telefone: string, nomePerfil: string | null, quando: Date): Promise<Cliente> {
+  // Ficha única: o mesmo celular pode estar salvo com/sem o 9º dígito. Se já existe, atualiza a ficha antiga
+  // e passa a guardar o número que o WhatsApp usa agora (é para ele que as respostas vão).
+  const existente = await buscarClientePorTelefone<{ nome: string | null }>(telefone, "nome");
+  if (existente && existente.telefone !== telefone) {
+    const { data: atualizado, error: errAtual } = await db()
+      .from("clientes")
+      .update({ telefone, ultimo_contato_em: quando.toISOString() })
+      .eq("id", existente.id)
+      .select("id, telefone, nome")
+      .single();
+    if (!errAtual && atualizado) {
+      if (!atualizado.nome && nomePerfil) {
+        await db().from("clientes").update({ nome: nomePerfil.slice(0, 80) }).eq("id", atualizado.id);
+        atualizado.nome = nomePerfil;
+      }
+      return atualizado as Cliente;
+    }
+  }
   const { data, error } = await db()
     .from("clientes")
     .upsert({ telefone, ultimo_contato_em: quando.toISOString() }, { onConflict: "telefone" })

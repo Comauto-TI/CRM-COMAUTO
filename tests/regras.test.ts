@@ -150,3 +150,16 @@ describe("handoff — transições", () => {
     expect(transicaoValida("humano", "devolver", "ana@x")).toBe(true);
   });
 });
+
+import { variantesTelefone } from "@/lib/phone";
+describe("telefone — mesmo celular com e sem o 9º dígito", () => {
+  it("com 9 gera a forma sem 9 e vice-versa", () => {
+    expect(variantesTelefone("5551999998888")).toEqual(["5551999998888", "555199998888"]);
+    expect(variantesTelefone("555199998888")).toEqual(["555199998888", "5551999998888"]);
+  });
+  it("fixo e números fora do padrão não ganham variante", () => {
+    expect(variantesTelefone("555133334444")).toEqual(["555133334444"]);
+    expect(variantesTelefone("14155550100")).toEqual(["14155550100"]);
+    expect(variantesTelefone("")).toEqual([]);
+  });
+});
