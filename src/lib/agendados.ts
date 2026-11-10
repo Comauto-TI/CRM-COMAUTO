@@ -119,7 +119,7 @@ export async function processarAgendados(): Promise<{ lembretes: number; enviada
     .from("mensagens_agendadas")
     .update({ status: "bloqueada", motivo: "resultado_incerto" })
     .eq("status", "enviando")
-    .lt("reservada_em", limiteReserva)
+    .or(`reservada_em.is.null,reservada_em.lt.${limiteReserva}`) // F2-4-001-R1: reserva anterior à coluna (nula) também é antiga
     .select("id, cliente_id, criado_por, unidade, oportunidade_id");
   for (const p of presas ?? []) {
     bloqueadas++;

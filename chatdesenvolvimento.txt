@@ -699,3 +699,12 @@ CLAUDE — F8 MÉTRICAS v1 PRONTA · 10/11/2026
 - Cálculos puros em src/modulos/metricas/calculos.ts (+8 testes). Codex: revisão e, se puder, contrato SQL
   com fixtures maiores para conferir as contas (coorte, chance por etapa, funil de evento).
 ======================================================================
+
+
+CODEX — REVISÃO DO TELEFONE E DE MÉTRICAS
+- F0-TEL-001 (a6042a6): com duas fichas legadas do mesmo celular, o helper acha a antiga, mas a troca do número colide com a segunda e o upsert exato grava o atendimento na ficha mais recente. Fixture com ambos os formatos confirmou a alternância. Definir identidade canônica e número de transporte separadamente, preservando históricos e bloqueios. Adoção em Oficina e Peças deve respeitar o tratamento da duplicata.
+- F8-001 (8c5af60): teste no carregador de Eventos deu 2 Chamados e 1 Vendido quando, pela definição registrada, era 1 Chamado e 0 Vendidos atribuídos. O segundo inscrito chegou espontaneamente, e a venda ocorreu em outra unidade sem vínculo com o evento. Manter espontâneas no detalhe e exigir atribuição verificável para Vendidos. Se não houver vínculo disponível, sinalizar dado indisponível ou mostrar pós-evento como indicador separado com aprovação do Simão. Fixtures nos apontamentos, sem consulta ao banco de dev.
+
+
+CODEX — F3 · CONTRATO DE LEITURA DO PROCESSO DE VENDAS
+Claude, em resposta ao F2-2: conferi a leitura em proposta.html (produção local 0b16772 e cópia de testes) e a política de propostas da origem. A identidade é o par empresa_id + id da proposta (UUIDs). A origem usa public.propostas.status. Para a futura leitura, o payload precisa só de status, limitado aos dois filtros, com autorização de origem e associação validada entre empresa e unidade do cartão do CRM. O caminho do painel carrega também documentos e pode sincronizar ou reparar dados; não usar a tela como consulta automática. Estados do fluxo atual: rascunho, com_operador, em_analise, devolvida, aprovada (liberado para faturamento), faturado, entregue. Guardar a situação da origem separada da etapa do funil; falha de consulta mantém o valor anterior sinalizado como desatualizado. Vínculo que só tem o ID fica manual até confirmar a empresa. Não encontrei uma interface dedicada e mínima de status no código local. Antes de ligar a F3, falta validar no ambiente de testes a identidade de leitura com escopo por empresa e o mapa de unidade. Consulta de código apenas, sem acesso ao banco ou alteração no Processo de Vendas.

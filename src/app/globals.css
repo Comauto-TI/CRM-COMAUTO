@@ -1068,3 +1068,29 @@ a { color: var(--vw-azul); }
 .mt-evento-cabecalho { display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; margin-bottom: 10px; }
 .mt-evento-cabecalho h2 { margin: 0; }
 @media (max-width: 640px) { .mt-previsao-numeros { grid-template-columns: 1fr; } .mt-barras li { grid-template-columns: 1fr auto; } .mt-barras-trilho { grid-column: 1 / -1; grid-row: 2; } }
+
+/* ===== F8: funil no estilo da referência (camadas, % dentro, etapa + quantidade embaixo) ===== */
+.fm-faixa { gap: 12px; }
+.fm-area { position: relative; }
+.fm-grafico { height: 150px; background: transparent; border-radius: 12px; }
+.fm-divisoria { stroke: #fff; stroke-width: 1.5; opacity: .85; vector-effect: non-scaling-stroke; }
+.fm-pcts {
+  position: absolute; inset: 0; display: grid; grid-template-columns: repeat(var(--funil-etapas), minmax(0, 1fr));
+  align-items: center; justify-items: center; pointer-events: none;
+}
+.fm-pcts span { color: #fff; font-weight: 800; font-size: 15px; font-variant-numeric: tabular-nums; text-shadow: 0 1px 2px rgba(0, 20, 60, 0.25); }
+.fm-pcts span.fm-pct-vazio { color: var(--texto-2); text-shadow: none; }
+.fm-faixa .fm-etapas { margin-top: 10px; }
+.fm-faixa .fm-etapa { gap: 2px; padding: 0 6px; }
+.fm-faixa .fm-etapa + .fm-etapa { border-inline-start: 0; }
+.fm-etapa-nome { text-transform: uppercase; letter-spacing: .05em; font-size: 10.5px !important; font-weight: 700; color: var(--texto-2) !important; }
+.fm-etapa-qtd { color: var(--vw-marinho); font-size: 15px; font-variant-numeric: tabular-nums; }
+.fm-etapa-ganha .fm-etapa-qtd { color: var(--ok); }
+.fm-aviso { margin: 6px 0 0; text-align: center; font-size: 12px; color: var(--texto-2); }
+.sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0; }
+@media (max-width: 640px) { .fm-grafico { height: 120px; } .fm-pcts span { font-size: 12.5px; } }
+.fm-faixa .fm-etapa { align-content: start; }
+.fm-etapa-nome { min-height: 2.6em; display: flex; align-items: flex-end; justify-content: center; line-height: 1.25; }
+/* pontas: início arredondado (o SVG fica dentro de um contêiner com cantos redondos à esquerda) */
+.fm-area { border-radius: 28px 10px 10px 28px; overflow: hidden; }
+.fm-grafico { border-radius: 0; }

@@ -990,3 +990,23 @@ CLAUDE — F2-4-001 · 10/11/2026 — procede, CORRIGIDO
 [OBTIDO] Falha inicial deixa pendente, erro de leitura volta à fila, exceção no transporte e reserva antiga com data são bloqueadas com aviso. A reserva legada nula segue em enviando após duas execuções. O filtro lt exclui nulos e a migration não preenche a coluna em linhas anteriores.
 [TIPO] bug
 [GRAVIDADE] média
+
+CLAUDE — F2-4-001-R1 · procede, CORRIGIDO: o filtro de reservas antigas agora é
+`reservada_em is null OR reservada_em < limite` (reserva legada nula = resultado incerto, com aviso, sem reenvio).
+
+
+[ID] F0-TEL-001
+[ARQUIVO] src/lib/conversation/handler.ts:29-48; src/lib/clientes-telefone.ts:15-21 (a6042a6)
+[TESTE] Fixtures com duas fichas legadas do mesmo celular, uma por formato. Executar processarMensagem para cada formato e capturar a tentativa de gravação. Script work/revisar-ficha-telefone.mjs, sem dados reais ou envios.
+[ESPERADO] Os dois formatos chegam ao ID canônico, preservando o histórico. O destinatário de transporte pode ser tratado separadamente da identidade da ficha.
+[OBTIDO] Busca devolve a ficha mais antiga. Atualizar o telefone dela colide com a segunda ficha e o upsert exato acaba usando a segunda. Alternar o formato divide as mensagens entre os dois IDs.
+[TIPO] bug
+[GRAVIDADE] média
+
+[ID] F8-001
+[ARQUIVO] src/modulos/metricas/dados.ts:85-113 (8c5af60)
+[TESTE] carregarFunilEvento com uma pessoa chamada que compareceu, outra com inscrição espontânea e uma venda da primeira pessoa em outra unidade, sem atribuição ao evento. Script work/revisar-funil-eventos.mjs com banco simulado.
+[ESPERADO] Chamados conta um convite registrado. A inscrição espontânea aparece no detalhamento. Vendidos atribuído fica em zero, de acordo com F8 e a decisão registrada no chat.
+[OBTIDO] Exibe dois Chamados e um Vendido. Toda inscrição entra na base e a consulta de vendas aceita qualquer unidade permitida e coincidência de cliente e data. A janela de 60 dias pode servir de indicador separado se for aprovada como aproximação.
+[TIPO] bug
+[GRAVIDADE] alta
