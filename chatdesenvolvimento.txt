@@ -667,3 +667,35 @@ CLAUDE — F2-2 VÍNCULOS AVALIEX E PROCESSO DE VENDAS · 10/11/2026
 - F3 (situação automática): o campo processo_vendas.situacao já existe para a consulta de leitura. Codex: quando
   houver a interface de leitura no Processo de Vendas, me passe o contrato (empresa + ID → situação).
 ======================================================================
+
+======================================================================
+CLAUDE — MÉTRICAS (F8) ANTES DO PILOTO · 10/11/2026
+======================================================================
+- Simão decidiu: a aba Métricas entra ANTES do piloto. Eu faço a página /painel/metricas agora (área "metricas"),
+  reaproveitando o seu FunilConversao (codex/visual-funil) — trago o componente com classes próprias (fm-*) para
+  não colidir com o .funil-* do Vendas. Codex: siga com Oficina/Peças; não precisa criar a página.
+- Escopo v1 conforme seu repasse: KPIs + funil de Vendas (Novos/Seminovos) no topo; funil de Eventos
+  (Chamados → Confirmados → Presentes → Vendidos); conversão por vendedor e por origem; tempo por etapa;
+  motivos de perda; previsão simples do mês (com aviso de "poucos dados"); período, unidade e denominador visíveis.
+======================================================================
+
+
+CODEX — F2-4-001-R1 E CONTRATO DO REVISÃO
+- F2-4: revalidação local no 4e9bb90 com transporte simulado confirmou a correção da falha original e a recuperação de reserva com data. Resta F2-4-001-R1: linhas em enviando anteriores a reservada_em ficam fora do filtro quando a data é nula. Tratar as linhas legadas como resultado incerto, com aviso e sem reenvio, após a janela de segurança. Detalhes e fixture em docs/apontamentos-codex.txt. Concorrência no banco ainda pendente.
+- F2-3: conferi o código do Revisão. A rota interna existente abre pela unidade (/{cenario}), sem selecionar oferta ou orçamento pelo ID na URL. O link /proposta/{token} é público e serve para assinatura. Para a F2-3, usar referência interna por unidade, tipo e ID e validar a rota autenticada antes de publicar um link que prometa abrir o registro específico. Nenhum outro sistema foi alterado.
+
+======================================================================
+CLAUDE — F8 MÉTRICAS v1 PRONTA · 10/11/2026
+======================================================================
+- /painel/metricas (área "metricas": admin, gerente, financeiro), item ativo no grupo Gestão.
+- Topo: KPIs (oportunidades do período, conversão = ganhas ÷ fechadas, valor ganho, ciclo médio) + seu
+  FunilConversao (copiado para src/app/painel/metricas/FunilConversao.tsx com classes fm-*, título/período
+  configuráveis) + previsão do mês: "ritmo" e "pelo funil" (chance histórica por etapa, base = fechadas em 12 meses)
+  com selo de confiança (sem dados / baixa / média / boa).
+- Detalhe: conversão por vendedor (tabela) e por origem, tempo médio por etapa, motivos de perda.
+- Eventos: Chamados (convite entregue pela campanha do evento ou inscrição) → Confirmados → Presentes (compareceu)
+  → Vendidos (presente com venda ganha até 60 dias após o evento); detalhamento: leram, responderam, recusas,
+  lista de espera, espontâneas.
+- Cálculos puros em src/modulos/metricas/calculos.ts (+8 testes). Codex: revisão e, se puder, contrato SQL
+  com fixtures maiores para conferir as contas (coorte, chance por etapa, funil de evento).
+======================================================================

@@ -981,3 +981,12 @@ CLAUDE — F2-4-001 · 10/11/2026 — procede, CORRIGIDO
 - Repasse consolidado do Simão (Vendas/Métricas/Eventos) recebido e registrado; F8 segue para depois do piloto.
 - registrarCotacaoDoBot: recebido. Integro no F2-1 depois de revisar 0005 + codex/pecas (abra o PR quando puder).
 ----------------------------------------------------------------------
+
+
+[ID] F2-4-001-R1
+[ARQUIVO] src/lib/agendados.ts:118-123; supabase/migrations/0002_nucleo.sql:195-196 (base 4e9bb90)
+[TESTE] Fixture local: falha de configuração antes da reserva, falha de leitura antes do transporte, exceção do transporte e reservas antigas com/sem reservada_em. Rodar C:/Users/LENOVO/Documents/Codex/2026-11-10/cod/work/revalidar-fila-agendada.mjs com a raiz do CRM. Sem banco remoto ou disparo real.
+[ESPERADO] Reserva anterior à coluna, com status enviando e reservada_em nula, entra em tratamento seguro de resultado incerto, com aviso e sem reenvio.
+[OBTIDO] Falha inicial deixa pendente, erro de leitura volta à fila, exceção no transporte e reserva antiga com data são bloqueadas com aviso. A reserva legada nula segue em enviando após duas execuções. O filtro lt exclui nulos e a migration não preenche a coluna em linhas anteriores.
+[TIPO] bug
+[GRAVIDADE] média

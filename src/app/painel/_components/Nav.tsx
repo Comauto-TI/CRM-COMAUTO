@@ -43,7 +43,7 @@ const GRUPOS: Grupo[] = [
   },
   {
     chave: "gestao", rotulo: "Gestão", icone: "financeiro", itens: [
-      { href: "/painel/metricas", rotulo: "Métricas", icone: "financeiro", area: "metricas", emBreve: true },
+      { href: "/painel/metricas", rotulo: "Métricas", icone: "metricas", area: "metricas" },
       { href: "/painel/financeiro", rotulo: "Financeiro", icone: "financeiro", area: "financeiro" },
       { href: "/painel/seguranca", rotulo: "Segurança", icone: "seguranca", area: "seguranca" },
       { href: "/painel/configuracoes", rotulo: "Configurações", icone: "config", area: "custos_config" },

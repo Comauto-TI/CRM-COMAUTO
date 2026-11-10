@@ -1010,3 +1010,61 @@ a { color: var(--vw-azul); }
 .vinculos .vinculo strong { color: var(--vw-marinho); font-size: 13px; }
 .vinculos .vinculo small { font-size: 11.5px; overflow-wrap: anywhere; }
 .vinculos form.linha-form { margin-bottom: 6px; }
+
+/* ===== F8 Métricas: funil contínuo (desenho do Codex, classes fm-*) ===== */
+.fm-faixa {
+  min-width: 0; margin: 0; padding: 16px; display: flex; flex-direction: column; gap: 14px;
+}
+.fm-cabecalho { display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 8px 12px; }
+.fm-cabecalho h2 { margin: 0; font-size: 16px; line-height: 1.3; color: var(--vw-marinho); }
+.fm-cabecalho p { margin: 4px 0 0; font-size: 12px; color: var(--texto-2); }
+.fm-periodo {
+  padding: 4px 9px; border-radius: 999px; white-space: nowrap;
+  background: var(--acento-suave); color: var(--vw-marinho); font-size: 11px; font-weight: 600;
+}
+.fm-rolagem { margin-block: auto; overflow-x: auto; padding: 2px 0 5px; }
+.fm-rolagem:focus-visible { outline: 2px solid var(--vw-azul); outline-offset: 2px; border-radius: 8px; }
+.fm-grade { min-width: calc(var(--funil-etapas) * 5.25rem); }
+.fm-grafico, .fm-vazio {
+  display: block; width: 100%; border-radius: 9px; background: var(--superficie-2);
+}
+.fm-grafico { height: 112px; }
+.fm-vazio { min-height: 64px; }
+@media (max-width: 640px) { .fm-grafico { height: 94px; } }
+.fm-guia, .fm-eixo { vector-effect: non-scaling-stroke; stroke: var(--borda-forte); }
+.fm-guia { stroke-dasharray: 2 4; }
+.fm-eixo { stroke-dasharray: 4 5; }
+.fm-marca { fill: var(--superficie); }
+.fm-marca-zero { fill: var(--superficie); stroke: var(--borda-forte); vector-effect: non-scaling-stroke; }
+.fm-vazio { margin: 0; display: grid; place-items: center; padding: 8px; text-align: center; color: var(--texto-2); font-size: 12px; }
+.fm-etapas { display: grid; grid-template-columns: repeat(var(--funil-etapas), minmax(0, 1fr)); list-style: none; padding: 0; margin: 12px 0 0; }
+.fm-etapa { min-width: 0; display: grid; align-content: start; gap: 3px; text-align: center; padding: 0 7px; }
+.fm-etapa + .fm-etapa { border-inline-start: 1px solid var(--borda); }
+.fm-etapa-pct { color: var(--vw-marinho); font-size: 18px; line-height: 1.2; font-variant-numeric: tabular-nums; }
+.fm-etapa-zero .fm-etapa-pct { color: var(--texto-2); }
+.fm-etapa-ganha .fm-etapa-pct { color: var(--ok); }
+.fm-etapa-nome { color: var(--texto); font-size: 12px; font-weight: 600; overflow-wrap: anywhere; }
+.fm-etapa-total { color: var(--texto-2); font-size: 11px; }
+
+/* ===== F8: aba Métricas ===== */
+.mt-topo { display: grid; grid-template-columns: minmax(0, 1fr); gap: 16px; }
+@media (min-width: 1100px) { .mt-topo { grid-template-columns: minmax(0, 3fr) minmax(0, 2fr); } }
+.mt-previsao { padding: 16px; display: flex; flex-direction: column; gap: 10px; }
+.mt-previsao h2 { margin: 0; font-size: 16px; color: var(--vw-marinho); }
+.mt-previsao > p { margin: 0; }
+.mt-previsao-numeros { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
+.mt-previsao-numeros > div { display: flex; flex-direction: column; padding: 10px 12px; border-radius: 10px; background: var(--superficie-2); border: 1px solid var(--borda); min-width: 0; }
+.mt-previsao-numeros strong { font-size: 26px; color: var(--vw-marinho); line-height: 1.15; margin: 4px 0 2px; font-variant-numeric: tabular-nums; }
+.mt-previsao-numeros small { font-size: 11px; line-height: 1.3; }
+.mt-previsao .tag { align-self: flex-start; }
+.mt-nota { font-size: 11.5px; margin: 8px 0 0; }
+.mt-barras { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+.mt-barras li { display: grid; grid-template-columns: minmax(90px, 30%) 1fr auto; align-items: center; gap: 10px; font-size: 12.5px; }
+.mt-barras-rotulo { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--texto); font-weight: 600; }
+.mt-barras-trilho { height: 10px; border-radius: 6px; background: var(--superficie-2); overflow: hidden; }
+.mt-barras-valor { display: block; height: 100%; border-radius: 6px; background: var(--vw-azul); }
+.mt-barras-num { font-variant-numeric: tabular-nums; font-weight: 700; color: var(--vw-marinho); white-space: nowrap; }
+.mt-barras-num small { font-weight: 500; color: var(--texto-2); }
+.mt-evento-cabecalho { display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; margin-bottom: 10px; }
+.mt-evento-cabecalho h2 { margin: 0; }
+@media (max-width: 640px) { .mt-previsao-numeros { grid-template-columns: 1fr; } .mt-barras li { grid-template-columns: 1fr auto; } .mt-barras-trilho { grid-column: 1 / -1; grid-row: 2; } }
