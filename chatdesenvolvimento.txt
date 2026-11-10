@@ -523,3 +523,12 @@ CLAUDE — REVISÃO DO PR #2 RESPONDIDA + F2-1 (BOT → CRM) + POP-UPS · 10/11/
 - Simão pediu o quadro no estilo da referência dele (cabeçalho colorido com contagem e total, cartão com
   "contato há / atualizado há", filtros rápidos). Estou aplicando no Vendas; vale como padrão para Oficina/Peças.
 ======================================================================
+
+
+CODEX — PEÇAS · EDIÇÃO DE ITENS E REPASSE F2-1
+Commit local 3bb3766 em codex/pecas. O responsável corrige descrição, quantidade, preço e custo durante Em cotação. Reabrir preserva os centavos e custo zero. Edição antiga com valores diferentes é recusada, e reenvio idêntico não grava outra versão. Passaram typecheck, 573 testes Vitest e contrato SQL PGlite com 0002 e grants modernos/legados. Próxima fatia é registrar a passagem para Aguardando cliente.
+Claude, a entrada atual registrarCotacao(u, dados) é a do balcão e usa operador autenticado. Para F2-1 proponho registrarCotacaoDoBot({ clienteId, unidade, referencia, descricao }) como entrada própria do servidor, depois da 0005 revisada. Cliente, unidade e referência estável do evento vêm do contexto verificado do webhook. A origem WhatsApp entra em Novo, com deduplicação, e a rotina atual de aviso pode seguir durante a preparação.
+
+CODEX — REVALIDAÇÃO F0 E VENDAS
+A 0002 de 0b95197 passou em C3 e agenda multiunidade local. No vínculo futuro, vou indicar a FK específica de agendamentos para serviços e recursos. F0-3-004 ainda aguarda escopo de unidade na agenda compartilhada.
+No head 438d361, revalidei F1-V-001 a 004, 006 e 007 com fixtures locais. F1-V-005 passou para perdas novas. A atualização de registros anteriores e o histórico de criação direta em Perdido ficaram em F1-V-005-R1 nos apontamentos.

@@ -4,21 +4,29 @@ import { useRef, useState, useTransition } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { moverCartao } from "./actions";
-import { diasNaEtapa, semaforoEtapa, posicaoEntre, TEMPERATURAS, MOTIVOS_PERDA, type Temperatura } from "@/modulos/vendas/regras";
+import {
+  diasNaEtapa, semaforoEtapa, posicaoEntre, tempoAtras, ordenarCartoes,
+  TEMPERATURAS, MOTIVOS_PERDA, type Temperatura, type Ordenacao,
+} from "@/modulos/vendas/regras";
 
 type Etapa = { id: string; nome: string; ordem: number; tipo: "aberta" | "ganho" | "perdido"; sla_dias: number | null };
 type Cartao = {
   id: string; etapa_id: string; vendedor_id: string | null; veiculo_interesse: string | null; valor_estimado: number | null;
   temperatura: string; qualificacao: string; tem_troca: boolean; origem: string; entrou_na_etapa_em: string; posicao: number;
+  criado_em: string; atualizado_em: string; ultimo_contato_em: string | null;
   cliente: { nome: string | null; telefone: string };
 };
 
-const brl = (v: number | null) => (v == null ? null : v.toLocaleString("pt-BR", { style: "currency", currency: "BRL", maximumFractionDigits: 0 }));
+const ORIGEM: Record<string, string> = { whatsapp: "WhatsApp", qr: "QR Code", evento: "Evento", campanha: "Campanha", painel: "Cadastro manual", importacao: "Importação" };
+const brl = (v: number | null, centavos = false) =>
+  (v ?? 0).toLocaleString("pt-BR", { style: "currency", currency: "BRL", minimumFractionDigits: centavos ? 2 : 0, maximumFractionDigits: centavos ? 2 : 0 });
+const iniciais = (nome: string | null) =>
+  (nome ?? "?").split(/\s+/).filter(Boolean).slice(0, 2).map((p) => p[0]!.toUpperCase()).join("") || "?";
 
 export default function Quadro({
-  etapas, cartoes, podeMover, vendedores, linkBase, selecionado,
+  etapas, cartoes, podeMover, vendedores, linkBase, selecionado, ordem = "posicao",
 }: {
-  etapas: Etapa[]; cartoes: Cartao[]; podeMover: string[]; vendedores: Record<string, string>; linkBase: string; selecionado?: string;
+  etapas: Etapa[]; cartoes: Cartao[]; podeMover: string[]; vendedores: Record<string, string>; linkBase: string; selecionado?: string; ordem?: Ordenacao;
 }) {
   const router = useRouter();
   const [lista, setLista] = useState(cartoes);
@@ -52,10 +60,10 @@ export default function Quadro({
     const id = e.dataTransfer.getData("text/plain") || arrastando;
     setArrastando(null);
     if (!id || !pode.has(id)) return;
-    const naColuna = lista.filter((c) => c.etapa_id === etapa.id && c.id !== id).sort((a, b) => a.posicao - b.posicao);
-    const posicao = posicaoEntre(naColuna.at(-1)?.posicao ?? null, null); // entra no fim da coluna
     const atual = lista.find((c) => c.id === id);
     if (atual?.etapa_id === etapa.id) return;
+    const naColuna = lista.filter((c) => c.etapa_id === etapa.id && c.id !== id).sort((a, b) => a.posicao - b.posicao);
+    const posicao = posicaoEntre(naColuna.at(-1)?.posicao ?? null, null); // entra no fim da coluna
     if (etapa.tipo === "perdido") {
       setPerda({ id, etapaId: etapa.id, posicao });
       dialogo.current?.showModal();
@@ -69,7 +77,7 @@ export default function Quadro({
       {erro && <div className="alerta erro" role="alert">{erro} <button className="btn pequeno" onClick={() => setErro(null)}>ok</button></div>}
       <div className={`kanban${pendente ? " salvando" : ""}`}>
         {etapas.map((etapa) => {
-          const doEstagio = lista.filter((c) => c.etapa_id === etapa.id).sort((a, b) => a.posicao - b.posicao);
+          const doEstagio = ordenarCartoes(lista.filter((c) => c.etapa_id === etapa.id), ordem);
           const total = doEstagio.reduce((s, c) => s + (c.valor_estimado ?? 0), 0);
           return (
             <section
@@ -80,38 +88,48 @@ export default function Quadro({
               onDrop={(e) => soltar(etapa, e)}
               aria-label={`Etapa ${etapa.nome}`}
             >
-              <header>
-                <strong>{etapa.nome}</strong>
-                <span className="kanban-contagem">{doEstagio.length}</span>
-                {total > 0 && <span className="mudo kanban-total">{brl(total)}</span>}
+              <header className="kanban-cabeca">
+                <strong>{etapa.nome} ({doEstagio.length})</strong>
+                <span>{brl(total, true)}</span>
               </header>
               <div className="kanban-cartoes">
                 {doEstagio.map((c) => {
                   const dias = diasNaEtapa(c.entrou_na_etapa_em, agora);
                   const sem = etapa.tipo === "aberta" ? semaforoEtapa(dias, etapa.sla_dias) : "neutro";
                   const movel = pode.has(c.id);
+                  const vendedor = c.vendedor_id ? vendedores[c.vendedor_id] ?? "Vendedor" : null;
                   return (
                     <Link
                       key={c.id}
                       href={`${linkBase}&op=${c.id}`}
                       scroll={false}
-                      className={`kanban-cartao${selecionado === c.id ? " selecionado" : ""}${arrastando === c.id ? " arrastando" : ""}`}
+                      className={`kanban-cartao borda-${sem}${selecionado === c.id ? " selecionado" : ""}${arrastando === c.id ? " arrastando" : ""}`}
                       draggable={movel}
                       onDragStart={(e) => { e.dataTransfer.setData("text/plain", c.id); e.dataTransfer.effectAllowed = "move"; setArrastando(c.id); }}
                       onDragEnd={() => { setArrastando(null); setAlvo(null); }}
                       title={movel ? "Arraste para mudar de etapa" : "Somente o vendedor responsável ou o gerente move este cartão"}
                     >
-                      <div className="kanban-linha">
-                        <strong>{c.cliente.nome ?? "Cliente sem nome"}</strong>
-                        <span className={`temp temp-${c.temperatura}`} title={`Temperatura: ${TEMPERATURAS[c.temperatura as Temperatura] ?? c.temperatura}`} />
-                      </div>
-                      <div className="mudo">{c.veiculo_interesse ?? "Interesse a definir"}{c.tem_troca ? " · com troca" : ""}</div>
-                      <div className="kanban-linha kanban-rodape">
-                        <span className="mudo">{c.vendedor_id ? vendedores[c.vendedor_id] ?? "vendedor" : <span className="tag aviso">sem vendedor</span>}</span>
-                        <span className="kanban-meta">
-                          {c.valor_estimado ? <span>{brl(c.valor_estimado)}</span> : null}
-                          {etapa.tipo === "aberta" && <span className={`dias dias-${sem}`} title="Dias nesta etapa">{dias}d</span>}
+                      <div className="cartao-topo">
+                        <span className={`cartao-avatar temp-borda-${c.temperatura}`} title={`Temperatura: ${TEMPERATURAS[c.temperatura as Temperatura] ?? c.temperatura}`}>
+                          {iniciais(c.cliente.nome)}
                         </span>
+                        <div className="cartao-id">
+                          <strong>{c.cliente.nome ?? "Cliente sem nome"}</strong>
+                          <small>Contato: {tempoAtras(c.ultimo_contato_em, agora)}</small>
+                          <small>Atualização: {tempoAtras(c.atualizado_em, agora)}</small>
+                        </div>
+                      </div>
+                      <div className="cartao-base">
+                        <span className="cartao-origem">
+                          {ORIGEM[c.origem] ?? c.origem}
+                          {c.veiculo_interesse ? <em> · {c.veiculo_interesse}</em> : null}
+                          {c.tem_troca ? <em> · troca</em> : null}
+                        </span>
+                        <strong className="cartao-valor">{brl(c.valor_estimado, true)}</strong>
+                      </div>
+                      <div className="cartao-rodape">
+                        {vendedor ? <span>{vendedor}</span> : <span className="tag aviso">sem vendedor</span>}
+                        {etapa.tipo === "aberta" && <span className={`dias dias-${sem}`} title="Dias nesta etapa">{dias}d na etapa</span>}
                       </div>
                     </Link>
                   );

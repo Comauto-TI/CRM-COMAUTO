@@ -145,3 +145,25 @@ describe("F2-1 — cliente volta a falar: completa sem apagar nem rebaixar", () 
     expect(completarQualificacao("a_verificar", vazio, { temTroca: false, clienteConfirmou: false })).toEqual({ tem_troca: false, troca_descricao: null });
   });
 });
+
+import { tempoAtras, ordenarCartoes } from "@/modulos/vendas/regras";
+describe("quadro estilo referência — tempo e ordenação", () => {
+  const agora = new Date("2026-11-10T12:00:00Z");
+  it("tempo relativo", () => {
+    expect(tempoAtras("2026-11-10T11:59:40Z", agora)).toBe("agora");
+    expect(tempoAtras("2026-11-10T11:15:00Z", agora)).toBe("45 min atrás");
+    expect(tempoAtras("2026-11-10T03:00:00Z", agora)).toBe("9 h atrás");
+    expect(tempoAtras("2026-10-24T12:00:00Z", agora)).toBe("17 d atrás");
+    expect(tempoAtras(null, agora)).toBe("—");
+  });
+  it("ordenações", () => {
+    const base = { posicao: 0, criado_em: "2026-11-01T00:00:00Z", valor_estimado: 0, entrou_na_etapa_em: "2026-11-01T00:00:00Z", ultimo_contato_em: null as string | null };
+    const a = { ...base, id: "a", posicao: 2, valor_estimado: 100, criado_em: "2026-11-09T00:00:00Z", entrou_na_etapa_em: "2026-11-09T00:00:00Z", ultimo_contato_em: "2026-11-09T00:00:00Z" };
+    const b = { ...base, id: "b", posicao: 1, valor_estimado: 900, criado_em: "2026-11-01T00:00:00Z", entrou_na_etapa_em: "2026-10-01T00:00:00Z", ultimo_contato_em: null };
+    expect(ordenarCartoes([a, b], "posicao").map((c) => c.id)).toEqual(["b", "a"]);
+    expect(ordenarCartoes([a, b], "recentes").map((c) => c.id)).toEqual(["a", "b"]);
+    expect(ordenarCartoes([a, b], "valor").map((c) => c.id)).toEqual(["b", "a"]);
+    expect(ordenarCartoes([a, b], "parado").map((c) => c.id)).toEqual(["b", "a"]);
+    expect(ordenarCartoes([a, b], "contato").map((c) => c.id)).toEqual(["b", "a"]); // nunca contatado primeiro
+  });
+});

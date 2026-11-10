@@ -52,6 +52,37 @@ export function diasNaEtapa(entrouEm: string | Date, agora: Date = new Date()): 
   return Math.max(0, Math.floor((agora.getTime() - t) / 86_400_000));
 }
 
+/** "agora", "45 min atrás", "9 h atrás", "17 d atrás" (estilo do quadro de referência). */
+export function tempoAtras(iso: string | null | undefined, agora: Date = new Date()): string {
+  if (!iso) return "—";
+  const t = new Date(iso).getTime();
+  if (Number.isNaN(t)) return "—";
+  const min = Math.max(0, Math.floor((agora.getTime() - t) / 60_000));
+  if (min < 1) return "agora";
+  if (min < 60) return `${min} min atrás`;
+  const h = Math.floor(min / 60);
+  if (h < 24) return `${h} h atrás`;
+  return `${Math.floor(h / 24)} d atrás`;
+}
+
+export const ORDENACOES = { posicao: "Ordem do quadro", recentes: "Mais recentes", valor: "Maior valor", parado: "Parado há mais tempo", contato: "Sem contato há mais tempo" } as const;
+export type Ordenacao = keyof typeof ORDENACOES;
+
+/** Ordena os cartões de uma coluna conforme o filtro "Ordenar por". */
+export function ordenarCartoes<T extends { posicao: number; criado_em: string; valor_estimado: number | null; entrou_na_etapa_em: string; ultimo_contato_em: string | null }>(
+  cartoes: T[], ordem: Ordenacao,
+): T[] {
+  const t = (s: string | null) => (s ? new Date(s).getTime() : 0);
+  const copia = [...cartoes];
+  switch (ordem) {
+    case "recentes": return copia.sort((a, b) => t(b.criado_em) - t(a.criado_em));
+    case "valor": return copia.sort((a, b) => (b.valor_estimado ?? 0) - (a.valor_estimado ?? 0));
+    case "parado": return copia.sort((a, b) => t(a.entrou_na_etapa_em) - t(b.entrou_na_etapa_em));
+    case "contato": return copia.sort((a, b) => t(a.ultimo_contato_em) - t(b.ultimo_contato_em));
+    default: return copia.sort((a, b) => a.posicao - b.posicao);
+  }
+}
+
 /** Semáforo do cartão: verde dentro do prazo, âmbar a partir de 70% do SLA, vermelho estourado. Sem SLA = neutro. */
 export function semaforoEtapa(dias: number, slaDias: number | null): "ok" | "aviso" | "critico" | "neutro" {
   if (!slaDias) return "neutro";

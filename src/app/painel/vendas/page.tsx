@@ -8,13 +8,16 @@ import {
 } from "@/modulos/vendas/dados";
 import {
   faixaFunil, taxaConversao, veTodasOportunidades, podeMexer, valorParaCampo,
-  PAGAMENTOS, PRAZOS, TEMPERATURAS, QUALIFICACOES, TIPOS_ATIVIDADE, MOTIVOS_PERDA,
+  PAGAMENTOS, PRAZOS, TEMPERATURAS, QUALIFICACOES, TIPOS_ATIVIDADE, MOTIVOS_PERDA, ORDENACOES, ehChave, type Ordenacao,
 } from "@/modulos/vendas/regras";
 import { Cabecalho, Vazio } from "../_components/ui";
 import Quadro from "./Quadro";
 import { novaOportunidade, assumir, salvarQualificacao, novaAtividade, novaTarefa, concluir, moverPeloFormulario } from "./actions";
 
-type SP = { funil?: string; vendedor?: string; op?: string; nova?: string; erro?: string; ok?: string };
+type SP = {
+  funil?: string; vendedor?: string; op?: string; nova?: string; erro?: string; ok?: string;
+  nome?: string; telefone?: string; temperatura?: string; periodo?: string; ordem?: string;
+};
 
 export default async function Vendas({ searchParams }: { searchParams: Promise<SP> }) {
   const u = await exigirAcesso("vendas");
@@ -36,7 +39,7 @@ export default async function Vendas({ searchParams }: { searchParams: Promise<S
 
   const supervisor = veTodasOportunidades(u);
   const [quadro, vendedores, detalhe] = await Promise.all([
-    carregarQuadro(u, funil, supervisor ? sp.vendedor : undefined),
+    carregarQuadro(u, funil, { vendedor: supervisor ? sp.vendedor : undefined, nome: sp.nome, telefone: sp.telefone, temperatura: sp.temperatura, periodo: sp.periodo }),
     vendedoresDaUnidade(u.unidade),
     sp.op ? carregarOportunidade(u, sp.op) : Promise.resolve(null),
   ]);
@@ -49,8 +52,21 @@ export default async function Vendas({ searchParams }: { searchParams: Promise<S
   const emNegociacao = abertas.reduce((s, c) => s + (c.valor_estimado ?? 0), 0);
   const semDono = abertas.filter((c) => !c.vendedor_id).length;
 
-  const qs = new URLSearchParams({ funil: funil.chave, ...(supervisor && sp.vendedor ? { vendedor: sp.vendedor } : {}) });
+  // filtros ativos viajam nos links (abrir cartão, fechar painel) para o quadro não "resetar"
+  const ordem: Ordenacao = ehChave(ORDENACOES, sp.ordem) ? sp.ordem : "posicao";
+  const filtrosAtivos: Record<string, string> = Object.fromEntries(
+    Object.entries({
+      vendedor: supervisor ? sp.vendedor : undefined, nome: sp.nome, telefone: sp.telefone,
+      temperatura: sp.temperatura, periodo: sp.periodo, ordem: ordem === "posicao" ? undefined : ordem,
+    }).filter((e): e is [string, string] => typeof e[1] === "string" && e[1] !== ""),
+  );
+  const qs = new URLSearchParams({ funil: funil.chave, ...filtrosAtivos });
   const linkBase = `/painel/vendas?${qs}`;
+  const comPeriodo = (p?: string) => {
+    const n = new URLSearchParams(qs);
+    if (p) n.set("periodo", p); else n.delete("periodo");
+    return `/painel/vendas?${n}`;
+  };
   const etapaNome = Object.fromEntries(quadro.etapas.map((e) => [e.id, e.nome]));
 
   return (
@@ -62,19 +78,38 @@ export default async function Vendas({ searchParams }: { searchParams: Promise<S
               <Link key={f.id} href={`/painel/vendas?funil=${f.chave}`} className={f.id === funil.id ? "ativo" : ""}>{f.nome}</Link>
             ))}
           </nav>
-          {supervisor && (
-            <form className="linha-form">
-              <input type="hidden" name="funil" value={funil.chave} />
-              <select name="vendedor" defaultValue={sp.vendedor ?? ""} aria-label="Filtrar por vendedor">
-                <option value="">Todos os vendedores</option>
-                <option value="sem">Sem vendedor</option>
-                {vendedores.map((v) => <option key={v.user_id} value={v.user_id}>{v.nome}</option>)}
-              </select>
-              <button className="btn">Filtrar</button>
-            </form>
-          )}
           <Link href={`${linkBase}&nova=1`} className="btn primario" scroll={false}>+ Nova oportunidade</Link>
         </Cabecalho>
+
+        <form className="card filtros-quadro" role="search" aria-label="Filtrar oportunidades">
+          <input type="hidden" name="funil" value={funil.chave} />
+          <label>Nome do cliente<input name="nome" defaultValue={sp.nome ?? ""} maxLength={60} /></label>
+          <label>Telefone<input name="telefone" defaultValue={sp.telefone ?? ""} inputMode="tel" maxLength={20} /></label>
+          {supervisor && (
+            <label>Vendedor<select name="vendedor" defaultValue={sp.vendedor ?? ""}>
+              <option value="">Todos os vendedores</option>
+              <option value="sem">Sem vendedor</option>
+              {vendedores.map((v) => <option key={v.user_id} value={v.user_id}>{v.nome}</option>)}
+            </select></label>
+          )}
+          <label>Temperatura<select name="temperatura" defaultValue={sp.temperatura ?? ""}>
+            <option value="">Todas</option>
+            {Object.entries(TEMPERATURAS).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
+          </select></label>
+          <label>Ordenar por<select name="ordem" defaultValue={ordem}>
+            {Object.entries(ORDENACOES).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
+          </select></label>
+          {sp.periodo && <input type="hidden" name="periodo" value={sp.periodo} />}
+          <div className="filtros-botoes">
+            <button className="btn primario">Filtrar</button>
+            <Link href={`/painel/vendas?funil=${funil.chave}`} className="btn">Limpar</Link>
+          </div>
+          <div className="filtros-atalhos">
+            <Link href={comPeriodo("criadas_mes")} className={`chip${sp.periodo === "criadas_mes" ? " ativo" : ""}`}>Criadas no mês</Link>
+            <Link href={comPeriodo("atualizadas_mes")} className={`chip${sp.periodo === "atualizadas_mes" ? " ativo" : ""}`}>Atualizadas no mês</Link>
+            <Link href={comPeriodo()} className={`chip${!sp.periodo ? " ativo" : ""}`}>Exibir todas</Link>
+          </div>
+        </form>
 
         {sp.erro && !sp.op && <div className="alerta erro">{sp.erro}</div>}
 
@@ -134,6 +169,7 @@ export default async function Vendas({ searchParams }: { searchParams: Promise<S
           vendedores={nomes}
           linkBase={linkBase}
           selecionado={detalhe?.op.id}
+          ordem={ordem}
         />
       </div>
 

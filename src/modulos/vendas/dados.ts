@@ -22,8 +22,14 @@ export type Cartao = {
   origem: string;
   entrou_na_etapa_em: string;
   posicao: number;
+  criado_em: string;
+  atualizado_em: string;
+  ultimo_contato_em: string | null; // última atividade registrada OU última mensagem do cliente no WhatsApp
   cliente: { id: string; nome: string | null; telefone: string };
 };
+
+/** Filtros da barra do quadro (todos opcionais; valores já saneados aqui). */
+export type FiltrosQuadro = { vendedor?: string; nome?: string; telefone?: string; temperatura?: string; periodo?: string };
 
 /** true se as tabelas de Vendas já existem (0003 aplicada). */
 export async function vendasDisponivel(): Promise<boolean> {
@@ -47,7 +53,8 @@ export async function vendedoresDaUnidade(unidade: string): Promise<{ user_id: s
   return (data ?? []) as { user_id: string; nome: string }[];
 }
 
-export async function carregarQuadro(u: Usuario, funil: Funil, filtroVendedor?: string) {
+export async function carregarQuadro(u: Usuario, funil: Funil, filtros: FiltrosQuadro = {}) {
+  const filtroVendedor = filtros.vendedor;
   const desde = new Date(Date.now() - 90 * 86_400_000).toISOString();
   const [{ data: etapas }, resumo] = await Promise.all([
     db().from("vendas_etapas").select("id, nome, ordem, tipo, sla_dias").eq("funil_id", funil.id).eq("ativo", true).order("ordem"),
@@ -58,10 +65,19 @@ export async function carregarQuadro(u: Usuario, funil: Funil, filtroVendedor?: 
   const corteFechadas = new Date(Date.now() - 30 * 86_400_000).toISOString();
   let q = db()
     .from("vendas_oportunidades")
-    .select("id, etapa_id, vendedor_id, veiculo_interesse, valor_estimado, temperatura, qualificacao, pagamento, tem_troca, origem, entrou_na_etapa_em, posicao, cliente:clientes(id, nome, telefone)")
+    .select("id, etapa_id, vendedor_id, veiculo_interesse, valor_estimado, temperatura, qualificacao, pagamento, tem_troca, origem, entrou_na_etapa_em, posicao, criado_em, atualizado_em, cliente:clientes!inner(id, nome, telefone, ultimo_contato_em)")
     .eq("funil_id", funil.id)
     .order("posicao")
     .limit(500);
+  // barra de filtros (nome/telefone filtram pelo cliente da ficha única)
+  const nome = filtros.nome?.replace(/[%,()*\\:"']/g, " ").trim().slice(0, 60);
+  if (nome && nome.length >= 2) q = q.ilike("cliente.nome", `%${nome}%`);
+  const tel = filtros.telefone?.replace(/\D/g, "").slice(0, 13);
+  if (tel && tel.length >= 4) q = q.like("cliente.telefone", `%${tel}%`);
+  if (filtros.temperatura && ["frio", "morno", "quente"].includes(filtros.temperatura)) q = q.eq("temperatura", filtros.temperatura);
+  const inicioMes = new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString();
+  if (filtros.periodo === "criadas_mes") q = q.gte("criado_em", inicioMes);
+  else if (filtros.periodo === "atualizadas_mes") q = q.gte("atualizado_em", inicioMes);
   if (!veTodasOportunidades(u)) {
     // carteira do vendedor (abertas + fechadas recentes) + leads abertos sem dono — numa expressão só
     q = q.or(`and(vendedor_id.eq.${u.id},fechado_em.is.null),and(vendedor_id.eq.${u.id},fechado_em.gte.${corteFechadas}),and(vendedor_id.is.null,fechado_em.is.null)`);
@@ -72,10 +88,30 @@ export async function carregarQuadro(u: Usuario, funil: Funil, filtroVendedor?: 
     else if (filtroVendedor && /^[0-9a-f-]{36}$/i.test(filtroVendedor)) q = q.eq("vendedor_id", filtroVendedor);
   }
   const { data: cartoes } = await q;
+  const lista = (cartoes ?? []) as unknown as (Omit<Cartao, "ultimo_contato_em"> & { cliente: Cartao["cliente"] & { ultimo_contato_em: string | null } })[];
+
+  // "Contato: há X" = o mais recente entre a última atividade registrada e a última mensagem do cliente
+  const ultimaAtividade = new Map<string, string>();
+  if (lista.length) {
+    const { data: ativ } = await db()
+      .from("vendas_atividades")
+      .select("oportunidade_id, criado_em")
+      .in("oportunidade_id", lista.map((c) => c.id))
+      .order("criado_em", { ascending: false })
+      .limit(2000);
+    for (const a of ativ ?? []) if (!ultimaAtividade.has(a.oportunidade_id)) ultimaAtividade.set(a.oportunidade_id, a.criado_em);
+  }
 
   return {
     etapas: (etapas ?? []) as Etapa[],
-    cartoes: ((cartoes ?? []) as unknown as Cartao[]).map((c) => ({ ...c, cliente: { ...c.cliente, telefone: mascararTelefone(c.cliente?.telefone ?? "") } })),
+    cartoes: lista.map((c): Cartao => {
+      const datas = [ultimaAtividade.get(c.id), c.cliente?.ultimo_contato_em].filter(Boolean) as string[];
+      return {
+        ...c,
+        ultimo_contato_em: datas.sort().at(-1) ?? null,
+        cliente: { id: c.cliente.id, nome: c.cliente.nome, telefone: mascararTelefone(c.cliente?.telefone ?? "") },
+      };
+    }),
     resumo: ((resumo.data ?? []) as EtapaResumo[]).map((r) => ({ ...r, abertas: Number(r.abertas), alcancaram: Number(r.alcancaram) })),
   };
 }

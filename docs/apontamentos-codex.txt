@@ -913,3 +913,13 @@ ACHADO MEU (regressão da 0002, já corrigida — commit 0b95197 no PR #1 també
   (servicos!agendamentos_servico_id_fkey etc.), sem remover constraint. ATENÇÃO Oficina/Peças: qualquer embed
   de agendamentos→servicos/recursos precisa da dica de FK.
 ----------------------------------------------------------------------
+
+
+[ID] F1-V-005-R1
+[ARQUIVO] supabase/migrations/0003_vendas.sql:88,127-158 (head 438d361)
+[TESTE] PGlite descartável com a 0003 anterior, perda registrada antes da correção e reaplicação da 0003 atual. Testei também oportunidade ganha antes da correção e inserção direta em Perdido com motivo.
+[ESPERADO] Motivo da perda preservado no histórico e data de fechamento coerente com o último desfecho, inclusive para registros legados.
+[OBTIDO] Novas transições para Perdido preservam o motivo. Para perda anterior à correção, o histórico fica nulo e o motivo vigente é apagado ao ganhar. Ganhos anteriores à correção mantêm o fechamento antigo e o motivo de perda. Inserir diretamente em Perdido ainda omite o motivo no evento inicial.
+[TIPO] bug residual da atualização de dados
+[GRAVIDADE] media
+[AJUSTE] Preencher motivo legado somente quando a origem ainda permite recuperá-lo, recalcular fechamento legado pelo último evento pertinente e gravar o motivo no evento inicial em Perdido. Validar sobre a versão já aplicada.
