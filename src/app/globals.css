@@ -805,16 +805,18 @@ a { color: var(--vw-azul); }
 .abas-funil a.ativo { background: var(--vw-azul); color: #fff; }
 .vendas-topo { display: grid; grid-template-columns: minmax(0, 2fr) minmax(0, 1fr); gap: 16px; margin-bottom: 16px; }
 .funil-faixa { padding: 16px 16px 12px; }
-.funil-barras { display: flex; align-items: center; gap: 2px; height: 96px; }
+.funil-barras, .funil-rotulos { width: min(74%, 32rem); margin-inline: auto; gap: 4px; }
+.funil-barras { display: flex; align-items: center; height: 96px; }
 .funil-segmento {
-  flex: 1; height: var(--h); min-height: 18px; border-radius: 6px; position: relative;
+  flex: 1; min-width: 0; height: var(--h); min-height: 18px; border-radius: 6px; position: relative;
   background: linear-gradient(180deg, #2a64e0, var(--vw-azul)); transition: height 400ms ease;
 }
 .funil-segmento:nth-child(n+3) { background: linear-gradient(180deg, #4f86ec, #2a64e0); }
 .funil-segmento:last-child { background: linear-gradient(180deg, #2fb67c, #1f9a63); }
 .funil-pct { position: absolute; inset: 0; display: grid; place-items: center; color: #fff; font-weight: 800; font-size: 13px; }
-.funil-rotulos { display: flex; gap: 2px; margin-top: 8px; }
-.funil-rotulos > div { flex: 1; display: flex; flex-direction: column; font-size: 11.5px; color: var(--texto-2); text-transform: uppercase; letter-spacing: .03em; }
+.funil-rotulos { display: flex; margin-top: 8px; }
+@media (max-width: 640px) { .funil-barras, .funil-rotulos { width: 86%; } }
+.funil-rotulos > div { flex: 1; min-width: 0; display: flex; flex-direction: column; text-align: center; overflow-wrap: anywhere; font-size: 11.5px; color: var(--texto-2); text-transform: uppercase; letter-spacing: .03em; }
 .funil-rotulos strong { font-size: 15px; color: var(--vw-marinho); text-transform: none; letter-spacing: 0; }
 .funil-legenda { font-size: 11.5px; margin-top: 6px; }
 .vendas-kpis { display: grid; gap: 12px; padding: 16px; }
@@ -947,3 +949,10 @@ a { color: var(--vw-azul); }
 .lista-agendados-lado { display: flex; flex-direction: column; align-items: flex-end; gap: 6px; flex: none; font-size: 12.5px; }
 .texto-erro { color: var(--erro); display: block; margin-top: 2px; }
 .toast.notif-alerta::before { background: var(--erro); }
+
+/* ===== F2-5: aba Clientes ===== */
+.tabela-clientes tr.selecionada td { background: rgba(0, 64, 197, 0.06); }
+.cliente-celula { display: flex; align-items: center; gap: 10px; text-decoration: none; color: inherit; }
+.cliente-celula strong { display: block; color: var(--vw-marinho); }
+.cliente-celula small { display: block; font-size: 12px; }
+.cliente-celula:hover strong { color: var(--vw-azul); }
