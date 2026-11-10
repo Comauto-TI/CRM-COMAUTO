@@ -18,6 +18,9 @@ administração) que compartilham a ficha única de cliente e veículo, com unid
   **não criar** tabelas `empresas`, `profiles`, `propostas`, `convites`; não apagar usuários de auth que não forem nossos.
   Chaves em `secrets/CHAVES-DESENVOLVIMENTO.txt` (fora do git) — nunca copiar valores para arquivos versionados.
 - Branches `claude/*` e `codex/*`; PR para `main` revisado pelo outro. Antes de comando destrutivo no banco: perguntar ao Simão.
+- **Versionamento (obrigatório):** semver a partir de `0.0.1`. Commits pequenos e frequentes na sua branch.
+  Cada entrega mesclada na `main` sobe o patch (`0.0.2`, `0.0.3`…) em `package.json`, ganha seção no `CHANGELOG.md`
+  e tag `vX.Y.Z`. Enquanto não mesclou, registre em "Não lançado". `0.1.0` = piloto; `1.0.0` = banco oficial.
 
 ## 1. O projeto (origem: chatbot)
 Chatbot de WhatsApp da Comauto (concessionária/oficina): agendamento de revisões e serviços,
