@@ -109,35 +109,67 @@ export async function processarAgendados(): Promise<{ lembretes: number; enviada
     lembretes++;
   }
 
+  // F2-4-001: tudo que pode falhar ANTES de reservar vem primeiro (falha aqui não prende nenhuma mensagem)
+  const cfg = await getConfig();
+
+  // Reservas antigas (cron caiu no meio): resultado INCERTO — nunca reenvia sozinho (evita mensagem em dobro);
+  // encerra como bloqueada e avisa quem agendou para conferir com o cliente.
+  const limiteReserva = new Date(Date.now() - RESERVA_MAX_MIN * 60_000).toISOString();
+  const { data: presas } = await db()
+    .from("mensagens_agendadas")
+    .update({ status: "bloqueada", motivo: "resultado_incerto" })
+    .eq("status", "enviando")
+    .lt("reservada_em", limiteReserva)
+    .select("id, cliente_id, criado_por, unidade, oportunidade_id");
+  for (const p of presas ?? []) {
+    bloqueadas++;
+    await avisarFalha(p, null, "resultado_incerto");
+  }
+
   // ---- mensagens: "reserva" a linha (pendente → enviando) para dois crons não enviarem a mesma ----
   const { data: fila } = await db()
     .from("mensagens_agendadas")
-    .update({ status: "enviando" })
+    .update({ status: "enviando", reservada_em: new Date().toISOString() })
     .eq("status", "pendente")
     .lte("enviar_em", agora)
     .select("id, cliente_id, criado_por, unidade, texto, oportunidade_id")
     .limit(50);
   if (!fila?.length) return { lembretes, enviadas, bloqueadas };
 
-  const cfg = await getConfig();
   for (const m of fila) {
-    const { data: cliente } = await db().from("clientes").select("nome, telefone, ultimo_contato_em, anonimizado").eq("id", m.cliente_id).maybeSingle();
+    // Fase 1 (antes do transporte): qualquer exceção devolve a mensagem para a fila.
+    let cliente: { nome: string | null; telefone: string; ultimo_contato_em: string | null; anonimizado: boolean } | null;
+    let decisao: ReturnType<typeof decidirEnvioAgendado> | "cliente_indisponivel";
+    try {
+      const { data, error } = await db().from("clientes").select("nome, telefone, ultimo_contato_em, anonimizado").eq("id", m.cliente_id).maybeSingle();
+      if (error) throw error;
+      cliente = data as typeof cliente;
+      if (!cliente || cliente.anonimizado) decisao = "cliente_indisponivel";
+      else {
+        let optout = true; // falha na verificação = não envia (fail-closed, como no outbound)
+        try { optout = await estaOptout(cliente.telefone); } catch { optout = true; }
+        decisao = decidirEnvioAgendado({ optout, janelaAberta: janela24hAberta(cliente.ultimo_contato_em) });
+      }
+    } catch {
+      await db().from("mensagens_agendadas").update({ status: "pendente", reservada_em: null }).eq("id", m.id).eq("status", "enviando");
+      continue;
+    }
+
+    // Fase 2 (transporte): exceção aqui = resultado incerto (pode ter saído) → bloqueia, sem reenvio.
     let resultado: { ok: true; modo: "livre" | "template" } | { ok: false; motivo: string };
-    if (!cliente || cliente.anonimizado) {
-      resultado = { ok: false, motivo: "cliente_indisponivel" };
-    } else {
-      let optout = true; // falha na verificação = não envia (fail-closed, como no outbound)
-      try { optout = await estaOptout(cliente.telefone as string); } catch { optout = true; }
-      const decisao = decidirEnvioAgendado({ optout, janelaAberta: janela24hAberta(cliente.ultimo_contato_em as string | null) });
-      if (decisao === "bloquear_optout") resultado = { ok: false, motivo: "optout" };
+    try {
+      if (decisao === "cliente_indisponivel") resultado = { ok: false, motivo: "cliente_indisponivel" };
+      else if (decisao === "bloquear_optout") resultado = { ok: false, motivo: "optout" };
       else if (decisao === "livre") {
         const r = await responderLivre({ clienteId: m.cliente_id, texto: m.texto, autor: "atendente", metadata: { agendada: m.id } });
         resultado = r.ok ? { ok: true, modo: "livre" } : { ok: false, motivo: r.motivo };
       } else {
-        const primeiroNome = ((cliente.nome as string | null) ?? "cliente").split(" ")[0];
+        const primeiroNome = (cliente?.nome ?? "cliente").split(" ")[0];
         const r = await notificarCliente({ clienteId: m.cliente_id, uso: "retomada_atendimento", valores: [primeiroNome, cfg.empresa.nome] });
         resultado = r.ok ? { ok: true, modo: "template" } : { ok: false, motivo: r.motivo };
       }
+    } catch {
+      resultado = { ok: false, motivo: "resultado_incerto" };
     }
 
     if (resultado.ok) {
@@ -146,16 +178,33 @@ export async function processarAgendados(): Promise<{ lembretes: number; enviada
     } else {
       await db().from("mensagens_agendadas").update({ status: "bloqueada", motivo: resultado.motivo }).eq("id", m.id);
       bloqueadas++;
-      if (m.criado_por) {
-        await notificarUsuario(m.criado_por as string, {
-          tipo: "alerta",
-          titulo: `Mensagem para ${(cliente?.nome as string | null) ?? "cliente"} não foi enviada`,
-          corpo: `Motivo: ${explicarBloqueio(resultado.motivo)}. Entre em contato por telefone.`,
-          link: linkDoCliente((cliente?.nome as string | null) ?? null, m.oportunidade_id as string | null),
-          unidade: m.unidade as string,
-        });
-      }
+      await avisarFalha(m, cliente?.nome ?? null, resultado.motivo);
     }
   }
   return { lembretes, enviadas, bloqueadas };
+}
+
+/** Reserva com mais de 15 min sem desfecho = cron caiu no meio do envio. */
+const RESERVA_MAX_MIN = 15;
+
+async function avisarFalha(
+  m: { cliente_id: string; criado_por: string | null; unidade: string; oportunidade_id: string | null },
+  nomeConhecido: string | null,
+  motivo: string,
+) {
+  if (!m.criado_por) return;
+  let nome = nomeConhecido;
+  if (!nome) {
+    const { data } = await db().from("clientes").select("nome").eq("id", m.cliente_id).maybeSingle();
+    nome = (data?.nome as string | null) ?? null;
+  }
+  await notificarUsuario(m.criado_por, {
+    tipo: "alerta",
+    titulo: `Mensagem para ${nome ?? "cliente"} não foi enviada`,
+    corpo: motivo === "resultado_incerto"
+      ? "O envio foi interrompido e não dá para saber se chegou. Confira com o cliente antes de mandar de novo."
+      : `Motivo: ${explicarBloqueio(motivo)}. Entre em contato por telefone.`,
+    link: linkDoCliente(nome, m.oportunidade_id),
+    unidade: m.unidade,
+  });
 }

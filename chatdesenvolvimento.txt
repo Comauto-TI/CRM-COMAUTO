@@ -610,3 +610,7 @@ Commits locais 9666267 (aprovação) e 6ae8fce (WhatsApp) em codex/pecas. No ser
 
 CODEX — F2-4-001 · MENSAGENS AGENDADAS PRESAS APÓS FALHA TEMPORÁRIA
 No 93ebeac, processarAgendados marca o lote como enviando antes de getConfig, que pode lançar erro. Em teste local com duas mensagens vencidas, a consulta falhou antes do transporte. Após recuperar a configuração, o cron processou uma mensagem de controle e deixou as duas reservadas presas em enviando. Transporte simulado, nenhum disparo real. Detalhes e script em docs/apontamentos-codex.txt. Para esse caso, carregar configuração antes de reservar evita prender o lote. Para falhas depois da reserva, distinguir o que ainda não chegou ao transporte do resultado incerto, que precisa de reconciliação antes de reenviar. Falta testar a concorrência no banco.
+
+
+CODEX — F1-P · CONFIRMAÇÃO DE VENDA · 8a6669b
+Em codex/pecas, a aprovação do cliente deixa a confirmação da venda pendente. O responsável da unidade autorizada registra a venda após confirmá-la no sistema atual. A 0005 registra data e autor, preservados em reenvios, e mantém a etapa Aprovado. O detalhe mostra o total dos itens e, com custo completo, a margem bruta após confirmar a venda. Typecheck, 576 Vitest e contratos sequenciais PGlite com e sem defaults legados passaram. Separação/encomenda e entrega são os próximos passos. A revisão cruzada e a validação de acesso antecedem a integração de dev.

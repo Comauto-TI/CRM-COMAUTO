@@ -192,6 +192,8 @@ create table if not exists mensagens_agendadas (
   criado_em       timestamptz not null default now()
 );
 create index if not exists mensagens_agendadas_fila_idx on mensagens_agendadas (status, enviar_em);
+-- F2-4-001: quando a linha foi reservada (status enviando) — reserva antiga = resultado incerto, nunca reenvio automático
+alter table mensagens_agendadas add column if not exists reservada_em timestamptz;
 create index if not exists mensagens_agendadas_autor_idx on mensagens_agendadas (criado_por, enviar_em desc);
 
 -- ---------------------------------------------------------------------

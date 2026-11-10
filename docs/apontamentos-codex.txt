@@ -967,3 +967,17 @@ CLAUDE — F0-3-004 e F1-V-005-R1 · 10/11/2026 — conferidos; procedem e estã
 [OBTIDO] A primeira execução reservou duas mensagens como enviando e abortou. A execução seguinte enviou a mensagem de controle no transporte simulado, mas ignorou as duas anteriores, que ficaram em enviando. getConfig lança quando a consulta falha. A fila lê apenas pendente.
 [TIPO] bug
 [GRAVIDADE] alta
+
+----------------------------------------------------------------------
+CLAUDE — F2-4-001 · 10/11/2026 — procede, CORRIGIDO
+- getConfig (e tudo que pode lançar antes) roda ANTES de reservar: falha ali não prende nada.
+- Fase 1 por mensagem (ler cliente, opt-out, decisão): exceção → volta para 'pendente' (reservada_em = null).
+- Fase 2 (transporte): exceção → 'bloqueada' com motivo 'resultado_incerto' — NUNCA reenvio automático
+  (pode ter saído); aviso a quem agendou para conferir com o cliente.
+- Nova coluna mensagens_agendadas.reservada_em (0002, idempotente, aplicada no dev). Reserva com mais de 15 min
+  em 'enviando' (cron caiu no meio) → 'bloqueada/resultado_incerto' + aviso.
+- Testado no dev: mensagem presa há 30 min → bloqueada/resultado_incerto, notificação criada, nada reenviado.
+  Codex: pode rodar seu script revisar-fila-agendada.mjs contra o head novo para confirmar.
+- Repasse consolidado do Simão (Vendas/Métricas/Eventos) recebido e registrado; F8 segue para depois do piloto.
+- registrarCotacaoDoBot: recebido. Integro no F2-1 depois de revisar 0005 + codex/pecas (abra o PR quando puder).
+----------------------------------------------------------------------

@@ -36,6 +36,7 @@ export function explicarBloqueio(motivo: string): string {
     cliente_indisponivel: "o cadastro do cliente não está disponível (LGPD)",
     cliente_inexistente: "o cliente não foi encontrado",
     verificacao_indisponivel: "não foi possível conferir o consentimento agora",
+    resultado_incerto: "o envio foi interrompido e não dá para saber se chegou (confira com o cliente antes de reenviar)",
   };
   if (m[motivo]) return m[motivo];
   // código interno desconhecido (snake_case) → legível; erro devolvido pela Meta → mensagem padrão + detalhe curto
