@@ -11,7 +11,7 @@ Atualize o status aqui sempre que concluir algo.
 - Branches `claude/*` e `codex/*`; PR para `main` revisado pelo outro. Achados de revisão em `docs/apontamentos-codex.txt`.
 - **A F0 precede as alterações compartilhadas dos módulos**: o Codex começa Oficina/Peças quando a F0-2 (núcleo) estiver ✅.
 - Migrations por módulo: `0002_nucleo` e `0003_vendas` (Claude), `0004_oficina` e `0005_pecas` (Codex). Nada de alterar tabela na mão.
-- Banco de desenvolvimento: Supabase "Ambiente de testes" (também é o banco de teste do processo-vendas-teste). **Não criar** tabelas `empresas`, `profiles`, `propostas`, `convites`. Chaves em `secrets/CHAVES-DESENVOLVIMENTO.txt` (fora do git).
+- Banco de desenvolvimento do CRM: Ambiente de testes (`csgrnmoyowjhzlibbilk`). Conferir a referência e usar o token restrito ao projeto antes de alterar o banco. O token da organização fica reservado para consulta. Preservar `empresas`, `profiles`, `propostas`, `convites` e os usuários de Auth dos demais sistemas. Credenciais em configuração local, fora do Git.
 - Antes de comando destrutivo no banco: perguntar ao Simão.
 
 ## F0 — Fundação (Claude)
@@ -19,7 +19,7 @@ Atualize o status aqui sempre que concluir algo.
 |---|---|---|---|
 | F0-1 | Repositório Git + GitHub `Comauto-TI/CRM-COMAUTO` | ✅ `main` + tag v0.0.1 no GitHub; PR #1 (F0) aberto para revisão do Codex | `main` no GitHub, gitleaks limpo |
 | F0-2 | Núcleo multiunidade (`0002_nucleo`): `unidades`, `usuarios` (setor/papel/unidade), `usuario_unidades`, cliente ampliado (CPF/CNPJ, nascimento, vendedor da carteira, ids externos), veículo ampliado (chassi, renavam), `notificacoes`, `lembretes`, `unidade` nas tabelas operacionais | ✅ `0002` validada no PR #1 (`16c1638`) e APLICADA no banco de dev em 10/11 (usuarios, unidades, travas de unidade, índices de busca conferidos) | Migration aplicada no banco de dev; testes verdes |
-| F0-3 | Contexto de acesso: `exigirPapel` devolve usuário + setor + papel + unidade; RLS por unidade como 2ª barreira | 🟨 `exigirAcesso(area)` + mapa `src/lib/permissoes.ts` (testado) em todas as páginas/APIs; setor passa a valer quando a 0002 for aplicada. RLS por unidade: junto com a 1ª tela multiunidade | Usuário de um setor não abre página de outro |
+| F0-3 | Contexto de acesso: `exigirPapel` devolve usuário + setor + papel + unidade; RLS por unidade como 2ª barreira | 🟨 `exigirAcesso(area)` + mapa `src/lib/permissoes.ts` (testado) em todas as páginas/APIs; 0002 aplicada no dev. Agenda compartilhada aguarda escopo de unidade (F0-3-004) e validação por perfil. RLS por unidade junto com a primeira tela multiunidade | Usuário de um setor não abre página de outro |
 | F0-4 | Casca comum: menu por setor, busca global (CPF, telefone, nome), central de notificações | 🟨 menu por permissão, busca global (`/painel/busca`) e sino + `/painel/notificacoes` prontos; notificações ligam com a 0002 | Busca acha cliente em todo o grupo; sino mostra avisos |
 | F0-5 | PWA instalável (manifest + ícones) | ✅ manifest + ícones (sem service worker, para não guardar dado do painel no navegador); instalar exige HTTPS → depende da F0-6 | Instala como app num PC da Comauto |
 | F0-6 | Deploy na Vercel | ⛔ aguarda token válido da Vercel | Painel acessível pela internet com login |
@@ -27,14 +27,14 @@ Atualize o status aqui sempre que concluir algo.
 ## F1 — Setores (em paralelo, após F0-2)
 | # | Tarefa | Dono | Status |
 |---|---|---|---|
-| F1-V | Vendas: funis Novos/Seminovos, etapas configuráveis (Novo → Em atendimento → Negociação → Proposta → Ganho/Perdido), cartões com arrastar, qualificação separada da etapa, carteira. **Referência visual (Simão, 10/11):** colunas por etapa com cartões, faixa do funil com % no topo, KPIs ao lado e painel de detalhe do cartão à direita (com conversa) | Claude | 🟨 `0003_vendas` + módulo + `/painel/vendas` (funil, kanban com arrastar, ficha, tarefas, contatos, histórico) na branch `claude/f1-vendas` (PR #2), 0003 aplicada no dev em 10/11; testado no navegador contra o banco real (criar, arrastar, histórico) |
-| F1-O | Oficina/Agenda: fila, triagem, reserva/confirmação/reagendamento, histórico e vínculo externo | Codex | ⬜ |
-| F1-P | Peças: fila Novo → Em cotação → Aguardando cliente → Aprovado → Em separação/encomenda → Entregue (+ perda), itens, margem | Codex | 🟨 cadastro, fila, atribuição com histórico e inclusão de itens e valores no commit f37d88c em codex/pecas, validados localmente; integração aguarda revisão, F0-2 aplicada e acesso validado no dev |
+| F1-V | Vendas: funis Novos/Seminovos, etapas configuráveis (Novo → Em atendimento → Negociação → Proposta → Ganho/Perdido), cartões com arrastar, qualificação separada da etapa, carteira. **Referência visual (Simão, 10/11):** colunas por etapa com cartões, faixa do funil com % no topo, KPIs ao lado e painel de detalhe do cartão à direita (com conversa) | Claude | 🟨 `0003_vendas` + módulo + `/painel/vendas` (funil, kanban com arrastar, ficha, tarefas, contatos, histórico) na branch `claude/f1-vendas` (PR #2), 0003 aplicada no dev em 10/11 e testada no navegador (criar, arrastar, histórico). Revisão do Codex registrou F1-V-001 a F1-V-007, com ajustes e revalidação pendentes |
+| F1-O | Oficina/Agenda: fila, triagem, reserva/confirmação/reagendamento, histórico e vínculo externo | Codex | 🟨 fila por unidade, responsável e histórico da triagem no commit 79a06c1 em codex/oficina, validados localmente. Vínculo com Agenda aguarda F0-3-004, revisão cruzada e validação de acesso |
+| F1-P | Peças: fila Novo → Em cotação → Aguardando cliente → Aprovado → Em separação/encomenda → Entregue (+ perda), itens, margem | Codex | 🟨 cadastro, fila, atribuição com histórico e inclusão de itens e valores no commit f37d88c em codex/pecas, validados localmente; integração em dev aguarda revisão cruzada, F0 na main e validação do contexto de acesso |
 
 ## F2 — Chatbot → CRM e vínculos
 | # | Tarefa | Dono | Status |
 |---|---|---|---|
-| F2-1 | `qualificar_lead` no agente; cartão no setor certo; confirmado pelo cliente × a verificar; triagem humana para intenção incerta | Claude | ⬜ |
+| F2-1 | `qualificar_lead` no agente; cartão no setor certo; confirmado pelo cliente × a verificar; triagem humana para intenção incerta | Claude | 🟨 pronto em `claude/f1-vendas` e testado no dev (sem duplicar, carteira/rodízio, aviso a Vendas/Peças/recepção com pop-up); falta ligar à fila de Peças do Codex |
 | F2-2 | Vínculo manual por ID/link: Avaliex e Processo de Vendas | Claude | ⬜ |
 | F2-3 | Vínculo manual por ID/link: Revisão | Codex | ⬜ |
 
@@ -65,7 +65,7 @@ Proposta complementar para a aba **Métricas**, depois do piloto e com dados con
 
 ## Preparação F1 — Oficina, Agenda e Peças (Codex)
 
-**Status da preparação:** ✅ fluxos e critérios de aceite definidos. Base verificada em 10/11/2026 com typecheck aprovado e 532 testes Vitest aprovados. F1-O e F1-P permanecem a fazer até F0-2 estar pronta. As telas entram no painel após validar os acessos da F0-3.
+**Status da preparação:** ✅ fluxos e critérios de aceite definidos. Base verificada em 10/11/2026 com typecheck aprovado e 532 testes Vitest aprovados. F0-2 está aplicada no dev. F1-O e F1-P seguem em branches isoladas. As telas entram no painel após validar os acessos da F0-3.
 
 ### F1-O — Oficina e Agenda
 

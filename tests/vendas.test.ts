@@ -75,3 +75,73 @@ describe("vendas — utilitários", () => {
     expect(ehChave(PAGAMENTOS, 1)).toBe(false);
   });
 });
+
+import { destinoDoLead, escolherVendedor, temperaturaInicial } from "@/modulos/vendas/regras";
+describe("F2-1 — roteamento do lead do WhatsApp", () => {
+  it("novo/seminovo viram cartão no funil certo; oficina agenda; peças e incerto vão para pessoas", () => {
+    expect(destinoDoLead("novo")).toEqual({ tipo: "funil", funil: "novos" });
+    expect(destinoDoLead("seminovo")).toEqual({ tipo: "funil", funil: "seminovos" });
+    expect(destinoDoLead("oficina")).toEqual({ tipo: "agenda" });
+    expect(destinoDoLead("pecas")).toEqual({ tipo: "pecas" });
+    expect(destinoDoLead("indefinido")).toEqual({ tipo: "triagem" });
+  });
+  it("vendedor da carteira tem prioridade, se continuar ativo", () => {
+    const vs = [{ id: "a", abertas: 9, ultimoLeadEm: null }, { id: "b", abertas: 0, ultimoLeadEm: null }];
+    expect(escolherVendedor("a", vs)).toBe("a");
+    expect(escolherVendedor("saiu-da-empresa", vs)).toBe("b");
+  });
+  it("rodízio: menos abertas; empate → quem recebeu lead há mais tempo", () => {
+    const vs = [
+      { id: "a", abertas: 2, ultimoLeadEm: "2026-11-10T10:00:00Z" },
+      { id: "b", abertas: 2, ultimoLeadEm: "2026-11-09T10:00:00Z" },
+      { id: "c", abertas: 5, ultimoLeadEm: null },
+    ];
+    expect(escolherVendedor(null, vs)).toBe("b");
+    expect(escolherVendedor(null, [])).toBeNull();
+  });
+  it("temperatura inicial pelo prazo e pagamento", () => {
+    expect(temperaturaInicial("imediato", false)).toBe("quente");
+    expect(temperaturaInicial("ate_30_dias", true)).toBe("quente");
+    expect(temperaturaInicial("ate_30_dias", false)).toBe("morno");
+    expect(temperaturaInicial("sem_prazo", true)).toBe("frio");
+  });
+});
+
+import { lerValorBRL, valorParaCampo } from "@/modulos/vendas/regras";
+describe("F1-V-001 — valor em reais ida e volta, sem perder centavos", () => {
+  it("lê os formatos que o vendedor digita", () => {
+    expect(lerValorBRL("150.000")).toBe(150000);
+    expect(lerValorBRL("150.000,50")).toBe(150000.5);
+    expect(lerValorBRL("12500,5")).toBe(12500.5);
+    expect(lerValorBRL("12500.5")).toBe(12500.5);
+    expect(lerValorBRL("R$ 1.234,56")).toBe(1234.56);
+    expect(lerValorBRL("")).toBeNull();
+    expect(lerValorBRL("abc")).toBeNull();
+    expect(lerValorBRL("-10")).toBeNull();
+  });
+  it("salvar sem editar preserva o valor (12.500,50)", () => {
+    const campo = valorParaCampo(12500.5);
+    expect(campo).toBe("12.500,50");
+    expect(lerValorBRL(campo)).toBe(12500.5);
+    expect(lerValorBRL(valorParaCampo("159990.00"))).toBe(159990);
+    expect(valorParaCampo(null)).toBe("");
+  });
+});
+
+import { completarQualificacao } from "@/modulos/vendas/regras";
+describe("F2-1 — cliente volta a falar: completa sem apagar nem rebaixar", () => {
+  const vazio = { veiculo_interesse: null, pagamento: "indefinido", prazo_compra: "indefinido", tem_troca: false, troca_descricao: null };
+  it("'a definir' da conversa não apaga o que o vendedor preencheu", () => {
+    expect(completarQualificacao("qualificado", vazio, { temTroca: null, clienteConfirmou: false })).toEqual({});
+  });
+  it("nunca rebaixa a qualificação; só sobe de 'a verificar' para 'confirmado pelo cliente'", () => {
+    expect(completarQualificacao("confirmado_cliente", vazio, { temTroca: null, clienteConfirmou: false })).not.toHaveProperty("qualificacao");
+    expect(completarQualificacao("a_verificar", vazio, { temTroca: null, clienteConfirmou: true })).toEqual({ qualificacao: "confirmado_cliente" });
+    expect(completarQualificacao("desqualificado", vazio, { temTroca: null, clienteConfirmou: true })).not.toHaveProperty("qualificacao");
+  });
+  it("dado concreto novo entra", () => {
+    const p = completarQualificacao("a_verificar", { ...vazio, veiculo_interesse: "Polo", pagamento: "a_vista", troca_descricao: "Gol 2018" }, { temTroca: true, clienteConfirmou: false });
+    expect(p).toEqual({ veiculo_interesse: "Polo", pagamento: "a_vista", tem_troca: true, troca_descricao: "Gol 2018" });
+    expect(completarQualificacao("a_verificar", vazio, { temTroca: false, clienteConfirmou: false })).toEqual({ tem_troca: false, troca_descricao: null });
+  });
+});

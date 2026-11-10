@@ -10,6 +10,7 @@ import Nav from "./_components/Nav";
 import Marca from "./_components/Marca";
 import Icone from "./_components/Icone";
 import AlertaFila from "./_components/AlertaFila";
+import AlertaNotificacoes from "./_components/AlertaNotificacoes";
 import { atendeFila, ROTULO_PAPEL, ROTULO_SETOR } from "@/lib/permissoes";
 
 export const dynamic = "force-dynamic";
@@ -51,6 +52,7 @@ export default async function PainelLayout({ children }: { children: React.React
         </div>
       </aside>
       <main className="conteudo">{children}</main>
+      <AlertaNotificacoes />
       {atende && (
         <Suspense fallback={null}>
           <AlertaFila />

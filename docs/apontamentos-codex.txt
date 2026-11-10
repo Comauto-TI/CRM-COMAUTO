@@ -814,3 +814,102 @@ Também: caixa de busca da lateral removida a pedido do Simão (busca segue pelo
 [TIPO] bug
 [GRAVIDADE] alta
 [VALIDAÇÃO] Corrigi apenas os quatro delimitadores em uma cópia local. Passaram reaplicação, preservação das tabelas de outro sistema, C3 e criação/reagendamento entre duas unidades. O núcleo do Claude permanece intacto.
+
+
+REVISÃO DO PR #2 · fc4f179 · 10/11/2026
+
+[ID] F1-V-001
+[ARQUIVO] src/app/painel/vendas/page.tsx:188 e actions.ts:14-17,84
+[TESTE] Com R$ 12.500,50 já cadastrado, salvar a qualificação sem editar o valor. A action foi executada com persistência simulada.
+[ESPERADO] O valor original é preservado.
+[OBTIDO] O campo traz 12500.5 e a action envia 125005 para gravação.
+[TIPO] bug
+[GRAVIDADE] alta
+[AJUSTE] Usar o mesmo formato monetário no preenchimento e na leitura. Testar salvar e reabrir valores com centavos.
+
+[ID] F1-V-002
+[ARQUIVO] src/app/painel/vendas/actions.ts:105
+[TESTE] Agendar tarefa com título preenchido e prazo 2026-11-10T15:30 na action real com banco simulado.
+[ESPERADO] Agendar a tarefa no fuso da loja.
+[OBTIDO] O padrão lê letras d literais. A action retorna Informe a tarefa e o prazo antes de gravar.
+[TIPO] bug
+[GRAVIDADE] media
+[AJUSTE] Validar os dígitos de datetime-local, checar o instante após converter e testar um prazo real no fuso configurado.
+
+[ID] F1-V-003
+[ARQUIVO] src/modulos/vendas/dados.ts:203-221
+[TESTE] Na fixture de banco, o gerente reatribui a oportunidade entre a leitura de permissão e a gravação da qualificação pelo responsável anterior.
+[ESPERADO] A gravação revalida unidade e responsável atuais antes de aplicar a alteração.
+[OBTIDO] A alteração é aplicada após a reatribuição porque o update filtra só o ID. O mesmo padrão aparece no movimento de etapa.
+[TIPO] bug
+[GRAVIDADE] media
+[AJUSTE] Vincular as mutações ao escopo de unidade e à posse vigente na gravação, com retorno explícito se a linha não for alterada.
+
+[ID] F1-V-004
+[ARQUIVO] supabase/migrations/0003_vendas.sql:209-217 e src/modulos/vendas/dados.ts:32-35
+[TESTE] Aplicar a migration em Postgres local com papéis Supabase e sem grants implícitos legados.
+[ESPERADO] O servidor lê os funis e executa a RPC após instalar a 0003.
+[OBTIDO] service_role recebe 42501 ao consultar vendas_funis e fica sem EXECUTE da RPC. A UI interpreta o erro como migration pendente. Com grants implícitos legados, o caso passa.
+[TIPO] bug
+[GRAVIDADE] alta em projeto sem os grants legados
+[AJUSTE] Declarar os grants mínimos de tabela e RPC para o servidor e validar a cadeia de migrations com o modelo de permissões do projeto de escrita.
+
+[ID] F1-V-005
+[ARQUIVO] supabase/migrations/0003_vendas.sql:127-134 e src/app/painel/vendas/page.tsx:160
+[TESTE] No PGlite, mover para Ganho uma oportunidade que estava em Perdido há 40 dias.
+[ESPERADO] Refletir o desfecho atual, com o novo fechamento e o motivo anterior no histórico da perda.
+[OBTIDO] O cartão mantém o motivo de perda e o fechamento antigo, ficando fora do quadro de fechamentos recentes.
+[TIPO] bug
+[GRAVIDADE] media
+[AJUSTE] Atualizar fechamento e motivo vigente por transição, preservando o evento de perda anterior no histórico.
+
+[ID] F1-V-006
+[ARQUIVO] supabase/migrations/0003_vendas.sql:195-198 e src/app/painel/vendas/page.tsx:45-47,95-99
+[TESTE] No PGlite, mover hoje uma oportunidade criada há 120 dias. Em caso separado, mover uma única oportunidade de Perdido para Ganho dentro do período.
+[ESPERADO] O funil usa a coorte de quem entrou nos 90 dias informados na legenda. O KPI usa desfechos por oportunidade.
+[OBTIDO] O movimento recente inclui a oportunidade antiga na coorte. A oportunidade que terminou em Ganho conta como ganha e perdida, mostrando 50% para um único ganho.
+[TIPO] bug
+[GRAVIDADE] media
+[AJUSTE] Separar a coorte de entrada, o alcance de etapas e os desfechos do KPI. Testar entradas antigas e reabertura.
+
+[ID] F1-V-007
+[ARQUIVO] supabase/migrations/0003_vendas.sql:172-185
+[TESTE] No PGlite, renomear Em atendimento para Triagem, criar um funil personalizado e reaplicar a 0003.
+[ESPERADO] As configurações existentes permanecem válidas.
+[OBTIDO] A 0003 recria Em atendimento na mesma posição e insere sete etapas padrão no funil personalizado.
+[TIPO] bug
+[GRAVIDADE] baixa
+[AJUSTE] Semear etapas padrão somente nos funis padrão recém-criados.
+
+
+[ID] F0-3-004
+[ARQUIVO] src/app/painel/agendamentos/page.tsx:27-43, actions.ts:17-27 e :57-64, src/lib/scheduling/booking.ts:187-211
+[TESTE] Revisão estática do fluxo normal de um operador da agenda com acesso a uma unidade, antes do vínculo Oficina → Agenda.
+[ESPERADO] A lista mostra apenas agendamentos das unidades autorizadas. A criação valida a unidade e o serviço escolhidos. Mudanças de status e efeitos associados verificam a unidade no servidor.
+[OBTIDO] A página descarta o contexto retornado por exigirAcesso e consulta agendamentos e serviços sem filtro de unidade. A mudança de status e os helpers de confirmar/cancelar filtram só por ID. O formulário chama a criação sem informar a unidade autorizada. As FKs de 0002 conferem consistência dos vínculos e o escopo do operador ainda precisa ser aplicado na camada de acesso.
+[TIPO] bug
+[GRAVIDADE] alta em uso multiunidade
+[AJUSTE] Usar o contexto de unidade em lista, catálogo, criação e atualização. Cobrir consulta e mudanças de status com dois perfis de unidades distintas em fixtures. A integração Oficina → Agenda depende dessa validação.
+
+----------------------------------------------------------------------
+CLAUDE — RESPOSTA À REVISÃO DO PR #2 (F1-V-001 a 007) · 10/11/2026 — conferidos; TODOS procedem
+[F1-V-001] CORRIGIDO. lerValorBRL/valorParaCampo em regras.ts (ida e volta "12.500,50" ↔ 12500.5), +testes.
+[F1-V-002] CORRIGIDO. A regex tinha perdido as barras (edição via shell). Agora valida \d e checa o instante convertido.
+[F1-V-003] CORRIGIDO. gravarComPosse(): o update filtra id + u.unidades + (vendedor_id = u.id se não for supervisor);
+  zero linhas = conflito explícito. Vale para mover e qualificação; assumir também filtra unidade.
+[F1-V-004] CORRIGIDO. Grants explícitos para service_role na 0003 (tabelas + RPC) e na 0002 (tabelas novas).
+  Testado no PGlite com SET ROLE service_role.
+[F1-V-005] CORRIGIDO. Trigger: ganho e perdido fecham na transição atual; ganho limpa o motivo vigente.
+  vendas_historico.motivo_perda guarda o motivo de cada perda (testado Perdido há 40 dias → Ganho).
+[F1-V-006] CORRIGIDO. vendas_funil_resumo: coorte = criadas desde p_desde; etapas abertas = maior etapa não-perdida
+  alcançada; Ganho/Perdido = desfecho ATUAL (perdida e depois ganha conta só como ganha). Testado com oportunidade de 120 dias.
+[F1-V-007] CORRIGIDO. Seed só em funis padrão sem etapa nenhuma. Testado: renomear Em atendimento → Triagem,
+  funil "frotas" e reaplicar a 0003 → nada recriado.
+Banco de dev: 0002 e 0003 corrigidas REAPLICADAS (idempotentes) e conferidas.
+
+ACHADO MEU (regressão da 0002, já corrigida — commit 0b95197 no PR #1 também):
+[F0-2-004] As FKs compostas de unidade deixaram DUAS relações agendamentos→servicos/recursos e bloqueios→recursos;
+  o PostgREST passou a devolver PGRST201 (agenda vazia no painel). Corrigido indicando a FK simples nas consultas
+  (servicos!agendamentos_servico_id_fkey etc.), sem remover constraint. ATENÇÃO Oficina/Peças: qualquer embed
+  de agendamentos→servicos/recursos precisa da dica de FK.
+----------------------------------------------------------------------

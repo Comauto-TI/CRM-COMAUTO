@@ -115,6 +115,18 @@ async function opParaAlterar(u: Usuario, id: string) {
   return data as { id: string; funil_id: string; etapa_id: string; vendedor_id: string | null; unidade: string } | null;
 }
 
+/**
+ * F1-V-003: a permissão é conferida DE NOVO na própria gravação (unidade + posse vigente).
+ * Se o gerente reatribuiu o cartão entre a leitura e a gravação, nada é alterado.
+ */
+async function gravarComPosse(u: Usuario, id: string, patch: Record<string, unknown>): Promise<"ok" | "conflito" | "erro"> {
+  let q = db().from("vendas_oportunidades").update(patch).eq("id", id).in("unidade", u.unidades);
+  if (!veTodasOportunidades(u)) q = q.eq("vendedor_id", u.id);
+  const { data, error } = await q.select("id");
+  if (error) return "erro";
+  return data?.length ? "ok" : "conflito";
+}
+
 export async function criarOportunidade(
   u: Usuario,
   dados: {
@@ -183,8 +195,9 @@ export async function moverOportunidade(u: Usuario, id: string, etapaId: string,
   const patch: Record<string, unknown> = { etapa_id: etapaId, atualizado_por: u.email };
   if (posicao !== null && Number.isFinite(posicao)) patch.posicao = posicao;
   if (etapa.tipo === "perdido") patch.motivo_perda = motivoPerda!.trim().slice(0, 200);
-  const { error } = await db().from("vendas_oportunidades").update(patch).eq("id", id);
-  if (error) return { ok: false, motivo: error.message.includes("motivo") ? "Informe o motivo da perda" : "Não foi possível mover" };
+  const r = await gravarComPosse(u, id, patch);
+  if (r === "conflito") return { ok: false, motivo: "O cartão mudou de responsável. Recarregue a tela." };
+  if (r === "erro") return { ok: false, motivo: "Não foi possível mover" };
   if (etapaId !== op.etapa_id) await auditar(u.email, "mover_oportunidade", "vendas_oportunidades", id, { de: op.etapa_id, para: etapaId });
   return { ok: true };
 }
@@ -194,7 +207,7 @@ export async function assumirOportunidade(u: Usuario, id: string): Promise<Resul
   if (!op) return { ok: false, motivo: "Oportunidade não encontrada" };
   if (!podeAssumir(u, op)) return { ok: false, motivo: "Esta oportunidade já tem vendedor" };
   // condicional: só assume se continuar sem dono (dois vendedores clicando ao mesmo tempo)
-  const { data } = await db().from("vendas_oportunidades").update({ vendedor_id: u.id, atualizado_por: u.email }).eq("id", id).is("vendedor_id", null).select("id");
+  const { data } = await db().from("vendas_oportunidades").update({ vendedor_id: u.id, atualizado_por: u.email }).eq("id", id).in("unidade", u.unidades).is("vendedor_id", null).select("id");
   if (!data?.length) return { ok: false, motivo: "Outro vendedor assumiu antes" };
   await auditar(u.email, "assumir_oportunidade", "vendas_oportunidades", id);
   return { ok: true };
@@ -215,8 +228,9 @@ export async function atualizarQualificacao(
   };
   // só supervisor redistribui carteira
   if (veTodasOportunidades(u) && campos.vendedorId !== undefined) patch.vendedor_id = campos.vendedorId;
-  const { error } = await db().from("vendas_oportunidades").update(patch).eq("id", id);
-  if (error) return { ok: false, motivo: "Não foi possível salvar" };
+  const r = await gravarComPosse(u, id, patch);
+  if (r === "conflito") return { ok: false, motivo: "O cartão mudou de responsável. Recarregue a tela." };
+  if (r === "erro") return { ok: false, motivo: "Não foi possível salvar" };
   await auditar(u.email, "editar_oportunidade", "vendas_oportunidades", id, { vendedor: patch.vendedor_id });
   return { ok: true };
 }

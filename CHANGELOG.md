@@ -8,6 +8,8 @@ Versionamento semântico a partir de **0.0.1** (decisão do Simão, 10/11/2026).
 
 ## [Não lançado] — branch `claude/f1-vendas` (F1-V Vendas, sobre a F0)
 ### Adicionado
+- F2-1: ferramenta `qualificar_lead` do assistente — lead de novo/seminovo vira cartão no funil (sem duplicar), dono pela carteira ou rodízio; peças e incerto avisam a equipe.
+- Notificações em pop-up (canto superior) com som e aviso do navegador.
 - Migration `0003_vendas`: funis Novos/Seminovos e etapas configuráveis, oportunidades (qualificação separada da etapa,
   troca separada do veículo desejado, canal varejo/venda direta), histórico de etapas, atividades, tarefas, motivo de perda obrigatório.
 - `/painel/vendas`: faixa do funil (90 dias) + indicadores, kanban com arrastar, carteira do vendedor + leads sem dono (assumir),
@@ -15,6 +17,7 @@ Versionamento semântico a partir de **0.0.1** (decisão do Simão, 10/11/2026).
 
 ## [Não lançado] — branch `claude/f0-nucleo` (F0 Fundação)
 ### Corrigido
+- Consultas de agenda com FK composta (PGRST201) e grants explícitos para o servidor.
 - 0002: delimitadores `$` dos blocos DO (F0-2-003, achado também pelo Codex). Validada em Postgres local.
 ### Adicionado
 - Migration `0002_nucleo`: unidades, usuarios (setor/papel/unidade), usuario_unidades, ficha única de cliente

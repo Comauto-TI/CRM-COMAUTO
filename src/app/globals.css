@@ -878,3 +878,13 @@ a { color: var(--vw-azul); }
   .vendas-topo { grid-template-columns: 1fr; }
 }
 .kanban-cartao, .kanban-cartao *, .kanban-cartao:hover, .kanban-cartao:hover * { text-decoration: none !important; }
+
+/* ===== pop-ups da central de notificações (canto superior) ===== */
+.toast-pilha.topo { top: 22px; bottom: auto; }
+.toast.notif-lead::before { background: var(--vw-azul); }
+.toast.notif-atendimento::before { background: var(--erro); }
+.toast.notif-aniversario::before { background: var(--ok); }
+.toast.notif-tarefa::before { background: var(--aviso); }
+.toast.notif-sistema::before { background: linear-gradient(180deg, var(--vw-ciano), var(--vw-azul)); }
+@media (max-width: 640px) { .toast-pilha.topo { top: 12px; } }
+.toast.notif-pecas::before { background: #c46a00; }

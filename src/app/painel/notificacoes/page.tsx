@@ -7,7 +7,7 @@ import { nucleoAplicado } from "@/lib/usuarios";
 import { formatarDataHora } from "@/lib/time";
 import { Cabecalho, Vazio } from "../_components/ui";
 
-const COR_TIPO: Record<string, string> = { atendimento: "aviso", lead: "info", aniversario: "ok", tarefa: "", sistema: "ia" };
+const COR_TIPO: Record<string, string> = { atendimento: "aviso", lead: "info", pecas: "aviso", aniversario: "ok", tarefa: "", sistema: "ia" };
 
 async function marcarTodas() {
   "use server";

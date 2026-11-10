@@ -8,14 +8,10 @@ import { localParaUtc } from "@/lib/time";
 import {
   criarOportunidade, moverOportunidade, assumirOportunidade, atualizarQualificacao, registrarAtividade, criarTarefa, concluirTarefa,
 } from "@/modulos/vendas/dados";
-import { ehChave, PAGAMENTOS, PRAZOS, TEMPERATURAS, QUALIFICACOES, TIPOS_ATIVIDADE, MOTIVOS_PERDA } from "@/modulos/vendas/regras";
+import { lerValorBRL, ehChave, PAGAMENTOS, PRAZOS, TEMPERATURAS, QUALIFICACOES, TIPOS_ATIVIDADE, MOTIVOS_PERDA } from "@/modulos/vendas/regras";
 
 const texto = (f: FormData, k: string) => String(f.get(k) ?? "").trim();
-const valorBRL = (s: string): number | null => {
-  if (!s) return null;
-  const n = Number(s.replace(/\./g, "").replace(",", "."));
-  return Number.isFinite(n) && n >= 0 ? Math.round(n * 100) / 100 : null;
-};
+const valorBRL = lerValorBRL;
 const voltar = (f: FormData, extra: Record<string, string> = {}) => {
   const p = new URLSearchParams();
   const funil = texto(f, "funil");
@@ -102,9 +98,11 @@ export async function novaTarefa(f: FormData) {
   const u = await exigirAcesso("vendas");
   const id = texto(f, "id"), titulo = texto(f, "titulo"), prazo = texto(f, "prazo");
   // prazo vem do <input type="datetime-local"> no fuso configurado da loja
-  const m = /^(d{4}-d{2}-d{2})T(d{2}:d{2})$/.exec(prazo);
+  const m = /^(\d{4}-\d{2}-\d{2})T(\d{2}:\d{2})$/.exec(prazo);
   const cfg = await getConfig();
-  const r = titulo && m ? await criarTarefa(u, id, titulo, localParaUtc(m[1], m[2], cfg.fuso_offset).toISOString()) : { ok: false as const, motivo: "Informe a tarefa e o prazo" };
+  const instante = m ? localParaUtc(m[1], m[2], cfg.fuso_offset) : null;
+  const r = titulo && instante && !Number.isNaN(instante.getTime())
+    ? await criarTarefa(u, id, titulo, instante.toISOString()) : { ok: false as const, motivo: "Informe a tarefa e o prazo" };
   revalidatePath("/painel/vendas");
   redirect(voltar(f, r.ok ? { op: id } : { op: id, erro: r.motivo }));
 }

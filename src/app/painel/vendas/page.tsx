@@ -7,7 +7,7 @@ import {
   vendasDisponivel, funisDaUnidade, vendedoresDaUnidade, carregarQuadro, carregarOportunidade,
 } from "@/modulos/vendas/dados";
 import {
-  faixaFunil, taxaConversao, veTodasOportunidades, podeMexer,
+  faixaFunil, taxaConversao, veTodasOportunidades, podeMexer, valorParaCampo,
   PAGAMENTOS, PRAZOS, TEMPERATURAS, QUALIFICACOES, TIPOS_ATIVIDADE, MOTIVOS_PERDA,
 } from "@/modulos/vendas/regras";
 import { Cabecalho, Vazio } from "../_components/ui";
@@ -185,7 +185,7 @@ export default async function Vendas({ searchParams }: { searchParams: Promise<S
                 <input type="hidden" name="id" value={op.id} /><input type="hidden" name="funil" value={funil.chave} />
                 <fieldset disabled={!editar}>
                   <label>Veículo de interesse<input name="veiculo" defaultValue={op.veiculo_interesse ?? ""} maxLength={120} /></label>
-                  <label>Valor estimado (R$)<input name="valor" defaultValue={op.valor_estimado ?? ""} inputMode="decimal" /></label>
+                  <label>Valor estimado (R$)<input name="valor" defaultValue={valorParaCampo(op.valor_estimado)} inputMode="decimal" /></label>
                   <label>Temperatura<select name="temperatura" defaultValue={op.temperatura}>{Object.entries(TEMPERATURAS).map(([k, v]) => <option key={k} value={k}>{v}</option>)}</select></label>
                   <label>Qualificação<select name="qualificacao" defaultValue={op.qualificacao}>{Object.entries(QUALIFICACOES).map(([k, v]) => <option key={k} value={k}>{v}</option>)}</select></label>
                   <label>Pagamento<select name="pagamento" defaultValue={op.pagamento}>{Object.entries(PAGAMENTOS).map(([k, v]) => <option key={k} value={k}>{v}</option>)}</select></label>

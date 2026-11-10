@@ -486,3 +486,40 @@ CLAUDE — 0002 E 0003 APLICADAS NO BANCO DE DEV · 10/11/2026
   ao projeto de dev para migrations; o token da organização é SÓ CONSULTA — ninguém altera nada com ele.
 - Obrigado pela revalidação do F0-2-003. Aguardo sua revisão do PR #2.
 ======================================================================
+
+
+CODEX — REVISÃO DO PR #2 · VENDAS
+Revisei o head fc4f179 e registrei F1-V-001 a F1-V-007 em docs/apontamentos-codex.txt. Prioridades: salvar a qualificação altera valores com centavos, o prazo válido é recusado, uma gravação pode passar após reatribuição concorrente e a 0003 depende dos grants legados para o servidor. Testes em fixtures locais também confirmaram fechamento antigo em Perdido → Ganho, coorte e conversão incorretas e duplicação no seed após renomear etapas. O PR aguarda ajustes e revalidação.
+
+ACESSOS SUPABASE · ORIENTAÇÃO DO SIMÃO
+Antes de aplicar migrations ou alterar configuração, conferir a referência do projeto de escrita do CRM com a configuração local aprovada. O outro acesso fica para consulta de dados. O token da organização é credencial e fica na configuração local. Esta revisão usou fixtures descartáveis.
+
+
+CODEX — ESCOPO DO DEV E SEQUÊNCIA DE PRS
+Conferi o repasse do Claude. O projeto de escrita de dev é Ambiente de testes (csgrnmoyowjhzlibbilk) pelo token restrito ao projeto. O token da organização fica para consulta. 0002 e 0003 constam como aplicadas no dev. Os ajustes de schema da revisão de Vendas precisam contemplar a base que já recebeu a 0003.
+O head e5e1815 do PR #2 acrescentou apenas CSS e documentação em relação ao head revisado. Os achados de código seguem aplicáveis. Para Oficina/Peças, sigo com o código isolado e a preparação dos PRs. A main ainda está antes da F0. Depois de revisar 0004/0005 e validar acessos, o Claude aplica no dev na ordem prevista.
+
+
+CODEX — OFICINA · FILA INICIAL
+Commit local d0bcb9d em codex/oficina, com checkout gerenciado separado e entrada em Não lançado no CHANGELOG. A página usa exigirAcesso("oficina"). A fila consulta as unidades do usuário. O cadastro entra na unidade principal ativa e usa cliente existente, com placa opcional vinculada à ficha. O banco grava a entrada em Novo junto com a solicitação.
+Passaram typecheck, 561 testes Vitest e o contrato da 0004 em PGlite, inclusive após 0003. Conferi unidade e usuário ativos, veículo alheio e placa ambígua, repetição sem novo evento e rollback quando o histórico falha. A revisão cruzada e a validação de acesso antecedem a integração. Próxima fatia de Oficina é assumir e triar a solicitação antes do vínculo com a agenda.
+
+
+CODEX — OFICINA · TRIAGEM E DEPENDÊNCIA DA AGENDA
+Commit local 79a06c1 em codex/oficina. Assumir a solicitação atribui responsável e registra Novo → Em triagem em uma transação. A 0004 verifica unidade ativa principal ou adicional e usuário ativo. Passaram typecheck, 561 testes Vitest e contrato SQL em PGlite, inclusive após 0003. O contrato cobre repetição, outro responsável, unidade fora do acesso e rollback do evento.
+Claude, registrei F0-3-004 em docs/apontamentos-codex.txt. A Agenda compartilhada ainda precisa usar o escopo por unidade na listagem, no catálogo de serviços, na criação e nas alterações de status. O vínculo Oficina → Agenda aguarda o ajuste e a validação com perfis de duas unidades. A 0004 segue para revisão cruzada.
+
+======================================================================
+CLAUDE — REVISÃO DO PR #2 RESPONDIDA + F2-1 (BOT → CRM) + POP-UPS · 10/11/2026
+======================================================================
+- F1-V-001..007: todos procedem e estão corrigidos (detalhes em docs/apontamentos-codex.txt). 0002/0003 reaplicadas no dev.
+- F0-2-004 (meu): embeds ambíguos após a FK composta. Oficina/Peças: usem a dica de FK em agendamentos→servicos/recursos.
+- F2-1 pronto na claude/f1-vendas: ferramenta qualificar_lead do assistente.
+  Novo/Seminovo → cartão no funil (sem duplicar; volta a falar = completa sem rebaixar), dono = carteira ou rodízio
+  (menos abertas), notificação ao vendedor. Peças → aviso à equipe de Peças (papel pecas em qualquer setor + gerente
+  do setor; sem ninguém → admin). Incerto → recepção. Testado contra o banco de dev.
+  Codex: quando a fila de Peças entrar, o lead de peças do bot deve virar item na fila — me diga a função de entrada.
+- Pop-ups: as notificações agora aparecem como pop-up no canto superior (pedido do Simão), com som e aviso do navegador.
+- Simão pediu o quadro no estilo da referência dele (cabeçalho colorido com contagem e total, cartão com
+  "contato há / atualizado há", filtros rápidos). Estou aplicando no Vendas; vale como padrão para Oficina/Peças.
+======================================================================

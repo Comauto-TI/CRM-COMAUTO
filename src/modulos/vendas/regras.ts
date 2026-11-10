@@ -83,10 +83,92 @@ export function taxaConversao(ganhos: number, perdidos: number): number | null {
   return total > 0 ? Math.round((ganhos / total) * 100) : null;
 }
 
+/**
+ * Valor em reais digitado no formulário (F1-V-001). Aceita "150.000", "150.000,50", "12500,5", "12500.5", "R$ 1.234,56".
+ * Ponto só é separador de milhar quando vem em grupos de 3 dígitos; senão é decimal.
+ */
+export function lerValorBRL(entrada: string): number | null {
+  const s = (entrada ?? "").replace(/[R$\s]/g, "");
+  if (!s) return null;
+  let normal: string;
+  if (s.includes(",")) normal = s.replace(/\./g, "").replace(",", ".");
+  else if (/^\d{1,3}(\.\d{3})+$/.test(s)) normal = s.replace(/\./g, "");
+  else normal = s;
+  if (!/^\d+(\.\d+)?$/.test(normal)) return null;
+  const n = Number(normal);
+  return Number.isFinite(n) ? Math.round(n * 100) / 100 : null;
+}
+
+/** Valor do banco no formato do campo (ida e volta sem perder centavos): 12500.5 → "12.500,50". */
+export function valorParaCampo(v: number | string | null | undefined): string {
+  if (v === null || v === undefined || v === "") return "";
+  const n = Number(v);
+  return Number.isFinite(n) ? n.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : "";
+}
+
 /** Posição de um cartão solto entre dois vizinhos (ordem fracionária, sem renumerar a coluna). */
 export function posicaoEntre(anterior: number | null, proximo: number | null): number {
   if (anterior === null && proximo === null) return 1000;
   if (anterior === null) return proximo! - 1000;
   if (proximo === null) return anterior + 1000;
   return (anterior + proximo) / 2;
+}
+
+// ---------------------------------------------------------------------------
+// F2-1 — Chatbot → CRM: roteamento do lead qualificado pelo assistente
+// ---------------------------------------------------------------------------
+export const INTERESSES = ["novo", "seminovo", "oficina", "pecas", "indefinido"] as const;
+export type Interesse = (typeof INTERESSES)[number];
+
+/** Para onde vai o lead. Vendas vira cartão; oficina segue o agendamento; peças e incerto vão para pessoas. */
+export function destinoDoLead(interesse: Interesse): { tipo: "funil"; funil: "novos" | "seminovos" } | { tipo: "agenda" } | { tipo: "pecas" } | { tipo: "triagem" } {
+  if (interesse === "novo") return { tipo: "funil", funil: "novos" };
+  if (interesse === "seminovo") return { tipo: "funil", funil: "seminovos" };
+  if (interesse === "oficina") return { tipo: "agenda" };
+  if (interesse === "pecas") return { tipo: "pecas" };
+  return { tipo: "triagem" };
+}
+
+/**
+ * Quem recebe o lead: o vendedor da carteira do cliente (se ainda ativo); senão rodízio —
+ * o vendedor ativo com MENOS oportunidades abertas (empate: o que recebeu lead há mais tempo, depois o id).
+ */
+export function escolherVendedor(
+  carteira: string | null,
+  vendedores: { id: string; abertas: number; ultimoLeadEm: string | null }[],
+): string | null {
+  if (carteira && vendedores.some((v) => v.id === carteira)) return carteira;
+  if (!vendedores.length) return null;
+  const t = (s: string | null) => (s ? new Date(s).getTime() : 0);
+  return [...vendedores].sort((a, b) => a.abertas - b.abertas || t(a.ultimoLeadEm) - t(b.ultimoLeadEm) || a.id.localeCompare(b.id))[0].id;
+}
+
+/**
+ * Cliente voltou a falar com o assistente e já tem oportunidade aberta: o que pode ser atualizado.
+ * Só entra dado CONCRETO da conversa ("a definir"/vazio não apaga o que existe) e a qualificação
+ * nunca é rebaixada; a decisão do vendedor (qualificado/desqualificado) é soberana.
+ */
+export function completarQualificacao(
+  atual: string,
+  campos: { veiculo_interesse: string | null; pagamento: string; prazo_compra: string; tem_troca: boolean; troca_descricao: string | null },
+  conversa: { temTroca: boolean | null; clienteConfirmou: boolean },
+): Record<string, unknown> {
+  const patch: Record<string, unknown> = {};
+  if (campos.veiculo_interesse) patch.veiculo_interesse = campos.veiculo_interesse;
+  if (campos.pagamento !== "indefinido") patch.pagamento = campos.pagamento;
+  if (campos.prazo_compra !== "indefinido") patch.prazo_compra = campos.prazo_compra;
+  if (conversa.temTroca !== null) {
+    patch.tem_troca = conversa.temTroca;
+    if (conversa.temTroca && campos.troca_descricao) patch.troca_descricao = campos.troca_descricao;
+    if (!conversa.temTroca) patch.troca_descricao = null;
+  }
+  if (conversa.clienteConfirmou && atual === "a_verificar") patch.qualificacao = "confirmado_cliente";
+  return patch;
+}
+
+/** Temperatura inicial pelo que o cliente disse (o vendedor ajusta depois). */
+export function temperaturaInicial(prazo: Prazo, pagamentoDefinido: boolean): Temperatura {
+  if (prazo === "imediato" || (prazo === "ate_30_dias" && pagamentoDefinido)) return "quente";
+  if (prazo === "sem_prazo") return "frio";
+  return "morno";
 }

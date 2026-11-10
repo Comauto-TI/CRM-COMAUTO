@@ -85,7 +85,8 @@ create table if not exists vendas_historico (
   dias_na_etapa   numeric(10, 2),  -- quanto tempo ficou na etapa anterior
   criado_em       timestamptz not null default now()
 );
-create index if not exists vendas_hist_op_idx    on vendas_historico (oportunidade_id, criado_em);
+alter table vendas_historico add column if not exists motivo_perda text; -- F1-V-005: motivo de cada perda, mesmo se reaberta depois
+create index if not exists vendas_hist_op_idx   on vendas_historico (oportunidade_id, criado_em);
 create index if not exists vendas_hist_funil_idx on vendas_historico (funil_id, criado_em);
 
 create table if not exists vendas_atividades (
@@ -126,8 +127,13 @@ begin
 
   if tg_op = 'INSERT' or new.etapa_id is distinct from old.etapa_id then
     new.entrou_na_etapa_em := now();
-    if v_tipo in ('ganho', 'perdido') then
-      new.fechado_em := coalesce(new.fechado_em, now());
+    -- F1-V-005: o desfecho vigente é o da transição atual (Perdido → Ganho fecha de novo, hoje).
+    -- O motivo da perda anterior fica guardado em vendas_historico.
+    if v_tipo = 'ganho' then
+      new.fechado_em := now();
+      new.motivo_perda := null;
+    elsif v_tipo = 'perdido' then
+      new.fechado_em := now();
     else
       new.fechado_em := null;     -- reaberta
       new.motivo_perda := null;
@@ -145,10 +151,11 @@ begin
     insert into vendas_historico (oportunidade_id, unidade, funil_id, de_etapa_id, para_etapa_id, vendedor_id, ator)
     values (new.id, new.unidade, new.funil_id, null, new.etapa_id, new.vendedor_id, new.criado_por);
   elsif new.etapa_id is distinct from old.etapa_id then
-    insert into vendas_historico (oportunidade_id, unidade, funil_id, de_etapa_id, para_etapa_id, vendedor_id, ator, dias_na_etapa)
+    insert into vendas_historico (oportunidade_id, unidade, funil_id, de_etapa_id, para_etapa_id, vendedor_id, ator, dias_na_etapa, motivo_perda)
     values (new.id, new.unidade, new.funil_id, old.etapa_id, new.etapa_id, new.vendedor_id,
             coalesce(new.atualizado_por, 'sistema'),
-            round((extract(epoch from (now() - old.entrou_na_etapa_em)) / 86400)::numeric, 2));
+            round((extract(epoch from (now() - old.entrou_na_etapa_em)) / 86400)::numeric, 2),
+            new.motivo_perda);  -- só preenchido quando a transição é para Perdido
   end if;
   return null;
 end $$;
@@ -181,7 +188,10 @@ cross join (values
   ('Ganho', 6, 'ganho', null),
   ('Perdido', 7, 'perdido', null)
 ) as e (nome, ordem, tipo, sla)
-where f.unidade = 'comauto'
+-- F1-V-007: semeia só os funis padrão que ainda não têm etapa nenhuma (não recria etapa renomeada
+-- nem invade funil personalizado quando a migration é reaplicada)
+where f.unidade = 'comauto' and f.chave in ('novos', 'seminovos')
+  and not exists (select 1 from vendas_etapas x where x.funil_id = f.id)
 on conflict (funil_id, nome) do nothing;
 
 -- ---------------------------------------------------------------------
@@ -190,12 +200,25 @@ on conflict (funil_id, nome) do nothing;
 create or replace function vendas_funil_resumo(p_funil uuid, p_desde timestamptz)
 returns table (etapa_id uuid, nome text, ordem int, tipo text, abertas bigint, alcancaram bigint, valor_aberto numeric, dias_medios numeric)
 language sql stable set search_path = public as $$
+  -- F1-V-006: coorte = quem ENTROU no funil desde p_desde (oportunidade antiga movida hoje não entra).
+  -- Etapas abertas: quantos da coorte chegaram até ali (maior etapa não-perdida alcançada).
+  -- Ganho/Perdido: desfecho ATUAL de cada oportunidade da coorte (reaberta e ganha conta só como ganha).
+  with coorte as (
+    select id, etapa_id from vendas_oportunidades where funil_id = p_funil and criado_em >= p_desde
+  ),
+  alcance as (
+    select h.oportunidade_id, max(e2.ordem) filter (where e2.tipo <> 'perdido') as max_ordem
+    from vendas_historico h
+    join vendas_etapas e2 on e2.id = h.para_etapa_id
+    where h.oportunidade_id in (select id from coorte)
+    group by h.oportunidade_id
+  )
   select e.id, e.nome, e.ordem, e.tipo,
          (select count(*) from vendas_oportunidades o where o.etapa_id = e.id and o.fechado_em is null),
-         (select count(distinct h.oportunidade_id) from vendas_historico h
-            join vendas_etapas e2 on e2.id = h.para_etapa_id
-           where h.funil_id = p_funil and h.criado_em >= p_desde
-             and (e2.ordem >= e.ordem and e2.tipo <> 'perdido' or e2.id = e.id)),
+         case when e.tipo = 'aberta'
+              then (select count(*) from alcance a where a.max_ordem >= e.ordem)
+              else (select count(*) from coorte c where c.etapa_id = e.id)
+         end,
          (select coalesce(sum(o.valor_estimado), 0) from vendas_oportunidades o where o.etapa_id = e.id and o.fechado_em is null),
          (select round(avg(h.dias_na_etapa), 1) from vendas_historico h where h.de_etapa_id = e.id and h.criado_em >= p_desde)
   from vendas_etapas e
@@ -215,3 +238,14 @@ begin
   end loop;
 end $$;
 revoke all on function vendas_funil_resumo(uuid, timestamptz) from public, anon, authenticated;
+
+-- F1-V-004: grants explícitos para o servidor (service_role), sem depender dos grants implícitos
+-- antigos do Supabase. O navegador (anon/authenticated) continua sem acesso nenhum.
+do $$
+begin
+  if exists (select 1 from pg_roles where rolname = 'service_role') then
+    grant select, insert, update, delete on vendas_funis, vendas_etapas, vendas_oportunidades,
+      vendas_historico, vendas_atividades, vendas_tarefas to service_role;
+    grant execute on function vendas_funil_resumo(uuid, timestamptz) to service_role;
+  end if;
+end $$;

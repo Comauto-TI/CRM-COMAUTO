@@ -13,6 +13,8 @@ import {
 } from "@/lib/scheduling/booking";
 import { transferirParaHumano } from "@/lib/handoff";
 import { registrarConsentimento, TEXTO_CONSENTIMENTO } from "@/lib/consent";
+import { rotearLead } from "@/modulos/vendas/leads";
+import { ehChave, INTERESSES, PAGAMENTOS, PRAZOS, type Interesse } from "@/modulos/vendas/regras";
 
 /**
  * Ferramentas do agente. Regras:
@@ -130,6 +132,25 @@ export const TOOLS: Anthropic.Tool[] = [
     description: "Registra interesse do cliente (ex.: modelo de carro, serviço) quando ele não agendou agora, para a equipe dar retorno.",
     strict: true,
     input_schema: s({ assunto: { type: "string" } }, ["assunto"]),
+  },
+  {
+    name: "qualificar_lead",
+    description:
+      "Registra o interesse de COMPRA do cliente (carro novo ou seminovo) para a equipe de vendas, ou encaminha pedido de peças/assunto incerto para a equipe. Use depois de entender o interesse. Para revisão/serviço use o fluxo de agendamento, não esta ferramenta.",
+    strict: true,
+    input_schema: s(
+      {
+        interesse: { type: "string", enum: ["novo", "seminovo", "oficina", "pecas", "indefinido"] },
+        modelo: { type: ["string", "null"], description: "Modelo/versão que o cliente quer, nas palavras dele" },
+        pagamento: { type: "string", enum: ["a_vista", "financiamento", "consorcio", "indefinido"] },
+        prazo: { type: "string", enum: ["imediato", "ate_30_dias", "ate_90_dias", "sem_prazo", "indefinido"] },
+        tem_troca: { type: ["boolean", "null"], description: "Cliente quer dar um usado na troca? null se não falou" },
+        troca_descricao: { type: ["string", "null"], description: "Carro da troca (modelo, ano, km) se o cliente informou" },
+        resumo: { type: "string", description: "Resumo curto do que o cliente quer, para o vendedor" },
+        cliente_confirmou_dados: { type: "boolean", description: "true só se você leu o resumo para o cliente e ele confirmou" },
+      },
+      ["interesse", "modelo", "pagamento", "prazo", "tem_troca", "troca_descricao", "resumo", "cliente_confirmou_dados"],
+    ),
   },
   {
     name: "info_empresa",
@@ -301,6 +322,31 @@ export async function executarTool(nome: string, input: In, ctx: ContextoTool): 
       });
       await db().from("clientes").update({ tags: ["lead"] }).eq("id", ctx.clienteId).eq("tags", "{}");
       return { resultado: ok({ registrado: true }) };
+    }
+
+    case "qualificar_lead": {
+      const interesse = (INTERESSES as readonly string[]).includes(String(input.interesse)) ? (input.interesse as Interesse) : "indefinido";
+      const pagamento = ehChave(PAGAMENTOS, input.pagamento) ? input.pagamento : "indefinido";
+      const prazo = ehChave(PRAZOS, input.prazo) ? input.prazo : "indefinido";
+      const r = await rotearLead({
+        clienteId: ctx.clienteId,
+        interesse,
+        modelo: typeof input.modelo === "string" ? input.modelo : null,
+        pagamento,
+        prazo,
+        temTroca: typeof input.tem_troca === "boolean" ? input.tem_troca : null,
+        trocaDescricao: typeof input.troca_descricao === "string" ? input.troca_descricao : null,
+        resumo: String(input.resumo ?? "").slice(0, 300) || "Interesse registrado pelo assistente",
+        clienteConfirmou: input.cliente_confirmou_dados === true,
+      });
+      if (!r.ok) return { resultado: erro("nao_registrado", { instrucao: "ofereça falar com um atendente (transferir_humano)" }) };
+      const instrucao = {
+        vendas: "diga que um consultor de vendas vai entrar em contato por aqui; não prometa preço, prazo nem condição",
+        agenda: "é serviço de oficina: siga o fluxo de agendamento",
+        pecas: "diga que a equipe de peças vai verificar e retornar por aqui",
+        triagem: "diga que a equipe vai entender o pedido e retornar; ofereça ATENDENTE se for urgente",
+      }[r.destino];
+      return { resultado: ok({ registrado: r.destino !== "agenda", instrucao }) };
     }
 
     case "info_empresa": {
