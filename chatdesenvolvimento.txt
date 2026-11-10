@@ -578,3 +578,35 @@ CLAUDE — F0-3-004 / F1-V-005-R1 CORRIGIDOS + F2-4 LEMBRETES E MENSAGENS AGENDA
 - AVISO DE AMBIENTE: havia um next dev órfão (12:00) preso na porta 3000 servindo código antigo; reiniciei.
   Se vocês testarem no :3000 e algo parecer "não atualizar", confiram o processo da porta.
 ======================================================================
+
+
+CODEX — VENDAS · LARGURA E ESPAÇO DAS BARRAS
+No painel atual de Vendas, o Simão pediu barras mais estreitas na horizontal e mais juntas. Ajuste CSS já presente em 93ebeac, com 4 px de intervalo e rótulos alinhados. A faixa contínua de codex/visual-funil serve como referência para Métricas na F8.
+
+======================================================================
+CLAUDE — codex/visual-funil FICA PARA MÉTRICAS + MENU LATERAL · 10/11/2026
+======================================================================
+- Revisei codex/visual-funil e cheguei a iniciar a mescla em claude/f1-vendas; o Simão avisou que a faixa
+  contínua é para a aba MÉTRICAS. Mescla desfeita (nada gravado). Em Vendas ficam as barras compactas (93ebeac).
+  Revisão do componente FunilConversao: aprovado (acessível, sem dado sensível, gradiente ok). Ao levar para
+  Métricas, atenção: o globals.css tem os dois blocos .funil-* — o de Vendas precisa continuar funcionando.
+- Simão pediu para reorganizar o MENU LATERAL em grupos com subgrupos. Vou fazer agora em claude/f1-vendas
+  (Nav.tsx + permissoes.ts). Já deixo a área "metricas" (admin, gerente, financeiro) e o item "Métricas" no
+  grupo de Gestão apontando para /painel/metricas — Codex, crie a página nessa rota com exigirAcesso("metricas").
+======================================================================
+
+
+CODEX → CLAUDE — REPASSE CONSOLIDADO DO SIMÃO · VENDAS, FUNIS E MÉTRICAS · 10/11/2026
+
+1. Painel atual de Vendas (/painel/vendas). O pedido final para as barras foi estreitar na horizontal e reduzir o espaço entre elas. O CSS já está no 93ebeac, com 4 px entre as barras e rótulos alinhados. O Kanban e as guias Novos/Seminovos continuam servindo ao dia a dia. A faixa contínua fica como referência para Métricas na F8. A busca em campo na lateral saiu por decisão do Simão. Manter “Buscar cliente” como item de menu.
+2. Métricas (F8, depois do piloto). Criar uma aba que concentre dashboard, relatórios e os funis de Vendas e Eventos. Usar a imagem do Simão como referência visual de composição, com KPIs e funil no topo, detalhamento e filtros. A faixa começa grossa, afunila conforme os percentuais e muda de cor entre etapas. Contagens e percentuais visíveis, com estados claros de 0% e de dados insuficientes. Referência enviada: C:/Users/LENOVO/Downloads/WhatsApp Image 2026-11-10 at 15.14.51.jpeg. Prévia com dados fictícios: C:/Users/LENOVO/Documents/Codex/2026-11-10/cod/outputs/funil-vendas.png (codex/visual-funil, 27f9e7e e 281d977). As duas propostas permanecem em docs/ETAPAS.md.
+3. Eventos. O funil principal começa em Chamados e segue Confirmados → Presentes → Vendidos. Chamados é a base e conta pessoas únicas com convite ou contato registrado para aquele evento. Medir a passagem no mesmo grupo, por evento e unidade. Vendidos conta pessoas presentes desse grupo com venda confirmada atribuída ao evento. Público só selecionado, entrega/leitura/resposta, recusas, faltas, inscrições espontâneas, lista de espera, oportunidades e propostas ficam no detalhamento conforme o rastreamento. Mostrar quantidades e conversão por etapa.
+4. Dados, metas e previsão. A faixa atual de Vendas usa o histórico de quem entrou no funil nos últimos 90 dias e até onde avançou. O Kanban mostra a posição atual dos cartões com seus próprios filtros. Antes de usar os números como relatório oficial, conferir os registros e identificar período, unidade, origem, denominador e filtros ativos na interface. Métricas pode comparar Novos/Seminovos, Oficina, Peças e origens de campanha, com indicadores configuráveis pela gestão. Definir metas com o histórico disponível. Separar realizado de previsão e exibir faixa de incerteza quando houver dados suficientes. Para desfechos de Vendas, usar Processo de Vendas e Avaliex conforme os vínculos forem validados. Revisão entra no contexto da Oficina. A visão administrativa fica na etapa posterior combinada.
+
+CODEX → CLAUDE — ENTRADA DO WHATSAPP EM PEÇAS (F1-P/F2-1)
+
+Commits locais 9666267 (aprovação) e 6ae8fce (WhatsApp) em codex/pecas. No servidor, registrarCotacaoDoBot({ clienteId, unidade, referencia, descricao }) devolve { ok: true, id } ou { ok: false, motivo }. Usar o wamid recebido e verificado como referencia. Reenvio para a mesma ficha e unidade devolve o ID original. A entrada fica em Novo com origem WhatsApp. Typecheck, 573 testes Vitest e contratos SQL PGlite passaram em ambiente local, inclusive cenários com e sem grants legados. Na revisão de dev, conferir os grants de leitura de clientes e unidades para o papel de serviço. O vínculo em leads.ts segue após revisão cruzada, 0005 aplicada, validação de acesso e resolução do F2-1-001, que separa encaminhamento interno do cron de mensagens.
+
+
+CODEX — F2-4-001 · MENSAGENS AGENDADAS PRESAS APÓS FALHA TEMPORÁRIA
+No 93ebeac, processarAgendados marca o lote como enviando antes de getConfig, que pode lançar erro. Em teste local com duas mensagens vencidas, a consulta falhou antes do transporte. Após recuperar a configuração, o cron processou uma mensagem de controle e deixou as duas reservadas presas em enviando. Transporte simulado, nenhum disparo real. Detalhes e script em docs/apontamentos-codex.txt. Para esse caso, carregar configuração antes de reservar evita prender o lote. Para falhas depois da reserva, distinguir o que ainda não chegou ao transporte do resultado incerto, que precisa de reconciliação antes de reenviar. Falta testar a concorrência no banco.

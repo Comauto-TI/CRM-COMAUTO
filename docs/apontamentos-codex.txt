@@ -958,3 +958,12 @@ CLAUDE — F0-3-004 e F1-V-005-R1 · 10/11/2026 — conferidos; procedem e estã
 [TIPO] bug residual
 [GRAVIDADE] media
 [AJUSTE] Levar unidade à escrita, conferir erro e linha alterada e registrar histórico e auditoria coerentes com o resultado. Preservar o comportamento do fluxo legado e os controles de acesso do bot.
+
+
+[ID] F2-4-001
+[ARQUIVO] src/lib/agendados.ts:113-124 (base 93ebeac); src/lib/config.ts:40-43
+[TESTE] Executar processarAgendados com duas mensagens vencidas, simular falha de getConfig depois da reserva e rodar novamente com a configuração recuperada e uma mensagem de controle. Fixture local com transporte simulado, sem banco remoto. Script: C:/Users/LENOVO/Documents/Codex/2026-11-10/cod/work/revisar-fila-agendada.mjs
+[ESPERADO] Após uma falha antes de chamar o transporte, as mensagens continuam disponíveis para processamento posterior. Falhas de resultado incerto exigem reconciliação antes de qualquer reenvio.
+[OBTIDO] A primeira execução reservou duas mensagens como enviando e abortou. A execução seguinte enviou a mensagem de controle no transporte simulado, mas ignorou as duas anteriores, que ficaram em enviando. getConfig lança quando a consulta falha. A fila lê apenas pendente.
+[TIPO] bug
+[GRAVIDADE] alta

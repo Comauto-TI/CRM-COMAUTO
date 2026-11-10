@@ -956,3 +956,26 @@ a { color: var(--vw-azul); }
 .cliente-celula strong { display: block; color: var(--vw-marinho); }
 .cliente-celula small { display: block; font-size: 12px; }
 .cliente-celula:hover strong { color: var(--vw-azul); }
+
+/* ===== Vendas: topo arrumado (funil compacto + indicadores lado a lado) ===== */
+.vendas-topo { grid-template-columns: minmax(0, 1fr); align-items: stretch; }
+@media (min-width: 1100px) { .vendas-topo { grid-template-columns: minmax(0, 3fr) minmax(0, 2fr); } }
+.funil-faixa { display: flex; flex-direction: column; gap: 10px; padding: 14px 16px 12px; }
+.funil-topo-vendas { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+.funil-topo-vendas strong { color: var(--vw-marinho); font-size: 14.5px; }
+.funil-periodo-vendas { padding: 3px 9px; border-radius: 999px; background: var(--superficie-2); border: 1px solid var(--borda); font-size: 11px; font-weight: 600; color: var(--texto-2); }
+.funil-faixa .funil-barras { height: 84px; }
+.funil-faixa .funil-rotulos { margin-top: 6px; align-items: stretch; }
+.funil-faixa .funil-rotulos > div { justify-content: space-between; gap: 2px; }
+.funil-faixa .funil-rotulos > div span { min-height: 2.5em; display: flex; align-items: flex-start; justify-content: center; line-height: 1.25; font-size: 10.5px; }
+.funil-faixa .funil-rotulos strong { font-size: 15px; }
+.funil-faixa .funil-legenda { text-align: center; margin-top: 2px; }
+.vendas-kpis { grid-template-columns: repeat(3, minmax(0, 1fr)); align-content: center; gap: 10px; padding: 14px 16px; }
+.vendas-kpis > div { padding: 10px 12px; border-radius: 10px; background: var(--superficie-2); border: 1px solid var(--borda); justify-content: space-between; min-width: 0; }
+.vendas-kpis > div > span { font-size: 12px; }
+.vendas-kpis strong { font-size: 26px; line-height: 1.15; margin: 4px 0 2px; }
+.vendas-kpis small { font-size: 11.5px; line-height: 1.3; }
+@media (max-width: 640px) { .vendas-kpis { grid-template-columns: 1fr; } }
+.vendas-kpis { align-content: stretch; grid-template-rows: 1fr; }
+.vendas-kpis > div { justify-content: center; }
+@media (max-width: 640px) { .vendas-kpis { grid-template-rows: none; } }

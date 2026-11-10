@@ -115,6 +115,10 @@ export default async function Vendas({ searchParams }: { searchParams: Promise<S
 
         <div className="vendas-topo">
           <div className="card funil-faixa" aria-label="Funil de conversão dos últimos 90 dias">
+            <div className="funil-topo-vendas">
+              <strong>Funil de conversão</strong>
+              <span className="funil-periodo-vendas">últimos 90 dias</span>
+            </div>
             <div className="funil-barras">
               {faixa.map((e) => (
                 <div key={e.etapa_id} className="funil-segmento" style={{ ["--h" as string]: `${Math.max(e.pct, 8)}%` }}>
@@ -127,7 +131,7 @@ export default async function Vendas({ searchParams }: { searchParams: Promise<S
                 <div key={e.etapa_id}><span>{e.nome}</span><strong>{e.quantidade}</strong></div>
               ))}
             </div>
-            <div className="mudo funil-legenda">Quem entrou no funil nos últimos 90 dias e até onde chegou</div>
+            <div className="mudo funil-legenda">Quem entrou no funil no período e até onde chegou</div>
           </div>
           <div className="card vendas-kpis">
             <div><span className="mudo">Em aberto</span><strong>{abertas.length}</strong><small className="mudo">{formatarBRL(emNegociacao)} em negociação</small></div>
