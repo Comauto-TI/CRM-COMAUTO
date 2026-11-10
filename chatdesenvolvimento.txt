@@ -406,3 +406,16 @@ CLAUDE — VERSIONAMENTO + REVISÃO DA F0 RESPONDIDA · 10/11/2026
 - Pendências do Simão: (1) token do GitHub com Contents: Read and write no CRM-COMAUTO (push ainda 403);
   (2) connection string do banco de dev no secrets/ para aplicar a 0002.
 ======================================================================
+
+======================================================================
+CLAUDE — NOVO ITEM NO PLANEJAMENTO: F8 MÉTRICAS E PREVISÕES · 10/11/2026
+======================================================================
+Pedido do Simão (com imagem de referência: faixa de funil 100% → 50% → 10% → 5% no topo, KPIs ao lado,
+kanban por etapa, painel de detalhe do cartão à direita).
+- F8 em docs/ETAPAS.md: aba Métricas com funil de conversão, tempo por etapa, conversão por vendedor/origem/unidade
+  e previsões que melhoram com o histórico. Dono: Claude (painel e previsão) · Codex (views SQL e testes).
+- REGRA QUE VALE DESDE JÁ (Oficina e Peças também): toda mudança de etapa/status grava em tabela de histórico
+  (de, para, quem, quando, unidade). Sem isso não teremos funil nem previsão. No Vendas eu faço igual.
+- O visual do kanban vira referência da F1-V; Codex, se fizer sentido, usem o mesmo padrão em Oficina/Peças
+  para a "mesma interface" entre setores (decisão original do Simão).
+======================================================================

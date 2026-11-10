@@ -1,7 +1,9 @@
 # Etapas — Plataforma Comauto (Chatbot + CRM)
 
 Fonte das decisões: `chatdesenvolvimento.txt` (consenso Claude × Codex aprovado pelo Simão em 10/11/2026).
-Atualize o status aqui sempre que concluir algo. Legenda: ⬜ a fazer · 🟨 em andamento · ✅ pronto · ⛔ bloqueado.
+Atualize o status aqui sempre que concluir algo.
+
+> **Preparar desde já para a F8:** toda mudança de etapa (vendas, oficina, peças) grava data/hora e quem mudou — sem esse histórico não há funil nem previsão depois. Legenda: ⬜ a fazer · 🟨 em andamento · ✅ pronto · ⛔ bloqueado.
 
 ## Regras de convivência
 - **Claude** = engenheiro-chefe: fundação (núcleo), Vendas, chatbot→CRM, vínculos Avaliex e Processo de Vendas, Bravus, aniversários, visão do admin.
@@ -25,7 +27,7 @@ Atualize o status aqui sempre que concluir algo. Legenda: ⬜ a fazer · 🟨 em
 ## F1 — Setores (em paralelo, após F0-2)
 | # | Tarefa | Dono | Status |
 |---|---|---|---|
-| F1-V | Vendas: funis Novos/Seminovos, etapas configuráveis (Novo → Em atendimento → Negociação → Proposta → Ganho/Perdido), cartões com arrastar, qualificação separada da etapa, carteira | Claude | ⬜ |
+| F1-V | Vendas: funis Novos/Seminovos, etapas configuráveis (Novo → Em atendimento → Negociação → Proposta → Ganho/Perdido), cartões com arrastar, qualificação separada da etapa, carteira. **Referência visual (Simão, 10/11):** colunas por etapa com cartões, faixa do funil com % no topo, KPIs ao lado e painel de detalhe do cartão à direita (com conversa) | Claude | ⬜ |
 | F1-O | Oficina/Agenda: fila, triagem, reserva/confirmação/reagendamento, histórico e vínculo externo | Codex | ⬜ |
 | F1-P | Peças: fila Novo → Em cotação → Aguardando cliente → Aprovado → Em separação/encomenda → Entregue (+ perda), itens, margem | Codex | 🟨 cadastro e fila de balcão no commit 1e22d9d em codex/pecas; aguardam revisão e migrações no dev |
 
@@ -47,6 +49,7 @@ QR Code + filas → validação → lote de até 10 convites autorizados. Instal
 | F5 | Aniversários (amarelo antes, verde no dia, vermelho sem atendimento) + lembrete insistente | Claude |
 | F6 | Visão geral do administrador | Claude |
 | F7 | Captação e IA | Ambos |
+| F8 | **Aba Métricas e previsões** (pedido do Simão, 10/11): funil de conversão por etapa com % e volume (Novos, Seminovos, Oficina, Peças, chatbot/QR/campanhas), tempo médio por etapa, conversão por vendedor/origem/unidade; **previsões** que melhoram com o histórico (vendas do mês, agenda da oficina, demanda de peças) a partir de séries diárias guardadas no banco; metas definidas pelos dados que já temos. Começa simples (médias móveis e taxa histórica por etapa), sem prometer precisão antes de ter volume | Claude (painel e modelo de previsão) · Codex (consultas SQL/views, testes de cálculo e de carga) |
 
 ## Preparação F1 — Oficina, Agenda e Peças (Codex)
 
