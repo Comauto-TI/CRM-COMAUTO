@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
-import { exigirPapel } from "@/lib/auth";
+import { exigirAcesso } from "@/lib/auth";
 import { db } from "@/lib/supabase/admin";
 import { getConfig } from "@/lib/config";
 import { normalizarTelefone } from "@/lib/phone";
@@ -14,7 +14,7 @@ import { auditar } from "@/lib/audit";
 const STATUS_VALIDOS = ["pendente", "confirmado", "compareceu", "nao_compareceu", "cancelado"];
 
 export async function mudarStatus(formData: FormData) {
-  const u = await exigirPapel(["atendente"]);
+  const u = await exigirAcesso("agenda");
   const id = String(formData.get("id"));
   const status = String(formData.get("status"));
   if (!STATUS_VALIDOS.includes(status)) return;
@@ -39,7 +39,7 @@ export async function mudarStatus(formData: FormData) {
 }
 
 export async function novoAgendamento(formData: FormData) {
-  const u = await exigirPapel(["atendente"]);
+  const u = await exigirAcesso("agenda");
   const cfg = await getConfig();
   const telefone = normalizarTelefone(String(formData.get("telefone") ?? ""));
   if (!telefone) redirect("/painel/agendamentos?msg=telefone_invalido");

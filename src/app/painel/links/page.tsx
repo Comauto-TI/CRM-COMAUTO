@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { exigirPapel } from "@/lib/auth";
+import { exigirAcesso } from "@/lib/auth";
 import { db } from "@/lib/supabase/admin";
 import { env } from "@/lib/env";
 import { getConfig } from "@/lib/config";
@@ -18,7 +18,7 @@ const MSGS: Record<string, [string, string]> = {
 type LinkRow = { id: string; codigo: string; nome: string; canal: string; mensagem_inicial: string; ativo: boolean; criado_por: string | null; criado_em: string };
 
 export default async function Links({ searchParams }: { searchParams: Promise<{ novo?: string; msg?: string }> }) {
-  await exigirPapel(["atendente"]);
+  await exigirAcesso("links");
   const cfg = await getConfig();
   const sp = await searchParams;
   const numero = cfg.empresa.whatsapp_numero?.replace(/\D/g, "") ?? "";

@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
-import { exigirPapel } from "@/lib/auth";
+import { exigirAcesso } from "@/lib/auth";
 import { db } from "@/lib/supabase/admin";
 import { getConfig } from "@/lib/config";
 import { localParaUtc } from "@/lib/time";
@@ -10,7 +10,7 @@ import { auditar } from "@/lib/audit";
 import { preChecagem, enfileirar } from "@/lib/campaigns";
 
 export async function criarEvento(formData: FormData) {
-  const u = await exigirPapel(["admin"]);
+  const u = await exigirAcesso("campanhas");
   const cfg = await getConfig();
   const inicio = localParaUtc(String(formData.get("data")), String(formData.get("hora")), cfg.fuso_offset);
   const vagas = Number(formData.get("vagas")) || null;
@@ -31,7 +31,7 @@ export async function criarEvento(formData: FormData) {
 }
 
 export async function criarCampanha(formData: FormData) {
-  const u = await exigirPapel(["admin"]);
+  const u = await exigirAcesso("campanhas");
   const tags = String(formData.get("tags") || "").split(",").map((t) => t.trim().toLowerCase()).filter(Boolean);
   const cidade = String(formData.get("cidade") || "").trim();
   const eventoId = String(formData.get("evento") || "") || null;
@@ -56,21 +56,21 @@ export async function criarCampanha(formData: FormData) {
 }
 
 export async function rodarPreChecagem(formData: FormData) {
-  await exigirPapel(["admin"]);
+  await exigirAcesso("campanhas");
   const id = String(formData.get("id"));
   await preChecagem(id);
   redirect(`/painel/campanhas?ver=${id}`);
 }
 
 export async function iniciarTeste(formData: FormData) {
-  const u = await exigirPapel(["admin"]);
+  const u = await exigirAcesso("campanhas");
   const id = String(formData.get("id"));
   const r = await enfileirar(id, true, u.email);
   redirect(`/painel/campanhas?ver=${id}&msg=${r.ok ? "teste_ok" : r.motivo}`);
 }
 
 export async function iniciarEnvio(formData: FormData) {
-  const u = await exigirPapel(["admin"]);
+  const u = await exigirAcesso("campanhas");
   const id = String(formData.get("id"));
   if (formData.get("confirmo") !== "on") redirect(`/painel/campanhas?ver=${id}&msg=confirme`);
   const r = await enfileirar(id, false, u.email);
@@ -78,7 +78,7 @@ export async function iniciarEnvio(formData: FormData) {
 }
 
 export async function pausar(formData: FormData) {
-  const u = await exigirPapel(["admin"]);
+  const u = await exigirAcesso("campanhas");
   const id = String(formData.get("id"));
   await db().from("campanhas").update({ status: "pausada", motivo_pausa: `Pausada manualmente por ${u.email}` }).eq("id", id);
   await auditar(u.email, "pausar_campanha", "campanha", id);
@@ -86,7 +86,7 @@ export async function pausar(formData: FormData) {
 }
 
 export async function retomar(formData: FormData) {
-  const u = await exigirPapel(["admin"]);
+  const u = await exigirAcesso("campanhas");
   const id = String(formData.get("id"));
   await db().from("campanhas").update({ status: "enviando", motivo_pausa: null }).eq("id", id).eq("status", "pausada");
   await auditar(u.email, "retomar_campanha", "campanha", id);

@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { exigirPapel } from "@/lib/auth";
+import { exigirAcesso } from "@/lib/auth";
 import { db } from "@/lib/supabase/admin";
 import { getConfig } from "@/lib/config";
 import { formatarBRL, localParaUtc, dataLocalISO } from "@/lib/time";
@@ -27,7 +27,7 @@ const SERIES = [
 type Sp = { mes?: string; convidados?: string; utilities?: string; resposta?: string; interacoes?: string };
 
 export default async function Financeiro({ searchParams }: { searchParams: Promise<Sp> }) {
-  await exigirPapel(["financeiro"]);
+  await exigirAcesso("financeiro");
   const cfg = await getConfig();
   const off = cfg.fuso_offset;
   const sp = await searchParams;

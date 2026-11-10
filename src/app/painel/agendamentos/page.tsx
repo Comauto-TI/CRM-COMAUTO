@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { exigirPapel } from "@/lib/auth";
+import { exigirAcesso } from "@/lib/auth";
 import { db } from "@/lib/supabase/admin";
 import { getConfig } from "@/lib/config";
 import { formatarDataHora, dataLocalISO, localParaUtc } from "@/lib/time";
@@ -24,7 +24,7 @@ type Ag = {
 };
 
 export default async function Agendamentos({ searchParams }: { searchParams: Promise<{ de?: string; ate?: string; status?: string; msg?: string }> }) {
-  await exigirPapel(["atendente"]);
+  await exigirAcesso("agenda");
   const cfg = await getConfig();
   const off = cfg.fuso_offset;
   const sp = await searchParams;

@@ -3,7 +3,7 @@
 Execute a partir da raiz em uma cópia de teste do projeto. Use um
 Supabase local, o seed inicial e o seed demo recém-carregado, com
 conversas aguardando atendimento. Crie um usuário de teste no Auth e
-vincule seu ID em `admin_usuarios` com papel `admin`.
+vincule seu ID na tabela `usuarios` (antes da migration 0002: `admin_usuarios`) com papel `admin` e setor `administracao`.
 
 Configure o `.env.local` com as credenciais do Supabase local e valores
 fictícios para os demais serviços. Passe `COMAUTO_E2E_EMAIL` e

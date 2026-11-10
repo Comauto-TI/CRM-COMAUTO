@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { exigirPapel } from "@/lib/auth";
+import { exigirAcesso } from "@/lib/auth";
 import { db } from "@/lib/supabase/admin";
 import { getConfig } from "@/lib/config";
 import { formatarBRL, formatarDataHora, dataLocalISO } from "@/lib/time";
@@ -16,7 +16,7 @@ const MSGS: Record<string, [string, string]> = {
 };
 
 export default async function Campanhas({ searchParams }: { searchParams: Promise<{ ver?: string; msg?: string }> }) {
-  await exigirPapel(["admin"]);
+  await exigirAcesso("campanhas");
   const cfg = await getConfig();
   const off = cfg.fuso_offset;
   const sp = await searchParams;

@@ -1,14 +1,17 @@
-import { exigirPapel } from "@/lib/auth";
+import { exigirAcesso } from "@/lib/auth";
 import { db } from "@/lib/supabase/admin";
 import { getConfig } from "@/lib/config";
 import { formatarDataHora, DIAS } from "@/lib/time";
 import { Cabecalho, Status } from "../_components/ui";
+import { tabelaUsuarios } from "@/lib/usuarios";
+import { PAPEIS, SETORES, ROTULO_PAPEL, ROTULO_SETOR } from "@/lib/permissoes";
 import { salvarEmpresa, salvarFinanceiro, salvarCustoFixo, salvarTemplate, salvarServico, adicionarBloqueio, removerBloqueio, salvarEquipe } from "./actions";
 
 export default async function Configuracoes() {
-  const u = await exigirPapel(["financeiro"]);
+  const u = await exigirAcesso("custos_config");
   const admin = u.papel === "admin";
   const cfg = await getConfig();
+  const tabelaEquipe = await tabelaUsuarios();
 
   const [precos, fixos, templates, servicos, recursos, horarios, bloqueios, equipe] = await Promise.all([
     db().from("precos_meta").select("categoria, valor_brl, vigente_desde").order("vigente_desde", { ascending: false }),
@@ -18,7 +21,7 @@ export default async function Configuracoes() {
     db().from("recursos").select("id, nome, tipo").order("nome"),
     db().from("horarios_funcionamento").select("dia_semana, abre, fecha").order("dia_semana").order("abre"),
     db().from("bloqueios").select("id, inicio, fim, motivo, recursos(nome)").gte("fim", new Date().toISOString()).order("inicio"),
-    db().from("admin_usuarios").select("user_id, nome, papel, ativo, telefone_whatsapp, recebe_alertas, consentimento_alertas_em").order("nome"),
+    db().from(tabelaEquipe).select("*").order("nome"),
   ]);
   const precoAtual = (cat: string) => (precos.data ?? []).find((p) => p.categoria === cat);
 
@@ -164,7 +167,7 @@ export default async function Configuracoes() {
 
           <div className="card secao">
             <h2>Equipe e alertas de atendimento</h2>
-            <p className="mudo">Quem marcar &quot;recebe alertas&quot; recebe no próprio WhatsApp o aviso de cliente aguardando (template utility, ~R$ 0,035 cada), com link direto para responder pelo painel. Marcar = a pessoa autorizou receber esses alertas. Novos usuários: crie no Supabase Auth e insira em admin_usuarios (ver README).</p>
+            <p className="mudo">Quem marcar &quot;recebe alertas&quot; recebe no próprio WhatsApp o aviso de cliente aguardando (template utility, ~R$ 0,035 cada), com link direto para responder pelo painel. Marcar = a pessoa autorizou receber esses alertas. Novos usuários: crie no Supabase Auth e insira na tabela usuarios com setor, papel e unidade (ver tests/e2e/README.md).</p>
             <div className="tabela-wrap">
               <table className="tabela">
                 <thead><tr><th>Pessoa</th><th colSpan={2}>Configuração</th></tr></thead>
@@ -175,7 +178,8 @@ export default async function Configuracoes() {
                       <td colSpan={2}>
                         <form action={salvarEquipe} className="linha-form">
                           <input type="hidden" name="user_id" value={p.user_id} />
-                          <select name="papel" defaultValue={p.papel}><option value="admin">admin</option><option value="atendente">atendente</option><option value="financeiro">financeiro</option></select>
+                          <select name="papel" defaultValue={p.papel} aria-label="Papel">{PAPEIS.map((x) => <option key={x} value={x}>{ROTULO_PAPEL[x]}{x === "atendente" ? " (legado)" : ""}</option>)}</select>
+                          {tabelaEquipe === "usuarios" && <select name="setor" defaultValue={p.setor} aria-label="Setor">{SETORES.map((x) => <option key={x} value={x}>{ROTULO_SETOR[x]}</option>)}</select>}
                           <input name="telefone" defaultValue={p.telefone_whatsapp ?? ""} placeholder="WhatsApp p/ alertas" />
                           <label style={{ display: "flex", gap: 4, alignItems: "center", flex: "0 0 auto" }}><input type="checkbox" name="recebe_alertas" defaultChecked={p.recebe_alertas} style={{ width: "auto" }} /> recebe alertas</label>
                           <label style={{ display: "flex", gap: 4, alignItems: "center", flex: "0 0 auto" }}><input type="checkbox" name="ativo" defaultChecked={p.ativo} style={{ width: "auto" }} /> ativo</label>

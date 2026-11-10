@@ -2,14 +2,14 @@
 
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
-import { exigirPapel } from "@/lib/auth";
+import { exigirAcesso } from "@/lib/auth";
 import { db } from "@/lib/supabase/admin";
 import { auditar } from "@/lib/audit";
 import { gerarCodigo, CANAIS } from "@/lib/links";
 import { verificarEntrada } from "@/lib/security/guard";
 
 export async function criarLink(formData: FormData) {
-  const u = await exigirPapel(["atendente"]);
+  const u = await exigirAcesso("links");
   const nome = String(formData.get("nome") ?? "").trim().slice(0, 80);
   const canal = String(formData.get("canal") ?? "outro");
   const mensagem = String(formData.get("mensagem") ?? "").trim().slice(0, 300);
@@ -35,7 +35,7 @@ export async function criarLink(formData: FormData) {
 }
 
 export async function alternarLink(formData: FormData) {
-  const u = await exigirPapel(["atendente"]);
+  const u = await exigirAcesso("links");
   const id = String(formData.get("id"));
   const ativo = formData.get("ativo") === "1";
   await db().from("links_rastreados").update({ ativo }).eq("id", id);

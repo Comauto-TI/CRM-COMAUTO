@@ -3,7 +3,7 @@ import { createServerClient } from "@supabase/ssr";
 
 /**
  * Next 16: "proxy" (antigo middleware). Só renova a sessão e faz a checagem OTIMISTA
- * de login. A autorização de verdade é feita no servidor por exigirPapel().
+ * de login. A autorização de verdade é feita no servidor por exigirAcesso().
  */
 export async function proxy(request: NextRequest) {
   let response = NextResponse.next({ request });

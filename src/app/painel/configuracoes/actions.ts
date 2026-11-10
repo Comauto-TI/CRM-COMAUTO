@@ -1,11 +1,13 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { exigirPapel } from "@/lib/auth";
+import { exigirAcesso } from "@/lib/auth";
 import { db } from "@/lib/supabase/admin";
 import { invalidarConfig, getConfig } from "@/lib/config";
 import { normalizarTelefone } from "@/lib/phone";
 import { auditar } from "@/lib/audit";
+import { tabelaUsuarios } from "@/lib/usuarios";
+import { papelValido, setorValido } from "@/lib/permissoes";
 
 async function salvarChave(chave: string, valor: unknown, email: string) {
   await db().from("config").upsert({ chave, valor, atualizado_em: new Date().toISOString() });
@@ -14,7 +16,7 @@ async function salvarChave(chave: string, valor: unknown, email: string) {
 }
 
 export async function salvarEmpresa(formData: FormData) {
-  const u = await exigirPapel(["admin"]);
+  const u = await exigirAcesso("configuracoes");
   await salvarChave("empresa", {
     nome: String(formData.get("nome")).trim().slice(0, 80),
     endereco: String(formData.get("endereco")).trim().slice(0, 200),
@@ -29,7 +31,7 @@ export async function salvarEmpresa(formData: FormData) {
 }
 
 export async function salvarFinanceiro(formData: FormData) {
-  const u = await exigirPapel(["financeiro"]);
+  const u = await exigirAcesso("custos_config");
   const cambio = Number(String(formData.get("cambio")).replace(",", "."));
   if (cambio > 0) await salvarChave("cambio_usd_brl", cambio, u.email);
   for (const cat of ["MARKETING", "UTILITY", "AUTHENTICATION", "SERVICE"]) {
@@ -47,7 +49,7 @@ export async function salvarFinanceiro(formData: FormData) {
 }
 
 export async function salvarCustoFixo(formData: FormData) {
-  const u = await exigirPapel(["financeiro"]);
+  const u = await exigirAcesso("custos_config");
   const id = String(formData.get("id") || "");
   const dados = {
     nome: String(formData.get("nome")).slice(0, 80),
@@ -63,7 +65,7 @@ export async function salvarCustoFixo(formData: FormData) {
 }
 
 export async function salvarTemplate(formData: FormData) {
-  const u = await exigirPapel(["admin"]);
+  const u = await exigirAcesso("configuracoes");
   const id = String(formData.get("id"));
   const status = String(formData.get("status_aprovacao"));
   if (!["rascunho", "pendente", "aprovado", "reprovado"].includes(status)) return;
@@ -73,7 +75,7 @@ export async function salvarTemplate(formData: FormData) {
 }
 
 export async function salvarServico(formData: FormData) {
-  const u = await exigirPapel(["admin"]);
+  const u = await exigirAcesso("configuracoes");
   const id = String(formData.get("id") || "");
   const preco = String(formData.get("preco") || "").replace(",", ".");
   const dados = {
@@ -90,7 +92,7 @@ export async function salvarServico(formData: FormData) {
 }
 
 export async function adicionarBloqueio(formData: FormData) {
-  const u = await exigirPapel(["admin"]);
+  const u = await exigirAcesso("configuracoes");
   const { fuso_offset } = await getConfig();
   const recurso = String(formData.get("recurso") || "") || null;
   const ini = new Date(`${formData.get("inicio")}:00${fuso_offset}`);
@@ -102,7 +104,7 @@ export async function adicionarBloqueio(formData: FormData) {
 }
 
 export async function removerBloqueio(formData: FormData) {
-  const u = await exigirPapel(["admin"]);
+  const u = await exigirAcesso("configuracoes");
   const id = String(formData.get("id"));
   await db().from("bloqueios").delete().eq("id", id);
   await auditar(u.email, "remover_bloqueio", "bloqueios", id);
@@ -111,21 +113,26 @@ export async function removerBloqueio(formData: FormData) {
 
 /** Equipe: telefone de alerta e consentimento para receber alertas de atendimento no WhatsApp. */
 export async function salvarEquipe(formData: FormData) {
-  const u = await exigirPapel(["admin"]);
+  const u = await exigirAcesso("configuracoes");
   const userId = String(formData.get("user_id"));
   const tel = normalizarTelefone(String(formData.get("telefone") || ""));
   const recebe = formData.get("recebe_alertas") === "on" && !!tel;
-  const { data: atual } = await db().from("admin_usuarios").select("consentimento_alertas_em").eq("user_id", userId).single();
+  const papel = formData.get("papel");
+  const setor = formData.get("setor");
+  if (!papelValido(papel)) return;
+  const tabela = await tabelaUsuarios();
+  const { data: atual } = await db().from(tabela).select("consentimento_alertas_em").eq("user_id", userId).single();
   await db()
-    .from("admin_usuarios")
+    .from(tabela)
     .update({
-      papel: String(formData.get("papel")),
+      papel,
+      ...(tabela === "usuarios" && setorValido(setor) ? { setor } : {}),
       ativo: formData.get("ativo") === "on",
       telefone_whatsapp: tel,
       recebe_alertas: recebe,
       consentimento_alertas_em: recebe ? atual?.consentimento_alertas_em ?? new Date().toISOString() : null,
     })
     .eq("user_id", userId);
-  await auditar(u.email, "equipe", "admin_usuarios", userId);
+  await auditar(u.email, "equipe", "usuarios", userId, { papel, setor });
   revalidatePath("/painel/configuracoes");
 }

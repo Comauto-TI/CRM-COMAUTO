@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
-import { exigirPapel } from "@/lib/auth";
+import { exigirAcesso } from "@/lib/auth";
 import { db } from "@/lib/supabase/admin";
 import { normalizarTelefone } from "@/lib/phone";
 import { auditar } from "@/lib/audit";
@@ -10,7 +10,7 @@ import { registrarConsentimento, aplicarOptout } from "@/lib/consent";
 
 /** LGPD: anonimiza o titular (mantém só o mínimo para comprovar opt-out/consentimentos). */
 export async function anonimizar(formData: FormData) {
-  const u = await exigirPapel(["admin"]);
+  const u = await exigirAcesso("lgpd");
   const id = String(formData.get("id"));
   const { data: c } = await db().from("clientes").select("telefone").eq("id", id).single();
   if (!c) return;
@@ -27,7 +27,7 @@ export async function anonimizar(formData: FormData) {
 }
 
 export async function optoutManual(formData: FormData) {
-  const u = await exigirPapel(["atendente"]);
+  const u = await exigirAcesso("clientes");
   const id = String(formData.get("id"));
   const { data: c } = await db().from("clientes").select("telefone").eq("id", id).single();
   if (!c) return;
@@ -42,7 +42,7 @@ export async function optoutManual(formData: FormData) {
  * Colunas: telefone;nome;cidade;tags(separadas por |)
  */
 export async function importarCSV(formData: FormData) {
-  const u = await exigirPapel(["admin"]);
+  const u = await exigirAcesso("lgpd");
   const csv = String(formData.get("csv") ?? "");
   const origem = String(formData.get("origem") ?? "").trim();
   const texto = String(formData.get("texto") ?? "").trim();

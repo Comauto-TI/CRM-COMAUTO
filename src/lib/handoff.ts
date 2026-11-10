@@ -7,6 +7,8 @@ import { dentroHorarioEnvio } from "@/lib/time";
 import { enviarTemplate } from "@/lib/whatsapp/client";
 import { responderLivre } from "@/lib/messaging/outbound";
 import { auditar } from "@/lib/audit";
+import { tabelaUsuarios } from "@/lib/usuarios";
+import { papelValido, supervisiona } from "@/lib/permissoes";
 
 /**
  * ATENDIMENTO HUMANO (regra 9) — fluxo da recepção estilo CRM:
@@ -73,7 +75,7 @@ export async function transferirParaHumano(clienteId: string, motivo: string, op
 export async function alertarRecepcao(conversaId: string, clienteId: string, motivo: string) {
   const { data: cliente } = await db().from("clientes").select("nome, telefone").eq("id", clienteId).single();
   const { data: equipe } = await db()
-    .from("admin_usuarios")
+    .from(await tabelaUsuarios())
     .select("nome, telefone_whatsapp")
     .eq("ativo", true)
     .eq("recebe_alertas", true)
@@ -135,7 +137,7 @@ export async function assumirConversa(conversaId: string, email: string) {
 
 /**
  * C7-006: a trava de posse é conferida NA PRÓPRIA atualização (não só na interface).
- * Atendente: só mexe na conversa livre ou assumida por ele. Admin: pode intervir (supervisor) — decisão do Simão.
+ * Atendente: só mexe na conversa livre ou assumida por ele. Admin e gerente: podem intervir (supervisores).
  * Zero linhas afetadas = conflito de posse; auditoria só registra o que de fato mudou.
  */
 type Quem = { email: string; papel: string };
@@ -143,7 +145,7 @@ export type ResultadoPosse = { ok: true } | { ok: false; motivo: string };
 
 async function mudarComPosse(conversaId: string, quem: Quem, patch: Record<string, unknown>, acao: string, dados: Record<string, unknown> = {}): Promise<ResultadoPosse> {
   let q = db().from("conversas").update(patch).eq("id", conversaId).eq("status", "humano");
-  if (quem.papel !== "admin") q = q.or(`assumida_por.is.null,assumida_por.eq."${quem.email.replace(/"/g, "")}"`);
+  if (!(papelValido(quem.papel) && supervisiona({ papel: quem.papel }))) q = q.or(`assumida_por.is.null,assumida_por.eq."${quem.email.replace(/"/g, "")}"`);
   const { data, error } = await q.select("id");
   if (error) return { ok: false, motivo: "falha ao atualizar a conversa" };
   if (!data?.length) {

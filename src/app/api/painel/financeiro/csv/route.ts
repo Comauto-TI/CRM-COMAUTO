@@ -14,7 +14,7 @@ const esc = (v: unknown) => {
 };
 
 export async function GET(req: NextRequest) {
-  const u = await usuarioApi(["financeiro"]);
+  const u = await usuarioApi("financeiro");
   if (!u) return new NextResponse("unauthorized", { status: 401 });
   const cfg = await getConfig();
   const mes = req.nextUrl.searchParams.get("mes") ?? "";

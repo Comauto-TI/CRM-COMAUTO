@@ -1,11 +1,11 @@
 import { Suspense } from "react";
-import { exigirPapel } from "@/lib/auth";
+import { exigirAcesso } from "@/lib/auth";
 import { getConfig } from "@/lib/config";
 import Inbox from "../_components/Inbox";
 
 /** Atendimento estilo WhatsApp Web: abas Em espera / Em atendimento / Finalizados / Assistente. */
 export default async function Atendimento() {
-  await exigirPapel(["atendente"]);
+  await exigirAcesso("atendimento");
   const cfg = await getConfig();
   return (
     <div className="pagina-cheia">

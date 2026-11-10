@@ -1,12 +1,13 @@
 import Link from "next/link";
-import { exigirPapel } from "@/lib/auth";
+import { exigirAcesso } from "@/lib/auth";
 import { db } from "@/lib/supabase/admin";
 import { getConfig } from "@/lib/config";
 import { formatarBRL, formatarDataHora, localParaUtc, dataLocalISO } from "@/lib/time";
 import { Cabecalho, Kpi, Status } from "./_components/ui";
+import { podeAcessar } from "@/lib/permissoes";
 
 export default async function VisaoGeral({ searchParams }: { searchParams: Promise<{ erro?: string }> }) {
-  const u = await exigirPapel();
+  const u = await exigirAcesso();
   const { erro } = await searchParams;
   const cfg = await getConfig();
   const off = cfg.fuso_offset;
@@ -45,7 +46,7 @@ export default async function VisaoGeral({ searchParams }: { searchParams: Promi
         <Kpi rotulo="Agendamentos hoje" valor={ags.length} sub={`${confirmados} confirmados · ${ags.length - confirmados} pendentes`} />
         <Kpi rotulo="Aguardando atendimento" valor={<span style={{ color: (fila.count ?? 0) ? "var(--erro)" : undefined }}>{fila.count ?? 0}</span>} sub={<Link href="/painel/conversas?aba=espera">abrir fila</Link>} />
         <Kpi rotulo="Clientes que falaram hoje" valor={contatosHoje} />
-        {u.papel !== "atendente" ? (
+        {podeAcessar(u, "financeiro") ? (
           <Kpi rotulo="Custo do mês" valor={formatarBRL(totalMes)} sub={<Link href="/painel/financeiro">ver detalhes</Link>} />
         ) : (
           <Kpi rotulo="Bloqueios de segurança hoje" valor={bloqueios.count ?? 0} />

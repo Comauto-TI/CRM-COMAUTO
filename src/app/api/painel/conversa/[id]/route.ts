@@ -7,7 +7,7 @@ export const dynamic = "force-dynamic";
 
 /** Conversa + ficha do lead (CRM) para a janela de atendimento. */
 export async function GET(_req: NextRequest, ctx: { params: Promise<{ id: string }> }) {
-  const u = await usuarioApi(["atendente"]);
+  const u = await usuarioApi("atendimento");
   if (!u) return new NextResponse("unauthorized", { status: 401 });
   const { id } = await ctx.params;
 

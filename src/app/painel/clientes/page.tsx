@@ -1,4 +1,4 @@
-import { exigirPapel } from "@/lib/auth";
+import { exigirAcesso } from "@/lib/auth";
 import { db } from "@/lib/supabase/admin";
 import { getConfig } from "@/lib/config";
 import { formatarDataHora } from "@/lib/time";
@@ -12,7 +12,7 @@ type Cli = {
 };
 
 export default async function Clientes({ searchParams }: { searchParams: Promise<{ q?: string; msg?: string; ok?: string; inv?: string; opt?: string }> }) {
-  const u = await exigirPapel(["atendente"]);
+  const u = await exigirAcesso("clientes");
   const cfg = await getConfig();
   const sp = await searchParams;
 

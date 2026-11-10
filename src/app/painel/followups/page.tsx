@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { revalidatePath } from "next/cache";
-import { exigirPapel } from "@/lib/auth";
+import { exigirAcesso } from "@/lib/auth";
 import { db } from "@/lib/supabase/admin";
 import { getConfig } from "@/lib/config";
 import { formatarDataHora } from "@/lib/time";
@@ -18,7 +18,7 @@ const TIPOS: Record<string, string> = {
 
 async function cancelar(formData: FormData) {
   "use server";
-  const u = await exigirPapel(["atendente"]);
+  const u = await exigirAcesso("followups");
   const id = String(formData.get("id"));
   await db().from("followups").update({ status: "cancelado", resultado: `cancelado por ${u.email}` }).eq("id", id).eq("status", "pendente");
   await auditar(u.email, "cancelar_followup", "followup", id);
@@ -26,7 +26,7 @@ async function cancelar(formData: FormData) {
 }
 
 export default async function Followups({ searchParams }: { searchParams: Promise<{ s?: string }> }) {
-  await exigirPapel(["atendente"]);
+  await exigirAcesso("followups");
   const cfg = await getConfig();
   const { s = "pendente" } = await searchParams;
   const { data } = await db()

@@ -1,9 +1,25 @@
-# AGENTS.md — Agente WhatsApp Comauto
+# AGENTS.md — Plataforma Comauto (Chatbot + CRM)
 
 Instruções para QUALQUER agente (Codex, Claude Code, outros) que trabalhar neste repositório.
 Leia inteiro antes de mexer. Em caso de dúvida, registre no arquivo de apontamentos e **não** improvise.
 
-## 1. O projeto
+## 0. Leia primeiro — a plataforma (decidido em 10/11/2026)
+O chatbot virou a base da **Plataforma Comauto**: um sistema com setores (**Vendas**, **Oficina/Agenda**, **Peças**,
+administração) que compartilham a ficha única de cliente e veículo, com unidade (`comauto`, `motomecanica`,
+`santaluzia`) em cada atendimento. Repositório: `github.com/Comauto-TI/CRM-COMAUTO`.
+- **Etapas, donos e status:** `docs/ETAPAS.md` (atualize ao concluir). **Decisões e conversa:** `chatdesenvolvimento.txt`.
+- **Claude (engenheiro-chefe):** núcleo/fundação, Vendas, chatbot→CRM, vínculos Avaliex e Processo de Vendas, Bravus,
+  aniversários, visão do admin. **Codex (executor):** Oficina/Agenda, Peças, vínculo Revisão, testes e2e/SQL,
+  revisão dos PRs do Claude, apoio em Novos/Seminovos.
+- **Pastas por módulo:** `src/modulos/vendas` (Claude), `src/modulos/oficina` e `src/modulos/pecas` (Codex);
+  núcleo compartilhado em `src/lib` (mudança no núcleo = PR revisado pelo Claude).
+- **Migrations por módulo:** `0002_nucleo`, `0003_vendas` (Claude) · `0004_oficina`, `0005_pecas` (Codex).
+- **Banco de dev** = Supabase "Ambiente de testes", que também é o banco de teste do processo-vendas-teste do Tiago:
+  **não criar** tabelas `empresas`, `profiles`, `propostas`, `convites`; não apagar usuários de auth que não forem nossos.
+  Chaves em `secrets/CHAVES-DESENVOLVIMENTO.txt` (fora do git) — nunca copiar valores para arquivos versionados.
+- Branches `claude/*` e `codex/*`; PR para `main` revisado pelo outro. Antes de comando destrutivo no banco: perguntar ao Simão.
+
+## 1. O projeto (origem: chatbot)
 Chatbot de WhatsApp da Comauto (concessionária/oficina): agendamento de revisões e serviços,
 convites e campanhas de eventos/marketing, follow-up, atendimento humano pela recepção (estilo CRM)
 e painel de controle com financeiro detalhado. IA: Claude Haiku (`claude-haiku-5-5`).
@@ -41,7 +57,7 @@ Antes de escrever código Next, leia `node_modules/next/dist/docs/`.
 - Camadas: `src/lib/security/guard.ts` (entrada → recusa fixa SEM chamar a IA; saída → `filtrarSaida`), prompt com regras + canário, e arquitetura: **a IA nunca recebe segredo no contexto**.
 - Segredos só em variável de ambiente. Nunca em código, log, teste, commit ou mensagem.
 - Todo envio de WhatsApp passa por `src/lib/messaging/outbound.ts` (é ali que estão consentimento, janela e template).
-- O painel acessa dados **só pelo servidor**, depois de `exigirPapel()` (`src/lib/auth.ts`). RLS fica ligado e sem políticas: o navegador nunca lê o banco.
+- O painel acessa dados **só pelo servidor**, depois de `exigirAcesso(area)` (`src/lib/auth.ts` + mapa em `src/lib/permissoes.ts`). RLS fica ligado e sem políticas: o navegador nunca lê o banco.
 - `npm run lint:secrets` (gitleaks) antes de qualquer deploy.
 
 ## 4. Mapa de pastas

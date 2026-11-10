@@ -1,6 +1,6 @@
 {
-  "name": "comauto-whatsapp-agent",
-  "version": "0.1.0",
+  "name": "plataforma-comauto",
+  "version": "0.0.1",
   "private": true,
   "type": "module",
   "scripts": {

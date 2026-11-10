@@ -1,4 +1,4 @@
-import { exigirPapel } from "@/lib/auth";
+import { exigirAcesso } from "@/lib/auth";
 import { db } from "@/lib/supabase/admin";
 import { getConfig } from "@/lib/config";
 import { formatarDataHora } from "@/lib/time";
@@ -18,7 +18,7 @@ const ROTULO: Record<string, string> = {
 };
 
 export default async function Seguranca() {
-  await exigirPapel(["admin"]);
+  await exigirAcesso("seguranca");
   const cfg = await getConfig();
   const desde = new Date(Date.now() - 30 * 86400_000).toISOString();
   const [{ data: eventos }, { data: auditoria }] = await Promise.all([

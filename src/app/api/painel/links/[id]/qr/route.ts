@@ -15,7 +15,7 @@ export const dynamic = "force-dynamic";
  * ?formato=png|svg  ?baixar=1 para download.
  */
 export async function GET(req: NextRequest, ctx: { params: Promise<{ id: string }> }) {
-  const u = await usuarioApi(["atendente"]);
+  const u = await usuarioApi("links");
   if (!u) return new NextResponse("unauthorized", { status: 401 });
   const { id } = await ctx.params;
   const sp = req.nextUrl.searchParams;

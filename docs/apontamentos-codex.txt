@@ -741,3 +741,52 @@ Testes: tests/correcoes-c7.test.ts (C7-001/002). Suíte: 532 passando. C7-003/00
 C8-002: obsoleto (ConversaDrawer.tsx foi removido; a central virou src/app/painel/_components/Inbox.tsx + Conversa.tsx).
 C8-001 e C8-003: aceitos como melhoria, prioridade baixa — ficam para depois.
 Arquivos liberados para edição normal.
+
+
+---------------------------------------------------------------------- 
+[ID] F0-2-001
+[ARQUIVO] supabase/migrations/0002_nucleo.sql:95; src/lib/scheduling/booking.ts:43 e 137
+[TESTE] Postgres local descartável: após 0001, seed e duas aplicações de 0002, inserir agendamento da Motomecânica com recurso e serviço da Comauto.
+[ESPERADO] Vínculos de recurso e serviço pertencem à unidade do agendamento. O servidor consulta slots e grava o agendamento pela unidade autorizada.
+[OBTIDO] O INSERT foi aceito. A 0002 verifica apenas se a unidade existe; booking consulta recursos, horários e bloqueios sem unidade e não informa unidade ao gravar.
+[TIPO] bug
+[GRAVIDADE] alta
+[SUGESTÃO] Validar unidade no serviço de agenda e no banco, com FKs compostas de unidade e ID ou restrição equivalente. Testar os fluxos de criação e reagendamento com duas unidades.
+
+[ID] F0-3-001
+[ARQUIVO] src/app/api/painel/clientes/[id]/exportar/route.ts:9; src/lib/permissoes.ts:47 e 57
+[TESTE] Revisão do fluxo de autorização com perfil vendedor ou pecas, permitido na área clientes.
+[ESPERADO] Exportação integral restrita à área lgpd.
+[OBTIDO] A rota usa usuarioApi("clientes") e pode devolver até 5 mil mensagens integrais do cliente, além dos demais dados.
+[TIPO] bug
+[GRAVIDADE] alta
+[SUGESTÃO] Aplicar usuarioApi("lgpd") e esconder o botão para perfis sem permissão. Testar negação para Vendas e Peças e sucesso para o papel autorizado.
+
+[ID] F0-3-002
+[ARQUIVO] src/app/painel/page.tsx:10 e 26; src/lib/permissoes.ts:49
+[TESTE] Revisão da página inicial com perfil de Peças, que acessa inicio, mas não agenda.
+[ESPERADO] Consultar e exibir detalhes de agenda só com permissão e apenas nas unidades autorizadas.
+[OBTIDO] A página autentica o usuário e consulta os próximos agendamentos com nomes de clientes e dados de confirmação, sem verificar área ou unidade.
+[TIPO] bug
+[GRAVIDADE] alta
+[SUGESTÃO] Condicionar consulta e seção à permissão agenda, com filtro pelas unidades autorizadas quando aplicável.
+
+[ID] F0-3-003
+[ARQUIVO] src/app/painel/configuracoes/actions.ts:122
+[TESTE] Durante a transição, selecionar papel vendedor com fallback ativo para admin_usuarios anterior à 0002.
+[ESPERADO] Formulário oferece papéis compatíveis com a tabela ativa e só audita sucesso após a gravação.
+[OBTIDO] A tabela legada rejeita papéis novos. A action ignora o erro do update e registra auditoria.
+[TIPO] bug
+[GRAVIDADE] media
+[SUGESTÃO] Limitar opções no legado e propagar erro da gravação antes de auditar.
+----------------------------------------------------------------------
+
+
+[ID] F0-2-002
+[ARQUIVO] supabase/migrations/0002_nucleo.sql:8 e 79–80
+[TESTE] Banco local descartável com pg_trgm já instalado no schema extensions e search_path da sessão restrito a public. Aplicar 0002. Controle: repetir com public, extensions no search_path.
+[ESPERADO] A sessão de migração consegue resolver gin_trgm_ops no schema da extensão.
+[OBTIDO] O cenário sem extensions retornou 42704 nos índices; o controle passou. A configuração real do banco de dev não foi consultada neste teste.
+[TIPO] bug condicional
+[GRAVIDADE] media
+[SUGESTÃO] Antes de aplicar no banco compartilhado, conferir o schema de pg_trgm e o search_path da sessão. Usar o schema correto na sessão de migração ou qualificar a operator class conforme o schema instalado.

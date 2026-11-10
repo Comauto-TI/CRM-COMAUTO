@@ -7,7 +7,7 @@ export const dynamic = "force-dynamic";
 
 /** Fila de atendimento humano — consultada pelo popup do painel a cada 5 s. */
 export async function GET() {
-  const u = await usuarioApi(["atendente"]);
+  const u = await usuarioApi("atendimento");
   if (!u) return new NextResponse("unauthorized", { status: 401 });
 
   const { data } = await db()

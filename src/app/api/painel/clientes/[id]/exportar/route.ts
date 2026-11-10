@@ -6,7 +6,7 @@ export const dynamic = "force-dynamic";
 
 /** LGPD — direito de acesso: exporta todos os dados do titular em JSON. */
 export async function GET(_req: NextRequest, ctx: { params: Promise<{ id: string }> }) {
-  const u = await usuarioApi(["atendente"]);
+  const u = await usuarioApi("clientes");
   if (!u) return new NextResponse("unauthorized", { status: 401 });
   const { id } = await ctx.params;
 

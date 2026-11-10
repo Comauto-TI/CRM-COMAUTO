@@ -7,7 +7,7 @@ export const dynamic = "force-dynamic";
 
 /** Caixa de entrada estilo WhatsApp: abas Em espera / Em atendimento / Finalizados / Assistente. */
 export async function GET(req: NextRequest) {
-  const u = await usuarioApi(["atendente"]);
+  const u = await usuarioApi("atendimento");
   if (!u) return new NextResponse("unauthorized", { status: 401 });
   const aba = req.nextUrl.searchParams.get("aba") ?? "espera";
   const q = (req.nextUrl.searchParams.get("q") ?? "").replace(/[%,()]/g, "").slice(0, 40);
