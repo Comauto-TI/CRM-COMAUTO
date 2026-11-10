@@ -151,6 +151,14 @@ async function opParaAlterar(u: Usuario, id: string) {
   return data as { id: string; funil_id: string; etapa_id: string; vendedor_id: string | null; unidade: string } | null;
 }
 
+/** F2-4: cliente e unidade do cartão, só para quem pode mexer nele (agendar lembrete/mensagem). */
+export async function clienteDoCartao(u: Usuario, id: string): Promise<{ clienteId: string; unidade: string } | null> {
+  const op = await opParaAlterar(u, id);
+  if (!op || !podeMexer(u, op)) return null;
+  const { data } = await db().from("vendas_oportunidades").select("cliente_id").eq("id", id).single();
+  return data ? { clienteId: data.cliente_id as string, unidade: op.unidade } : null;
+}
+
 /**
  * F1-V-003: a permissão é conferida DE NOVO na própria gravação (unidade + posse vigente).
  * Se o gerente reatribuiu o cartão entre a leitura e a gravação, nada é alterado.

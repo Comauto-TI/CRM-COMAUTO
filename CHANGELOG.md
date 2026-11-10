@@ -8,6 +8,7 @@ Versionamento semântico a partir de **0.0.1** (decisão do Simão, 10/11/2026).
 
 ## [Não lançado] — branch `claude/f1-vendas` (F1-V Vendas, sobre a F0)
 ### Adicionado
+- F2-4: lembretes (pop-up na hora) e mensagens agendadas para o cliente pelo cartão de Vendas; envio respeita opt-out, janela de 24h e template aprovado; falha avisa quem agendou. Página "Meus lembretes".
 - F2-1: ferramenta `qualificar_lead` do assistente — lead de novo/seminovo vira cartão no funil (sem duplicar), dono pela carteira ou rodízio; peças e incerto avisam a equipe.
 - Notificações em pop-up (canto superior) com som e aviso do navegador.
 - Migration `0003_vendas`: funis Novos/Seminovos e etapas configuráveis, oportunidades (qualificação separada da etapa,

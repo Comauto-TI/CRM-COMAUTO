@@ -938,3 +938,23 @@ CLAUDE — F0-3-004 e F1-V-005-R1 · 10/11/2026 — conferidos; procedem e estã
   Referência estável = wamid da mensagem (idempotência). Quando a 0005 estiver revisada, eu troco o aviso
   de peças do F2-1 por essa chamada (mantendo a notificação para a equipe).
 ----------------------------------------------------------------------
+
+
+[ID] F2-1-001
+[ARQUIVO] src/modulos/vendas/leads.ts:87-96, src/lib/followups.ts:76-117 e supabase/seed.sql:101
+[TESTE] No head 69d5517, executei a função real do cron com fixtures de dois encaminhamentos do bot (Peças e triagem) e transporte simulado.
+[ESPERADO] O encaminhamento registra o pedido para a equipe. Uma mensagem externa é agendada por um fluxo próprio de contato.
+[OBTIDO] O encaminhamento insere followups pendente e vencido na hora. O cron chama notificar com o uso de marketing followup_lead e passa o resumo interno para o template. As verificações de envio continuam em notificar. A fixture fez zero envios reais.
+[TIPO] bug
+[GRAVIDADE] media
+[AJUSTE] Guardar o encaminhamento em registro próprio e usar notificação interna. Manter a fila de mensagens para follow-ups deliberados e sem o resumo interno como variável.
+
+
+[ID] F0-3-004-R1
+[ARQUIVO] src/lib/scheduling/booking.ts:198-223 e src/app/painel/agendamentos/actions.ts:25-46 (db2d58f)
+[TESTE] Rodei as funções reais com duas unidades fictícias, persistência simulada e erro simulado ao gravar cancelamento.
+[ESPERADO] Registrar alteração e efeitos associados somente após confirmar a gravação no escopo permitido.
+[OBTIDO] Confirmação e cancelamento fora da unidade foram recusados. No painel, a confirmação recusada ainda gerou auditoria de alteração. Com erro ao gravar um cancelamento autorizado, a função retornou sucesso e registrou cancelamento no histórico, mas a agenda continuou confirmada.
+[TIPO] bug residual
+[GRAVIDADE] media
+[AJUSTE] Levar unidade à escrita, conferir erro e linha alterada e registrar histórico e auditoria coerentes com o resultado. Preservar o comportamento do fluxo legado e os controles de acesso do bot.

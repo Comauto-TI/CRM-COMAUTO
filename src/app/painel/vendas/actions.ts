@@ -6,8 +6,9 @@ import { exigirAcesso } from "@/lib/auth";
 import { getConfig } from "@/lib/config";
 import { localParaUtc } from "@/lib/time";
 import {
-  criarOportunidade, moverOportunidade, assumirOportunidade, atualizarQualificacao, registrarAtividade, criarTarefa, concluirTarefa,
+  criarOportunidade, moverOportunidade, assumirOportunidade, atualizarQualificacao, registrarAtividade, criarTarefa, concluirTarefa, clienteDoCartao,
 } from "@/modulos/vendas/dados";
+import { agendarLembrete, agendarMensagem } from "@/lib/agendados";
 import { lerValorBRL, ehChave, PAGAMENTOS, PRAZOS, TEMPERATURAS, QUALIFICACOES, TIPOS_ATIVIDADE, MOTIVOS_PERDA } from "@/modulos/vendas/regras";
 
 const texto = (f: FormData, k: string) => String(f.get(k) ?? "").trim();
@@ -105,6 +106,21 @@ export async function novaTarefa(f: FormData) {
     ? await criarTarefa(u, id, titulo, instante.toISOString()) : { ok: false as const, motivo: "Informe a tarefa e o prazo" };
   revalidatePath("/painel/vendas");
   redirect(voltar(f, r.ok ? { op: id } : { op: id, erro: r.motivo }));
+}
+
+/** F2-4: lembrete para mim ou mensagem agendada para o cliente, a partir do cartão. */
+export async function agendarNoCartao(f: FormData) {
+  const u = await exigirAcesso("vendas");
+  const id = texto(f, "id");
+  const alvo = await clienteDoCartao(u, id);
+  if (!alvo) redirect(voltar(f, { op: id, erro: "Sem permissão neste cartão" }));
+  const m = /^(\d{4}-\d{2}-\d{2})T(\d{2}:\d{2})$/.exec(texto(f, "quando"));
+  const cfg = await getConfig();
+  const quando = m ? localParaUtc(m[1], m[2], cfg.fuso_offset) : new Date(NaN);
+  const dados = { clienteId: alvo!.clienteId, quando, texto: texto(f, "texto"), oportunidadeId: id, unidade: alvo!.unidade };
+  const r = texto(f, "tipo") === "mensagem" ? await agendarMensagem(u, dados) : await agendarLembrete(u, dados);
+  revalidatePath("/painel/vendas");
+  redirect(voltar(f, r.ok ? { op: id, ok: "agendado" } : { op: id, erro: r.motivo }));
 }
 
 export async function concluir(f: FormData) {

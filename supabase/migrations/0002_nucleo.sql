@@ -168,13 +168,39 @@ create table if not exists lembretes (
 );
 create index if not exists lembretes_usuario_idx on lembretes (usuario_id, concluido_em, data_alvo);
 
+-- F2-4: lembrete com hora marcada (vira pop-up na hora) e ligado ao cartão de origem
+alter table lembretes add column if not exists quando timestamptz;
+alter table lembretes add column if not exists notificado_em timestamptz;
+alter table lembretes add column if not exists oportunidade_id uuid;
+alter table lembretes add column if not exists unidade text not null default 'comauto' references unidades (chave);
+create index if not exists lembretes_vencendo_idx on lembretes (quando) where notificado_em is null and concluido_em is null;
+
+-- F2-4: mensagem agendada para o cliente. Sai SEMPRE pelo outbound.ts no horário marcado:
+-- opt-out bloqueia; janela de 24h aberta → texto do usuário; fechada → só template aprovado + consentimento.
+create table if not exists mensagens_agendadas (
+  id              uuid primary key default gen_random_uuid(),
+  unidade         text not null default 'comauto' references unidades (chave),
+  cliente_id      uuid not null references clientes (id) on delete cascade,
+  oportunidade_id uuid,
+  criado_por      uuid references usuarios (user_id) on delete set null,
+  texto           text not null check (length(texto) between 1 and 1000),
+  enviar_em       timestamptz not null,
+  status          text not null default 'pendente' check (status in ('pendente', 'enviando', 'enviada', 'bloqueada', 'cancelada')),
+  modo            text check (modo in ('livre', 'template')),
+  motivo          text,
+  enviada_em      timestamptz,
+  criado_em       timestamptz not null default now()
+);
+create index if not exists mensagens_agendadas_fila_idx on mensagens_agendadas (status, enviar_em);
+create index if not exists mensagens_agendadas_autor_idx on mensagens_agendadas (criado_por, enviar_em desc);
+
 -- ---------------------------------------------------------------------
 -- RLS: mesma política do 0001 — tudo fechado, acesso só pelo servidor
 -- ---------------------------------------------------------------------
 do $$
 declare t text;
 begin
-  foreach t in array array['unidades','usuarios','usuario_unidades','notificacoes','lembretes'] loop
+  foreach t in array array['unidades','usuarios','usuario_unidades','notificacoes','lembretes','mensagens_agendadas'] loop
     execute format('alter table %I enable row level security', t);
     execute format('revoke all on %I from anon, authenticated', t);
     -- grants explícitos para o servidor (mesmo raciocínio do F1-V-004), sem depender de grant implícito

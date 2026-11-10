@@ -6,6 +6,7 @@ import { processarFilaCampanhas } from "@/lib/campaigns";
 import { verificarSLA } from "@/lib/handoff";
 import { lancarCustosFixosDoMes } from "@/lib/costs";
 import { retomarMensagensPendentes } from "@/lib/conversation/handler";
+import { processarAgendados } from "@/lib/agendados";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -18,7 +19,12 @@ function autorizado(req: NextRequest): boolean {
 }
 
 const JOBS: Record<string, () => Promise<unknown>> = {
-  lembretes: async () => ({ lembretes: await enviarLembretes(), sla: await verificarSLA(), retomada: await retomarMensagensPendentes() }),
+  lembretes: async () => ({
+    lembretes: await enviarLembretes(),
+    sla: await verificarSLA(),
+    retomada: await retomarMensagensPendentes(),
+    agendados: await processarAgendados(), // F2-4: lembretes dos usuários + mensagens agendadas
+  }),
   campanhas: processarFilaCampanhas,
   followups: async () => ({ gerados: await gerarFollowups(), enviados: await enviarFollowupsPendentes() }),
   "custos-fixos": () => lancarCustosFixosDoMes(),

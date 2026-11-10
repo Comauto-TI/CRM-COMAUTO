@@ -938,3 +938,12 @@ a { color: var(--vw-azul); }
 /* quadro largo rola dentro da coluna, sem empurrar a página */
 .conteudo { min-width: 0; }
 .vendas, .vendas-principal { min-width: 0; }
+
+/* ===== F2-4: Meus lembretes ===== */
+.lista-agendados { list-style: none; margin: 0; padding: 0; display: grid; }
+.lista-agendados li { display: flex; justify-content: space-between; gap: 12px; padding: 12px 2px; border-bottom: 1px solid var(--borda); }
+.lista-agendados li:last-child { border-bottom: 0; }
+.lista-agendados li.feito { opacity: .55; }
+.lista-agendados-lado { display: flex; flex-direction: column; align-items: flex-end; gap: 6px; flex: none; font-size: 12.5px; }
+.texto-erro { color: var(--erro); display: block; margin-top: 2px; }
+.toast.notif-alerta::before { background: var(--erro); }

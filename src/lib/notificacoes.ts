@@ -3,7 +3,7 @@ import { db } from "@/lib/supabase/admin";
 import { nucleoAplicado } from "@/lib/usuarios";
 
 /** Central de notificações (F0-4). Usada por todos os setores: lead novo, atendimento, aniversário, tarefa. */
-export type TipoNotificacao = "atendimento" | "lead" | "pecas" | "aniversario" | "tarefa" | "sistema";
+export type TipoNotificacao = "atendimento" | "lead" | "pecas" | "aniversario" | "tarefa" | "alerta" | "sistema";
 export type Notificacao = {
   id: string;
   tipo: TipoNotificacao;

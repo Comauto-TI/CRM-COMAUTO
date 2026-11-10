@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 
 type Notif = { id: string; tipo: string; titulo: string; corpo: string | null; link: string | null; criado_em: string };
 
-const ICONE: Record<string, string> = { lead: "🚗", pecas: "🔧", atendimento: "💬", aniversario: "🎂", tarefa: "✅", sistema: "ℹ️" };
+const ICONE: Record<string, string> = { lead: "🚗", pecas: "🔧", atendimento: "💬", aniversario: "🎂", tarefa: "⏰", alerta: "⚠️", sistema: "ℹ️" };
 
 function bipe() {
   try {

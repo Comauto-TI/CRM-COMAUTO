@@ -46,6 +46,7 @@ const TODOS: Papel[] = [...PAPEIS];
 export const AREAS = {
   inicio: TODOS,
   notificacoes: TODOS,
+  lembretes: TODOS, // "Meus lembretes": cada um vê só os próprios (filtro por usuário no servidor)
   busca: ["gerente", "vendedor", "consultor_tecnico", "pecas", ...RECEPCAO],
   clientes: ["gerente", "vendedor", "consultor_tecnico", "pecas", ...RECEPCAO],
   atendimento: ["gerente", "vendedor", "consultor_tecnico", ...RECEPCAO],

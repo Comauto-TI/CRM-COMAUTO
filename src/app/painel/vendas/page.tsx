@@ -12,7 +12,7 @@ import {
 } from "@/modulos/vendas/regras";
 import { Cabecalho, Vazio } from "../_components/ui";
 import Quadro from "./Quadro";
-import { novaOportunidade, assumir, salvarQualificacao, novaAtividade, novaTarefa, concluir, moverPeloFormulario } from "./actions";
+import { novaOportunidade, assumir, salvarQualificacao, novaAtividade, novaTarefa, concluir, moverPeloFormulario, agendarNoCartao } from "./actions";
 
 type SP = {
   funil?: string; vendedor?: string; op?: string; nova?: string; erro?: string; ok?: string;
@@ -188,6 +188,7 @@ export default async function Vendas({ searchParams }: { searchParams: Promise<S
             <div className="mudo">{op.cliente?.telefone}{op.cliente?.cidade ? ` · ${op.cliente.cidade}` : ""}</div>
             {sp.erro && <div className="alerta erro">{sp.erro}</div>}
             {sp.ok === "salvo" && <div className="alerta ok">Salvo.</div>}
+            {sp.ok === "agendado" && <div className="alerta ok">Agendado. Acompanhe em <Link href="/painel/lembretes">Meus lembretes</Link>.</div>}
 
             <dl className="ficha">
               <dt>Vendedor</dt><dd>{op.vendedor_id ? nomes[op.vendedor_id] ?? "—" : "Sem vendedor"}</dd>
@@ -263,6 +264,25 @@ export default async function Vendas({ searchParams }: { searchParams: Promise<S
                 </form>
               )}
             </section>
+
+            {editar && (
+              <section className="secao">
+                <h3>Agendar lembrete ou mensagem</h3>
+                <form action={agendarNoCartao} className="form">
+                  <input type="hidden" name="id" value={op.id} /><input type="hidden" name="funil" value={funil.chave} />
+                  <div className="linha-form">
+                    <select name="tipo" defaultValue="lembrete" aria-label="Tipo">
+                      <option value="lembrete">Lembrete para mim</option>
+                      <option value="mensagem">Mensagem para o cliente</option>
+                    </select>
+                    <input name="quando" type="datetime-local" required aria-label="Quando" />
+                  </div>
+                  <textarea name="texto" rows={2} maxLength={1000} required placeholder="Lembrete: o que fazer · Mensagem: o texto que o cliente vai receber" />
+                  <button className="btn">Agendar</button>
+                  <small className="mudo">Mensagem: sai no horário marcado se o cliente tiver falado com a loja nas últimas 24h. Fora disso, só vai o modelo aprovado de &quot;retomada de atendimento&quot; (com autorização do cliente); se não puder sair, você recebe um aviso para ligar.</small>
+                </form>
+              </section>
+            )}
 
             <section className="secao">
               <h3>Contatos e anotações</h3>

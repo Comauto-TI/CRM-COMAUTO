@@ -9,6 +9,7 @@ const ITENS: { href: string; rotulo: string; icone: string; area: Area; badge?: 
   { href: "/painel", rotulo: "Visão geral", icone: "inicio", area: "inicio" },
   { href: "/painel/busca", rotulo: "Buscar cliente", icone: "busca", area: "busca" },
   { href: "/painel/vendas", rotulo: "Vendas", icone: "vendas", area: "vendas" },
+  { href: "/painel/lembretes", rotulo: "Meus lembretes", icone: "relogio", area: "lembretes" },
   { href: "/painel/conversas", rotulo: "Atendimento", icone: "atendimento", area: "atendimento", badge: true },
   { href: "/painel/agendamentos", rotulo: "Agendamentos", icone: "agenda", area: "agenda" },
   { href: "/painel/clientes", rotulo: "Clientes", icone: "clientes", area: "clientes" },
