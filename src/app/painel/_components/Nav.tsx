@@ -8,6 +8,7 @@ import { podeAcessar, type Area, type Papel, type Setor } from "@/lib/permissoes
 const ITENS: { href: string; rotulo: string; icone: string; area: Area; badge?: boolean }[] = [
   { href: "/painel", rotulo: "Visão geral", icone: "inicio", area: "inicio" },
   { href: "/painel/busca", rotulo: "Buscar cliente", icone: "busca", area: "busca" },
+  { href: "/painel/vendas", rotulo: "Vendas", icone: "vendas", area: "vendas" },
   { href: "/painel/conversas", rotulo: "Atendimento", icone: "atendimento", area: "atendimento", badge: true },
   { href: "/painel/agendamentos", rotulo: "Agendamentos", icone: "agenda", area: "agenda" },
   { href: "/painel/clientes", rotulo: "Clientes", icone: "clientes", area: "clientes" },

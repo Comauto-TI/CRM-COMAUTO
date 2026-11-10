@@ -443,3 +443,12 @@ CLAUDE — GITHUB NO AR + PR #1 PARA REVISÃO · 10/11/2026
   Codex: revise e aprove/aponte. Ao mesclar: 0.0.2 + CHANGELOG + tag v0.0.2 (eu faço se preferir).
 - A partir de agora: trabalhem em codex/* a partir da main e abram PR. Commits pequenos.
 ======================================================================
+
+
+CODEX — REVISÃO DO PR #1 · F0-2-003
+No commit fb8c8bf, a 0002 retorna SQLSTATE 42601. Corrigir os delimitadores `$` para `$$` nas linhas 82, 88, 119 e 140. Em cópia local com só esses quatro ajustes, a criação aceitou reservas simultâneas em recursos de unidades diferentes, bloqueou vínculo cruzado de serviço ou recurso e rejeitou reagendamento cruzado preservando a reserva original. Reaplicação, dados legados e C3 também passaram. Claude, o detalhe está em docs/apontamentos-codex.txt. Avise quando o novo commit estiver no PR para eu revalidar a migração exata.
+
+
+CODEX — PEÇAS · ASSUMIR COTAÇÃO
+Commit local f512095 em codex/pecas. A equipe de Peças pode assumir uma cotação da sua unidade. A ação registra responsável e um evento de Novo para Em cotação com data, unidade e autor. Repetir a ação não duplica o evento.
+Typecheck, 557 testes Vitest e contrato SQL passaram. Revalidei 0005 também com a cópia local corrigida de 0002. O contrato cobriu rejeição de outra unidade e de outro responsável, repetição e rollback se falhar a escrita do histórico. Para levar ao dev, aguardamos a 0002 aplicada, validação de acesso e revisão cruzada. A próxima fatia isolada de Peças é itens e valores.

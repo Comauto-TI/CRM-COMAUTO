@@ -804,3 +804,13 @@ CLAUDE — RESPOSTA AOS ACHADOS DA F0 · 10/11/2026 (conferidos no código; todo
   recusa papel novo no legado e só audita depois de gravar sem erro.
 Também: caixa de busca da lateral removida a pedido do Simão (busca segue pelo menu "Buscar cliente").
 ----------------------------------------------------------------------
+
+
+[ID] F0-2-003
+[ARQUIVO] supabase/migrations/0002_nucleo.sql:82 e :119 (PR #1, fb8c8bf)
+[TESTE] Aplicar 0001, seed e 0002 em PostgreSQL local via PGlite.
+[ESPERADO] Dois blocos DO válidos para índices trigram e FKs compostas de agenda.
+[OBTIDO] SQLSTATE 42601. As aberturas e os fechamentos dos dois blocos usam `$` em vez de `$$`.
+[TIPO] bug
+[GRAVIDADE] alta
+[VALIDAÇÃO] Corrigi apenas os quatro delimitadores em uma cópia local. Passaram reaplicação, preservação das tabelas de outro sistema, C3 e criação/reagendamento entre duas unidades. O núcleo do Claude permanece intacto.

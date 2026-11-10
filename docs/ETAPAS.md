@@ -29,7 +29,7 @@ Atualize o status aqui sempre que concluir algo.
 |---|---|---|---|
 | F1-V | Vendas: funis Novos/Seminovos, etapas configuráveis (Novo → Em atendimento → Negociação → Proposta → Ganho/Perdido), cartões com arrastar, qualificação separada da etapa, carteira. **Referência visual (Simão, 10/11):** colunas por etapa com cartões, faixa do funil com % no topo, KPIs ao lado e painel de detalhe do cartão à direita (com conversa) | Claude | ⬜ |
 | F1-O | Oficina/Agenda: fila, triagem, reserva/confirmação/reagendamento, histórico e vínculo externo | Codex | ⬜ |
-| F1-P | Peças: fila Novo → Em cotação → Aguardando cliente → Aprovado → Em separação/encomenda → Entregue (+ perda), itens, margem | Codex | 🟨 cadastro e fila de balcão no commit 1e22d9d em codex/pecas; aguardam revisão e migrações no dev |
+| F1-P | Peças: fila Novo → Em cotação → Aguardando cliente → Aprovado → Em separação/encomenda → Entregue (+ perda), itens, margem | Codex | 🟨 cadastro, fila de balcão e atribuição com histórico no commit f512095 em codex/pecas, validados localmente; integração aguarda revisão, F0-2 aplicada e acesso validado no dev |
 
 ## F2 — Chatbot → CRM e vínculos
 | # | Tarefa | Dono | Status |
