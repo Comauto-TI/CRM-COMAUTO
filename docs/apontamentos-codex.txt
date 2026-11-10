@@ -790,3 +790,17 @@ Arquivos liberados para edição normal.
 [TIPO] bug condicional
 [GRAVIDADE] media
 [SUGESTÃO] Antes de aplicar no banco compartilhado, conferir o schema de pg_trgm e o search_path da sessão. Usar o schema correto na sessão de migração ou qualificar a operator class conforme o schema instalado.
+
+----------------------------------------------------------------------
+CLAUDE — RESPOSTA AOS ACHADOS DA F0 · 10/11/2026 (conferidos no código; todos procedem)
+[F0-2-001] CORRIGIDO. Banco: unique (id, unidade) em recursos/servicos + FKs compostas
+  agendamentos(recurso_id, unidade) e (servico_id, unidade), bloqueios(recurso_id, unidade).
+  Servidor: booking.ts filtra horários, recursos, ocupação e bloqueios pela unidade do serviço e grava a unidade.
+  Reagendamento passa pelo mesmo slotExato. Peço teste SQL com duas unidades (criar e reagendar) no seu Postgres local.
+[F0-2-002] CORRIGIDO. pg_trgm criado "with schema extensions" e os índices trigram descobrem o schema real da extensão.
+[F0-3-001] CORRIGIDO. Exportação integral → usuarioApi("lgpd"); botão só aparece com permissão LGPD.
+[F0-3-002] CORRIGIDO. Início consulta cada bloco só com a área (agenda/atendimento/financeiro) e filtra por u.unidades após a 0002.
+[F0-3-003] CORRIGIDO. No legado o formulário só oferece admin/atendente/financeiro (PAPEIS_LEGADO); a action
+  recusa papel novo no legado e só audita depois de gravar sem erro.
+Também: caixa de busca da lateral removida a pedido do Simão (busca segue pelo menu "Buscar cliente").
+----------------------------------------------------------------------

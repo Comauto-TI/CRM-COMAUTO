@@ -776,15 +776,7 @@ a { color: var(--vw-azul); }
 .login-card { box-shadow: 0 24px 60px rgba(0, 8, 30, 0.35); border-color: transparent; }
 .marca-grande .marca-texto strong { color: var(--vw-marinho); }
 
-/* ===== F0-4: busca global e central de notificações ===== */
-.lateral-busca {
-  display: flex; align-items: center; gap: 8px; margin: 4px 0 10px;
-  padding: 0 10px; height: 36px; border: 1px solid var(--borda); border-radius: var(--raio);
-  background: var(--superficie); color: var(--texto-2);
-  transition: border-color var(--transicao), box-shadow var(--transicao);
-}
-.lateral-busca:focus-within { border-color: var(--vw-azul); box-shadow: 0 0 0 3px rgba(0, 64, 197, 0.12); }
-.lateral-busca input { border: 0; outline: 0; background: transparent; padding: 0; height: 100%; width: 100%; font-size: 13px; box-shadow: none; }
+/* ===== F0-4: central de notificações ===== */
 .sino {
   position: relative; display: grid; place-items: center; width: 32px; height: 32px; flex: none;
   border-radius: 9px; border: 1px solid var(--borda); background: var(--superficie); color: var(--texto-2);

@@ -10,7 +10,7 @@ import Nav from "./_components/Nav";
 import Marca from "./_components/Marca";
 import Icone from "./_components/Icone";
 import AlertaFila from "./_components/AlertaFila";
-import { atendeFila, podeAcessar, ROTULO_PAPEL, ROTULO_SETOR } from "@/lib/permissoes";
+import { atendeFila, ROTULO_PAPEL, ROTULO_SETOR } from "@/lib/permissoes";
 
 export const dynamic = "force-dynamic";
 
@@ -34,12 +34,6 @@ export default async function PainelLayout({ children }: { children: React.React
     <div className="app">
       <aside className="lateral">
         <Marca nome={cfg.empresa.nome} logoUrl={cfg.empresa.logo_url} />
-        {podeAcessar(u, "busca") && (
-          <form action="/painel/busca" className="lateral-busca" role="search">
-            <Icone nome="busca" tamanho={16} />
-            <input name="q" placeholder="CPF, telefone, placa ou nome" aria-label="Buscar cliente" />
-          </form>
-        )}
         <Nav papel={u.papel} setor={u.setor} fila={count ?? 0} />
         <div className="lateral-rodape">
           <div className="avatar">{u.nome.slice(0, 1).toUpperCase()}</div>

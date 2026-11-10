@@ -14,8 +14,14 @@ Versionamento semântico a partir de **0.0.1** (decisão do Simão, 10/11/2026).
 - Permissões por área (`src/lib/permissoes.ts`) e `exigirAcesso(area)` / `usuarioApi(area)` no lugar de `exigirPapel`.
 - Menu por permissão, busca global (`/painel/busca`: CPF/CNPJ, telefone, placa, nome), central de notificações e sino.
 - PWA instalável (manifest + ícones).
+### Corrigido (revisão do Codex)
+- Agenda respeita a unidade no banco (FK composta) e no servidor; pg_trgm independe do search_path.
+- Exportação integral do cliente só com permissão LGPD; início mostra só o que o perfil pode ver.
+- Equipe: papéis compatíveis com a tabela antiga e auditoria só após gravar.
 ### Alterado
+- Caixa de busca da lateral removida (busca pelo menu "Buscar cliente").
 - Gerente também supervisiona conversas (pode intervir na posse), como o admin.
+- Retirada a caixa de busca da lateral. Buscar cliente continua acessível pelo menu.
 
 ## [0.0.1] — 10/11/2026 — Base inicial
 - Chatbot de WhatsApp (agendamento, campanhas/eventos, follow-up, atendimento humano estilo CRM),

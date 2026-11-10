@@ -4,7 +4,7 @@ import { getConfig } from "@/lib/config";
 import { formatarDataHora, DIAS } from "@/lib/time";
 import { Cabecalho, Status } from "../_components/ui";
 import { tabelaUsuarios } from "@/lib/usuarios";
-import { PAPEIS, SETORES, ROTULO_PAPEL, ROTULO_SETOR } from "@/lib/permissoes";
+import { PAPEIS, PAPEIS_LEGADO, SETORES, ROTULO_PAPEL, ROTULO_SETOR } from "@/lib/permissoes";
 import { salvarEmpresa, salvarFinanceiro, salvarCustoFixo, salvarTemplate, salvarServico, adicionarBloqueio, removerBloqueio, salvarEquipe } from "./actions";
 
 export default async function Configuracoes() {
@@ -178,7 +178,7 @@ export default async function Configuracoes() {
                       <td colSpan={2}>
                         <form action={salvarEquipe} className="linha-form">
                           <input type="hidden" name="user_id" value={p.user_id} />
-                          <select name="papel" defaultValue={p.papel} aria-label="Papel">{PAPEIS.map((x) => <option key={x} value={x}>{ROTULO_PAPEL[x]}{x === "atendente" ? " (legado)" : ""}</option>)}</select>
+                          <select name="papel" defaultValue={p.papel} aria-label="Papel">{(tabelaEquipe === "usuarios" ? PAPEIS : PAPEIS_LEGADO).map((x) => <option key={x} value={x}>{ROTULO_PAPEL[x]}{x === "atendente" ? " (legado)" : ""}</option>)}</select>
                           {tabelaEquipe === "usuarios" && <select name="setor" defaultValue={p.setor} aria-label="Setor">{SETORES.map((x) => <option key={x} value={x}>{ROTULO_SETOR[x]}</option>)}</select>}
                           <input name="telefone" defaultValue={p.telefone_whatsapp ?? ""} placeholder="WhatsApp p/ alertas" />
                           <label style={{ display: "flex", gap: 4, alignItems: "center", flex: "0 0 auto" }}><input type="checkbox" name="recebe_alertas" defaultChecked={p.recebe_alertas} style={{ width: "auto" }} /> recebe alertas</label>

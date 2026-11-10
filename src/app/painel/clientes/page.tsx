@@ -4,6 +4,7 @@ import { getConfig } from "@/lib/config";
 import { formatarDataHora } from "@/lib/time";
 import { mascararTelefone } from "@/lib/phone";
 import { Cabecalho, Status } from "../_components/ui";
+import { podeAcessar } from "@/lib/permissoes";
 import { anonimizar, optoutManual, importarCSV } from "./actions";
 
 type Cli = {
@@ -29,6 +30,7 @@ export default async function Clientes({ searchParams }: { searchParams: Promise
   const bloqueados = new Set((opts ?? []).map((o) => o.telefone));
   const lista = (data ?? []) as unknown as Cli[];
   const admin = u.papel === "admin";
+  const podeLgpd = podeAcessar(u, "lgpd"); // F0-3-001: exportação integral só com permissão LGPD
 
   return (
     <>
@@ -86,7 +88,7 @@ export default async function Clientes({ searchParams }: { searchParams: Promise
                   <td>
                     {!c.anonimizado && (
                       <div className="acoes">
-                        <a className="btn pequeno" href={`/api/painel/clientes/${c.id}/exportar`}>Exportar dados</a>
+                        {podeLgpd && <a className="btn pequeno" href={`/api/painel/clientes/${c.id}/exportar`}>Exportar dados</a>}
                         {!opt && (
                           <form action={optoutManual}><input type="hidden" name="id" value={c.id} /><button className="btn pequeno">Opt-out</button></form>
                         )}

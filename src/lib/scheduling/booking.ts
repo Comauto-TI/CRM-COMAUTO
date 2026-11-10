@@ -3,27 +3,33 @@ import { db } from "@/lib/supabase/admin";
 import { getConfig } from "@/lib/config";
 import { calcularSlots, type Slot } from "./availability";
 import { dataLocalISO, formatarDataHora } from "@/lib/time";
+import { nucleoAplicado } from "@/lib/usuarios";
 
 /**
  * Operações de agenda. O banco é a última palavra sobre conflito
  * (exclusion constraint `sem_conflito`, erro 23P01).
  */
 
-export type Servico = { id: string; nome: string; duracao_min: number; tipo_recurso: string; preco_referencia: number | null; descricao: string | null };
+export type Servico = { id: string; nome: string; duracao_min: number; tipo_recurso: string; preco_referencia: number | null; descricao: string | null; unidade?: string };
 
 export async function listarServicos(): Promise<Servico[]> {
   const { data } = await db()
     .from("servicos")
-    .select("id, nome, duracao_min, tipo_recurso, preco_referencia, descricao")
+    .select(`id, nome, duracao_min, tipo_recurso, preco_referencia, descricao${(await nucleoAplicado()) ? ", unidade" : ""}`)
     .eq("ativo", true)
     .order("nome");
-  return (data ?? []) as Servico[];
+  return (data ?? []) as unknown as Servico[];
 }
 
 export async function buscarServico(idOuNome: string): Promise<Servico | null> {
   const lista = await listarServicos();
   const alvo = idOuNome.toLowerCase().trim();
   return lista.find((s) => s.id === idOuNome) ?? lista.find((s) => s.nome.toLowerCase() === alvo) ?? lista.find((s) => s.nome.toLowerCase().includes(alvo)) ?? null;
+}
+
+/** Filtra pela unidade quando o núcleo (0002) está aplicado; antes disso tudo é Comauto. */
+function porUnidade<Q>(q: Q, unidade: string | undefined): Q {
+  return unidade ? (q as unknown as { eq: (col: string, v: string) => Q }).eq("unidade", unidade) : q;
 }
 
 export async function horariosDisponiveis(args: {
@@ -40,16 +46,21 @@ export async function horariosDisponiveis(args: {
   const agora = new Date();
   const ate = new Date(agora.getTime() + (cfg.agenda.janela_dias + 1) * 86400_000).toISOString();
 
+  // F0-2-001: tudo da MESMA unidade do serviço (o banco também barra com FK composta)
+  const u = servico.unidade;
   const [{ data: horarios }, { data: recursos }, { data: ocupados }, { data: bloqueios }] = await Promise.all([
-    db().from("horarios_funcionamento").select("dia_semana, abre, fecha"),
-    db().from("recursos").select("id, nome").eq("ativo", true).eq("tipo", servico.tipo_recurso).order("nome"),
-    db()
-      .from("agendamentos")
-      .select("id, recurso_id, inicio, fim")
-      .in("status", ["pendente", "confirmado"])
-      .gte("fim", agora.toISOString())
-      .lte("inicio", ate),
-    db().from("bloqueios").select("recurso_id, inicio, fim").gte("fim", agora.toISOString()),
+    porUnidade(db().from("horarios_funcionamento").select("dia_semana, abre, fecha"), u),
+    porUnidade(db().from("recursos").select("id, nome").eq("ativo", true).eq("tipo", servico.tipo_recurso).order("nome"), u),
+    porUnidade(
+      db()
+        .from("agendamentos")
+        .select("id, recurso_id, inicio, fim")
+        .in("status", ["pendente", "confirmado"])
+        .gte("fim", agora.toISOString())
+        .lte("inicio", ate),
+      u,
+    ),
+    porUnidade(db().from("bloqueios").select("recurso_id, inicio, fim").gte("fim", agora.toISOString()), u),
   ]);
 
   const slots = calcularSlots({
@@ -139,6 +150,7 @@ export async function criarAgendamento(args: {
       cliente_id: args.clienteId,
       veiculo_id: veiculoId,
       servico_id: alvo.servico.id,
+      ...(alvo.servico.unidade ? { unidade: alvo.servico.unidade } : {}),
       recurso_id: alvo.slot.recursoId,
       inicio: alvo.slot.inicio.toISOString(),
       fim: alvo.slot.fim.toISOString(),

@@ -27,7 +27,7 @@ Atualize o status aqui sempre que concluir algo. Legenda: ⬜ a fazer · 🟨 em
 |---|---|---|---|
 | F1-V | Vendas: funis Novos/Seminovos, etapas configuráveis (Novo → Em atendimento → Negociação → Proposta → Ganho/Perdido), cartões com arrastar, qualificação separada da etapa, carteira | Claude | ⬜ |
 | F1-O | Oficina/Agenda: fila, triagem, reserva/confirmação/reagendamento, histórico e vínculo externo | Codex | ⬜ |
-| F1-P | Peças: fila Novo → Em cotação → Aguardando cliente → Aprovado → Em separação/encomenda → Entregue (+ perda), itens, margem | Codex | ⬜ |
+| F1-P | Peças: fila Novo → Em cotação → Aguardando cliente → Aprovado → Em separação/encomenda → Entregue (+ perda), itens, margem | Codex | 🟨 cadastro e fila de balcão no commit 1e22d9d em codex/pecas; aguardam revisão e migrações no dev |
 
 ## F2 — Chatbot → CRM e vínculos
 | # | Tarefa | Dono | Status |

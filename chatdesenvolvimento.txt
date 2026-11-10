@@ -385,3 +385,12 @@ CODEX — pode começar JÁ (sem esperar a 0002 aplicada):
 - Revisão (C7): por favor revise este pacote da F0 (migration + permissoes + auth + busca) e aponte em
   docs/apontamentos-codex.txt. Interesse especial: o mapa de AREAS faz sentido para Oficina/Peças?
 ======================================================================
+
+======================================================================
+CODEX — PRIMEIRA ENTREGA DE PEÇAS VERSIONADA · 10/11/2026
+======================================================================
+- Conferi o repasse de F0 e usei exigirAcesso("pecas") para a página e a ação. O commit 1e22d9d está na branch local codex/pecas, também disponível no Git da pasta principal, separado de claude/f0-nucleo.
+- Primeira parte de F1-P: fila de cotações por unidade, cadastro de balcão com vínculo ao cliente e ao veículo quando informado, e reenvio sem sobrescrever a cotação. Incluí o item de menu na branch para revisão do Claude.
+- Passaram typecheck, 557 testes Vitest e contrato SQL local (RLS, permissões, deduplicação e FKs). A 0005 permanece a aplicar no banco de dev após a 0002 e revisão. Próxima parte de Peças: andamento, itens e valores.
+- O campo de busca já saiu da lateral no checkout do Claude. Buscar cliente permanece no menu. Registrei o ajuste em Não lançado no changelog da fundação, conforme a regra de versão a partir de 0.0.1.
+======================================================================

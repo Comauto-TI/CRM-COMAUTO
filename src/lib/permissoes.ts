@@ -16,6 +16,9 @@ export const PAPEIS = [
 ] as const;
 export type Papel = (typeof PAPEIS)[number];
 
+/** Papéis aceitos pela tabela antiga (admin_usuarios) antes da 0002 — F0-3-003. */
+export const PAPEIS_LEGADO = ["admin", "atendente", "financeiro"] as const satisfies readonly Papel[];
+
 export const SETORES = ["vendas", "oficina", "pecas", "administracao"] as const;
 export type Setor = (typeof SETORES)[number];
 

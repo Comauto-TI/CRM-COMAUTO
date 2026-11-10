@@ -5,7 +5,10 @@
 -- Idempotente onde possível (pode ser reaplicada sem erro).
 -- =====================================================================
 
-create extension if not exists pg_trgm;
+-- pg_trgm: no Supabase as extensões ficam no schema "extensions". Os índices trigram abaixo
+-- descobrem o schema real da extensão (F0-2-002 do Codex), então funcionam com qualquer search_path.
+create schema if not exists extensions;
+create extension if not exists pg_trgm with schema extensions;
 
 -- ---------------------------------------------------------------------
 -- Unidades (concessionárias do grupo). Chaves iguais às dos sistemas
@@ -76,8 +79,13 @@ alter table clientes add column if not exists unidade_origem text references uni
 alter table clientes add column if not exists ids_externos jsonb not null default '{}'; -- {bravus, processo_vendas, revisao, avaliex}
 create index if not exists clientes_cpf_cnpj_idx on clientes (cpf_cnpj);
 create index if not exists clientes_vendedor_idx on clientes (vendedor_id);
-create index if not exists clientes_nome_trgm_idx on clientes using gin (nome gin_trgm_ops);
-create index if not exists clientes_telefone_trgm_idx on clientes using gin (telefone gin_trgm_ops);
+do $
+declare esq text;
+begin
+  select n.nspname into esq from pg_extension e join pg_namespace n on n.oid = e.extnamespace where e.extname = 'pg_trgm';
+  execute format('create index if not exists clientes_nome_trgm_idx on clientes using gin (nome %I.gin_trgm_ops)', esq);
+  execute format('create index if not exists clientes_telefone_trgm_idx on clientes using gin (telefone %I.gin_trgm_ops)', esq);
+end $;
 create index if not exists clientes_nascimento_idx on clientes (extract(month from data_nascimento), extract(day from data_nascimento));
 
 alter table veiculos add column if not exists chassi text;
@@ -103,6 +111,33 @@ begin
     execute format('create index if not exists %I on %I (unidade)', t || '_unidade_idx', t);
   end loop;
 end $$;
+
+-- ---------------------------------------------------------------------
+-- Coerência de unidade na agenda (F0-2-001 do Codex): agendamento e bloqueio só podem usar
+-- recurso/serviço da MESMA unidade. FK composta = barreira no banco, além do filtro no servidor.
+-- ---------------------------------------------------------------------
+do $
+begin
+  if not exists (select 1 from pg_constraint where conname = 'recursos_id_unidade_key') then
+    alter table recursos add constraint recursos_id_unidade_key unique (id, unidade);
+  end if;
+  if not exists (select 1 from pg_constraint where conname = 'servicos_id_unidade_key') then
+    alter table servicos add constraint servicos_id_unidade_key unique (id, unidade);
+  end if;
+  if not exists (select 1 from pg_constraint where conname = 'agendamentos_recurso_mesma_unidade') then
+    alter table agendamentos add constraint agendamentos_recurso_mesma_unidade
+      foreign key (recurso_id, unidade) references recursos (id, unidade);
+  end if;
+  if not exists (select 1 from pg_constraint where conname = 'agendamentos_servico_mesma_unidade') then
+    alter table agendamentos add constraint agendamentos_servico_mesma_unidade
+      foreign key (servico_id, unidade) references servicos (id, unidade);
+  end if;
+  if not exists (select 1 from pg_constraint where conname = 'bloqueios_recurso_mesma_unidade') then
+    -- recurso_id nulo (feriado da unidade) não é checado: MATCH SIMPLE
+    alter table bloqueios add constraint bloqueios_recurso_mesma_unidade
+      foreign key (recurso_id, unidade) references recursos (id, unidade) on delete cascade;
+  end if;
+end $;
 
 -- ---------------------------------------------------------------------
 -- Central de notificações e lembretes (usados por todos os setores)

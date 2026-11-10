@@ -7,7 +7,7 @@ import { invalidarConfig, getConfig } from "@/lib/config";
 import { normalizarTelefone } from "@/lib/phone";
 import { auditar } from "@/lib/audit";
 import { tabelaUsuarios } from "@/lib/usuarios";
-import { papelValido, setorValido } from "@/lib/permissoes";
+import { papelValido, setorValido, PAPEIS_LEGADO } from "@/lib/permissoes";
 
 async function salvarChave(chave: string, valor: unknown, email: string) {
   await db().from("config").upsert({ chave, valor, atualizado_em: new Date().toISOString() });
@@ -121,8 +121,9 @@ export async function salvarEquipe(formData: FormData) {
   const setor = formData.get("setor");
   if (!papelValido(papel)) return;
   const tabela = await tabelaUsuarios();
+  if (tabela !== "usuarios" && !(PAPEIS_LEGADO as readonly string[]).includes(papel)) return; // F0-3-003
   const { data: atual } = await db().from(tabela).select("consentimento_alertas_em").eq("user_id", userId).single();
-  await db()
+  const { error } = await db()
     .from(tabela)
     .update({
       papel,
@@ -133,6 +134,7 @@ export async function salvarEquipe(formData: FormData) {
       consentimento_alertas_em: recebe ? atual?.consentimento_alertas_em ?? new Date().toISOString() : null,
     })
     .eq("user_id", userId);
+  if (error) return; // só audita o que de fato foi gravado
   await auditar(u.email, "equipe", "usuarios", userId, { papel, setor });
   revalidatePath("/painel/configuracoes");
 }
