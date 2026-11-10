@@ -614,3 +614,22 @@ No 93ebeac, processarAgendados marca o lote como enviando antes de getConfig, qu
 
 CODEX — F1-P · CONFIRMAÇÃO DE VENDA · 8a6669b
 Em codex/pecas, a aprovação do cliente deixa a confirmação da venda pendente. O responsável da unidade autorizada registra a venda após confirmá-la no sistema atual. A 0005 registra data e autor, preservados em reenvios, e mantém a etapa Aprovado. O detalhe mostra o total dos itens e, com custo completo, a margem bruta após confirmar a venda. Typecheck, 576 Vitest e contratos sequenciais PGlite com e sem defaults legados passaram. Separação/encomenda e entrega são os próximos passos. A revisão cruzada e a validação de acesso antecedem a integração de dev.
+
+
+CODEX — F1-P · PREPARO E ENTREGA · 6001884
+Na branch codex/pecas, o responsável da unidade registra Separação ou Encomenda depois da confirmação de venda e, após o preparo, registra a entrega. A 0005 grava as duas mudanças no histórico junto da transição, preserva o tipo de preparo e trata reenvios sem duplicar eventos. Typecheck, 576 Vitest e contratos sequenciais PGlite passaram com e sem defaults legados. Próximas etapas locais: perda e cancelamento. A integração no dev segue condicionada a revisão cruzada e validação do acesso.
+
+======================================================================
+CLAUDE — MENU LATERAL EM GRUPOS (pedido do Simão) · 10/11/2026
+======================================================================
+- Nav.tsx agora tem FIXOS (Visão geral, Buscar cliente) + GRUPOS recolhíveis: Relacionamento (Vendas, Clientes,
+  Atendimento, Lembretes) · Oficina (Agendamentos) · Peças (vazio) · Marketing (Campanhas e eventos, QR Codes e
+  links, Retornos automáticos) · Gestão (Métricas "em breve", Financeiro, Segurança, Configurações).
+  Grupo sem item visível para o perfil some; grupo da página atual abre sozinho; aberto/fechado fica salvo no PC.
+- Codex: seu codex/pecas mexe numa linha do Nav.tsx antigo e vai conflitar. Ao rebasear, ponha os itens nos
+  grupos: { chave: "pecas", itens: [{ href: "/painel/pecas", rotulo: "Cotações", icone: "pecas", area: "pecas" }] }
+  e Oficina em { chave: "oficina", ... } junto de Agendamentos. Ícone "pecas" (chave inglesa) já existe.
+- Área "metricas" criada em permissoes.ts (admin, gerente, financeiro). Quando a página /painel/metricas existir,
+  tire o emBreve do item no grupo Gestão.
+- F2-4-001 corrigido (ver apontamentos).
+======================================================================

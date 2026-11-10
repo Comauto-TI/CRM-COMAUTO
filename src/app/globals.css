@@ -979,3 +979,27 @@ a { color: var(--vw-azul); }
 .vendas-kpis { align-content: stretch; grid-template-rows: 1fr; }
 .vendas-kpis > div { justify-content: center; }
 @media (max-width: 640px) { .vendas-kpis { grid-template-rows: none; } }
+
+/* ===== Menu lateral em grupos (pedido do Simão) ===== */
+.nav { gap: 2px; overflow-y: auto; min-height: 0; padding-right: 2px; }
+.nav-grupo { margin-top: 6px; }
+.nav-grupo-titulo {
+  width: 100%; display: flex; align-items: center; gap: 8px; padding: 7px 12px 5px;
+  background: none; border: 0; cursor: pointer; color: inherit; opacity: .62;
+  font-size: 11px; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; text-align: left;
+  border-radius: var(--raio-pequeno); transition: opacity var(--transicao);
+}
+.nav-grupo-titulo:hover { opacity: 1; }
+.nav-grupo-titulo span:first-child { flex: 1; }
+.nav-seta { transition: transform var(--transicao); opacity: .8; }
+.nav-grupo.aberto .nav-seta { transform: rotate(90deg); }
+.nav-grupo-itens { display: grid; gap: 2px; }
+.nav a.sub, .nav .nav-item.sub { padding-left: 16px; font-size: 13px; }
+.nav .nav-item { display: flex; align-items: center; justify-content: space-between; padding: 9px 12px; border-radius: var(--raio-pequeno); font-weight: 600; }
+.nav .em-breve { opacity: .5; cursor: default; }
+.nav-breve { font-size: 10px; font-weight: 700; padding: 1px 6px; border-radius: 6px; border: 1px solid currentColor; opacity: .8; }
+.lateral { min-height: 0; }
+.lateral .nav-grupo-titulo { color: rgba(214, 226, 247, 0.62); opacity: 1; }
+.lateral .nav-grupo-titulo:hover, .lateral .nav-grupo.aberto .nav-grupo-titulo { color: rgba(214, 226, 247, 0.9); }
+.lateral .nav .nav-item { color: rgba(214, 226, 247, 0.78); }
+.lateral .nav-grupo + .nav-grupo { border-top: 1px solid rgba(255, 255, 255, 0.07); padding-top: 4px; }
