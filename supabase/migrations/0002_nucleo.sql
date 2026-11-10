@@ -79,13 +79,13 @@ alter table clientes add column if not exists unidade_origem text references uni
 alter table clientes add column if not exists ids_externos jsonb not null default '{}'; -- {bravus, processo_vendas, revisao, avaliex}
 create index if not exists clientes_cpf_cnpj_idx on clientes (cpf_cnpj);
 create index if not exists clientes_vendedor_idx on clientes (vendedor_id);
-do $
+do $$
 declare esq text;
 begin
   select n.nspname into esq from pg_extension e join pg_namespace n on n.oid = e.extnamespace where e.extname = 'pg_trgm';
   execute format('create index if not exists clientes_nome_trgm_idx on clientes using gin (nome %I.gin_trgm_ops)', esq);
   execute format('create index if not exists clientes_telefone_trgm_idx on clientes using gin (telefone %I.gin_trgm_ops)', esq);
-end $;
+end $$;
 create index if not exists clientes_nascimento_idx on clientes (extract(month from data_nascimento), extract(day from data_nascimento));
 
 alter table veiculos add column if not exists chassi text;
@@ -116,7 +116,7 @@ end $$;
 -- Coerência de unidade na agenda (F0-2-001 do Codex): agendamento e bloqueio só podem usar
 -- recurso/serviço da MESMA unidade. FK composta = barreira no banco, além do filtro no servidor.
 -- ---------------------------------------------------------------------
-do $
+do $$
 begin
   if not exists (select 1 from pg_constraint where conname = 'recursos_id_unidade_key') then
     alter table recursos add constraint recursos_id_unidade_key unique (id, unidade);
@@ -137,7 +137,7 @@ begin
     alter table bloqueios add constraint bloqueios_recurso_mesma_unidade
       foreign key (recurso_id, unidade) references recursos (id, unidade) on delete cascade;
   end if;
-end $;
+end $$;
 
 -- ---------------------------------------------------------------------
 -- Central de notificações e lembretes (usados por todos os setores)
