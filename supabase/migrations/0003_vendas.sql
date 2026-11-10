@@ -148,8 +148,8 @@ create or replace function vendas_registrar_historico() returns trigger
 language plpgsql set search_path = public as $$
 begin
   if tg_op = 'INSERT' then
-    insert into vendas_historico (oportunidade_id, unidade, funil_id, de_etapa_id, para_etapa_id, vendedor_id, ator)
-    values (new.id, new.unidade, new.funil_id, null, new.etapa_id, new.vendedor_id, new.criado_por);
+    insert into vendas_historico (oportunidade_id, unidade, funil_id, de_etapa_id, para_etapa_id, vendedor_id, ator, motivo_perda)
+    values (new.id, new.unidade, new.funil_id, null, new.etapa_id, new.vendedor_id, new.criado_por, new.motivo_perda); -- F1-V-005-R1
   elsif new.etapa_id is distinct from old.etapa_id then
     insert into vendas_historico (oportunidade_id, unidade, funil_id, de_etapa_id, para_etapa_id, vendedor_id, ator, dias_na_etapa, motivo_perda)
     values (new.id, new.unidade, new.funil_id, old.etapa_id, new.etapa_id, new.vendedor_id,
@@ -167,6 +167,34 @@ create trigger vendas_op_regras before insert or update on vendas_oportunidades
 drop trigger if exists vendas_op_historico on vendas_oportunidades;
 create trigger vendas_op_historico after insert or update of etapa_id on vendas_oportunidades
   for each row execute function vendas_registrar_historico();
+
+-- ---------------------------------------------------------------------
+-- F1-V-005-R1: ajuste ÚNICO dos registros gravados antes da correção (idempotente: só toca o que está incoerente)
+-- ---------------------------------------------------------------------
+-- (a) perda vigente sem motivo no evento de entrada em Perdido → copia o motivo vigente para o histórico
+update vendas_historico h set motivo_perda = o.motivo_perda
+from vendas_oportunidades o
+join vendas_etapas e on e.id = o.etapa_id and e.tipo = 'perdido'
+where h.oportunidade_id = o.id and h.motivo_perda is null and o.motivo_perda is not null
+  and h.id = (select max(h2.id) from vendas_historico h2 where h2.oportunidade_id = o.id and h2.para_etapa_id = o.etapa_id);
+
+-- (b) ganha depois de perdida (antes da correção ficava com o motivo vigente): leva o motivo para o último evento de perda
+update vendas_historico h set motivo_perda = o.motivo_perda
+from vendas_oportunidades o
+join vendas_etapas e on e.id = o.etapa_id and e.tipo = 'ganho'
+where h.oportunidade_id = o.id and h.motivo_perda is null and o.motivo_perda is not null
+  and h.id = (select max(h2.id) from vendas_historico h2 join vendas_etapas e2 on e2.id = h2.para_etapa_id
+              where h2.oportunidade_id = o.id and e2.tipo = 'perdido');
+update vendas_oportunidades o set motivo_perda = null
+from vendas_etapas e
+where e.id = o.etapa_id and e.tipo = 'ganho' and o.motivo_perda is not null;
+
+-- (c) fechamento = último evento de entrada na etapa final atual (ganho/perdido)
+update vendas_oportunidades o
+set fechado_em = (select max(h.criado_em) from vendas_historico h where h.oportunidade_id = o.id and h.para_etapa_id = o.etapa_id)
+where exists (select 1 from vendas_etapas e where e.id = o.etapa_id and e.tipo in ('ganho', 'perdido'))
+  and exists (select 1 from vendas_historico h where h.oportunidade_id = o.id and h.para_etapa_id = o.etapa_id)
+  and o.fechado_em is distinct from (select max(h.criado_em) from vendas_historico h where h.oportunidade_id = o.id and h.para_etapa_id = o.etapa_id);
 
 -- ---------------------------------------------------------------------
 -- Funis e etapas padrão da Comauto (configuráveis depois pelo painel)

@@ -4,6 +4,7 @@ import { db } from "@/lib/supabase/admin";
 import { getConfig } from "@/lib/config";
 import { formatarDataHora, dataLocalISO, localParaUtc } from "@/lib/time";
 import { mascararTelefone } from "@/lib/phone";
+import { nucleoAplicado } from "@/lib/usuarios";
 import { Cabecalho, Status } from "../_components/ui";
 import { mudarStatus, novoAgendamento } from "./actions";
 
@@ -24,7 +25,8 @@ type Ag = {
 };
 
 export default async function Agendamentos({ searchParams }: { searchParams: Promise<{ de?: string; ate?: string; status?: string; msg?: string }> }) {
-  await exigirAcesso("agenda");
+  const u = await exigirAcesso("agenda");
+  const multi = await nucleoAplicado(); // F0-3-004: lista e catálogo só das unidades do operador
   const cfg = await getConfig();
   const off = cfg.fuso_offset;
   const sp = await searchParams;
@@ -40,7 +42,10 @@ export default async function Agendamentos({ searchParams }: { searchParams: Pro
     .order("inicio")
     .limit(500);
   if (sp.status) q = q.eq("status", sp.status);
-  const [{ data }, { data: servicos }] = await Promise.all([q, db().from("servicos").select("id, nome").eq("ativo", true).order("nome")]);
+  if (multi) q = q.in("unidade", u.unidades);
+  let qServicos = db().from("servicos").select("id, nome").eq("ativo", true).order("nome");
+  if (multi) qServicos = qServicos.in("unidade", u.unidades);
+  const [{ data }, { data: servicos }] = await Promise.all([q, qServicos]);
   const lista = (data ?? []) as unknown as Ag[];
 
   const msg = sp.msg ? MSGS[sp.msg] ?? (sp.msg.startsWith("criado_sem_whatsapp") ? ["aviso", `Agendamento criado, mas o WhatsApp não foi enviado (${sp.msg.split(":")[1]}). Confirme com o cliente por outro meio ou registre o consentimento.`] : null) : null;

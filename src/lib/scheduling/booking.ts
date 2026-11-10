@@ -184,8 +184,19 @@ export async function criarAgendamento(args: {
 }
 
 /** "Quem confirmou": grava quem, quando e por qual canal. */
-export async function confirmarAgendamento(agendamentoId: string, por: string, canal: "whatsapp_botao" | "whatsapp_conversa" | "painel", ator: string) {
-  const { data: ag } = await db().from("agendamentos").select("id, status, confirmado_em").eq("id", agendamentoId).maybeSingle();
+/**
+ * F0-3-004: no painel, toda ação na agenda passa as unidades do operador; o agendamento
+ * de outra unidade é tratado como inexistente. (O bot não passa: ele já confere que é do próprio cliente.)
+ */
+async function lerAgendamento<T>(colunas: string, agendamentoId: string, unidades?: string[]): Promise<T | null> {
+  let q = db().from("agendamentos").select(colunas).eq("id", agendamentoId);
+  if (unidades && (await nucleoAplicado())) q = q.in("unidade", unidades);
+  const { data } = await q.maybeSingle();
+  return (data as T | null) ?? null;
+}
+
+export async function confirmarAgendamento(agendamentoId: string, por: string, canal: "whatsapp_botao" | "whatsapp_conversa" | "painel", ator: string, unidades?: string[]) {
+  const ag = await lerAgendamento<{ id: string; status: string; confirmado_em: string | null }>("id, status, confirmado_em", agendamentoId, unidades);
   if (!ag) return { ok: false as const, motivo: "agendamento_inexistente" };
   if (!["pendente", "confirmado"].includes(ag.status)) return { ok: false as const, motivo: `status_${ag.status}` };
 
@@ -202,8 +213,8 @@ export async function confirmarAgendamento(agendamentoId: string, por: string, c
   return { ok: true as const };
 }
 
-export async function cancelarAgendamento(agendamentoId: string, motivo: string | null, ator: string) {
-  const { data: ag } = await db().from("agendamentos").select("status").eq("id", agendamentoId).maybeSingle();
+export async function cancelarAgendamento(agendamentoId: string, motivo: string | null, ator: string, unidades?: string[]) {
+  const ag = await lerAgendamento<{ status: string }>("status", agendamentoId, unidades);
   if (!ag) return { ok: false as const, motivo: "agendamento_inexistente" };
   if (!["pendente", "confirmado"].includes(ag.status)) return { ok: false as const, motivo: `status_${ag.status}` };
   await db().from("agendamentos").update({ status: "cancelado", motivo_cancelamento: motivo }).eq("id", agendamentoId);

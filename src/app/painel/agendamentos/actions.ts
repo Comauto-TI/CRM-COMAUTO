@@ -10,6 +10,7 @@ import { localParaUtc, formatarDataHora } from "@/lib/time";
 import { criarAgendamento, confirmarAgendamento, cancelarAgendamento } from "@/lib/scheduling/booking";
 import { notificar } from "@/lib/messaging/outbound";
 import { auditar } from "@/lib/audit";
+import { nucleoAplicado } from "@/lib/usuarios";
 
 const STATUS_VALIDOS = ["pendente", "confirmado", "compareceu", "nao_compareceu", "cancelado"];
 
@@ -20,11 +21,18 @@ export async function mudarStatus(formData: FormData) {
   if (!STATUS_VALIDOS.includes(status)) return;
   const ator = `painel:${u.email}`;
 
-  if (status === "confirmado") await confirmarAgendamento(id, u.email, "painel", ator);
-  else if (status === "cancelado") await cancelarAgendamento(id, String(formData.get("motivo") || "cancelado pela recepção"), ator);
+  const multi = await nucleoAplicado();
+  if (status === "confirmado") await confirmarAgendamento(id, u.email, "painel", ator, u.unidades);
+  else if (status === "cancelado") await cancelarAgendamento(id, String(formData.get("motivo") || "cancelado pela recepção"), ator, u.unidades);
   else {
-    const { data: ag } = await db().from("agendamentos").select("status, veiculo_id, servicos!agendamentos_servico_id_fkey(nome)").eq("id", id).single();
-    await db().from("agendamentos").update({ status }).eq("id", id);
+    // F0-3-004: leitura e gravação presas às unidades do operador
+    let leitura = db().from("agendamentos").select("status, veiculo_id, servicos!agendamentos_servico_id_fkey(nome)").eq("id", id);
+    if (multi) leitura = leitura.in("unidade", u.unidades);
+    const { data: ag } = await leitura.maybeSingle();
+    if (!ag) return;
+    let gravacao = db().from("agendamentos").update({ status }).eq("id", id);
+    if (multi) gravacao = gravacao.in("unidade", u.unidades);
+    await gravacao;
     await db().from("agendamento_historico").insert({ agendamento_id: id, acao: "status_alterado", de_status: ag?.status, para_status: status, ator });
     // Compareceu em revisão => atualiza o veículo e alimenta o lembrete de revisão periódica
     const nomeServico = (ag as unknown as { servicos: { nome: string } | null })?.servicos?.nome ?? "";
@@ -47,6 +55,11 @@ export async function novoAgendamento(formData: FormData) {
   const servicoId = String(formData.get("servico"));
   const data = String(formData.get("data"));
   const hora = String(formData.get("hora"));
+  // F0-3-004: o serviço escolhido precisa ser de uma unidade do operador (a unidade do agendamento vem dele)
+  if (await nucleoAplicado()) {
+    const { data: srvOk } = await db().from("servicos").select("id").eq("id", servicoId).in("unidade", u.unidades).maybeSingle();
+    if (!srvOk) redirect("/painel/agendamentos?msg=erro");
+  }
 
   const { data: existente } = await db().from("clientes").select("id, nome").eq("telefone", telefone!).maybeSingle();
   const cliente = existente ?? (await db().from("clientes").insert({ telefone, origem: "painel", nome }).select("id, nome").single()).data;
