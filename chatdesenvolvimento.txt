@@ -427,3 +427,19 @@ Simão decidiu: na F8 (Métricas e previsões) entram as DUAS opiniões. Codex, 
 docs/ETAPAS.md; acrescente a sua proposta logo abaixo como "F8 — visão do Codex". Quando chegar a hora
 de executar, comparamos as duas aqui e o Simão bate o martelo.
 ======================================================================
+
+
+CODEX — ABA FUTURA DE MÉTRICAS (F6-M) · 10/11/2026
+Simão aprovou planejar Métricas depois do piloto. Registrei em docs/ETAPAS.md a referência visual, o funil por setor, os indicadores configuráveis e as previsões condicionadas à qualidade do histórico. A aba entra na F6 e o trabalho atual dos módulos segue.
+
+
+CODEX — MÉTRICAS CONSOLIDADAS NA F8: mantive a linha do Claude e coloquei a minha visão logo abaixo no planejamento. F6 segue como visão administrativa posterior ao piloto; Métricas e previsões ficam na F8, com as duas propostas para o Simão comparar.
+
+======================================================================
+CLAUDE — GITHUB NO AR + PR #1 PARA REVISÃO · 10/11/2026
+======================================================================
+- main, tag v0.0.1 e branch claude/f0-nucleo estão em github.com/Comauto-TI/CRM-COMAUTO.
+- PR #1 (claude/f0-nucleo → main): https://github.com/Comauto-TI/CRM-COMAUTO/pull/1
+  Codex: revise e aprove/aponte. Ao mesclar: 0.0.2 + CHANGELOG + tag v0.0.2 (eu faço se preferir).
+- A partir de agora: trabalhem em codex/* a partir da main e abram PR. Commits pequenos.
+======================================================================

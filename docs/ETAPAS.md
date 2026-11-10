@@ -17,7 +17,7 @@ Atualize o status aqui sempre que concluir algo.
 ## F0 — Fundação (Claude)
 | # | Tarefa | Status | Pronto quando |
 |---|---|---|---|
-| F0-1 | Repositório Git + GitHub `Comauto-TI/CRM-COMAUTO` | 🟨 commit local feito; envio aguarda permissão de escrita do token | `main` no GitHub, gitleaks limpo |
+| F0-1 | Repositório Git + GitHub `Comauto-TI/CRM-COMAUTO` | ✅ `main` + tag v0.0.1 no GitHub; PR #1 (F0) aberto para revisão do Codex | `main` no GitHub, gitleaks limpo |
 | F0-2 | Núcleo multiunidade (`0002_nucleo`): `unidades`, `usuarios` (setor/papel/unidade), `usuario_unidades`, cliente ampliado (CPF/CNPJ, nascimento, vendedor da carteira, ids externos), veículo ampliado (chassi, renavam), `notificacoes`, `lembretes`, `unidade` nas tabelas operacionais | 🟨 migration escrita e revisada (`supabase/migrations/0002_nucleo.sql`); aplicar aguarda a connection string do banco | Migration aplicada no banco de dev; testes verdes |
 | F0-3 | Contexto de acesso: `exigirPapel` devolve usuário + setor + papel + unidade; RLS por unidade como 2ª barreira | 🟨 `exigirAcesso(area)` + mapa `src/lib/permissoes.ts` (testado) em todas as páginas/APIs; setor passa a valer quando a 0002 for aplicada. RLS por unidade: junto com a 1ª tela multiunidade | Usuário de um setor não abre página de outro |
 | F0-4 | Casca comum: menu por setor, busca global (CPF, telefone, nome), central de notificações | 🟨 menu por permissão, busca global (`/painel/busca`) e sino + `/painel/notificacoes` prontos; notificações ligam com a 0002 | Busca acha cliente em todo o grupo; sino mostra avisos |
@@ -50,6 +50,18 @@ QR Code + filas → validação → lote de até 10 convites autorizados. Instal
 | F6 | Visão geral do administrador | Claude |
 | F7 | Captação e IA | Ambos |
 | F8 | **Aba Métricas e previsões** (pedido do Simão, 10/11): funil de conversão por etapa com % e volume (Novos, Seminovos, Oficina, Peças, chatbot/QR/campanhas), tempo médio por etapa, conversão por vendedor/origem/unidade; **previsões** que melhoram com o histórico (vendas do mês, agenda da oficina, demanda de peças) a partir de séries diárias guardadas no banco; metas definidas pelos dados que já temos. Começa simples (médias móveis e taxa histórica por etapa), sem prometer precisão antes de ter volume | Claude (painel e modelo de previsão) · Codex (consultas SQL/views, testes de cálculo e de carga) |
+
+## F8 — visão do Codex
+
+Proposta complementar para a aba **Métricas**, depois do piloto e com dados consistentes. O Simão compara as duas visões antes da implementação.
+
+- **Referência visual.** Usar o painel enviado pelo Simão como referência de composição. Cards com números principais e funil de conversão no topo, com detalhamento por etapa e filtros abaixo. A análise fica numa aba própria.
+- **Conversão por operação.** Vendas acompanha lead recebido, qualificação, proposta e venda, separando Novos e Seminovos. Oficina acompanha pedido, agendamento e comparecimento. Peças acompanha cotação, aprovação, venda confirmada e entrega. Filtrar por período, unidade, setor, responsável e origem ou campanha quando disponível. Exibir contagens e taxas com base no mesmo conjunto de registros.
+- **Indicadores configuráveis.** A gestão escolhe nome, eventos de início e fim, filtros, meta e período. Mostrar fórmula, quantidade de registros e fonte de cada indicador. Versionar alterações de definição para manter comparações históricas verificáveis.
+- **Previsões.** Começar pelas séries históricas de conversão, volume e prazo. Validar as estimativas contra períodos anteriores, separar realizado de previsto e mostrar horizonte e faixa de incerteza. Exibir o histórico observado quando a amostra ainda for insuficiente para prever.
+- **Dependência dos dados.** Usar origem e histórico de eventos do CRM, com desfechos oficiais dos sistemas vinculados quando conferidos. Respeitar permissões por unidade e setor. Na F1, preservar os registros de etapa, responsável e data já previstos no fluxo.
+
+**Aceite:** a gestão consegue conferir uma taxa e seu denominador contra os registros da origem, mudar a meta sem perder o histórico da definição e distinguir realizado, previsão e histórico insuficiente.
 
 ## Preparação F1 — Oficina, Agenda e Peças (Codex)
 
