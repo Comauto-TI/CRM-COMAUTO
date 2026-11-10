@@ -12,11 +12,12 @@ import {
 } from "@/modulos/vendas/regras";
 import { Cabecalho, Vazio } from "../_components/ui";
 import Quadro from "./Quadro";
-import { novaOportunidade, assumir, salvarQualificacao, novaAtividade, novaTarefa, concluir, moverPeloFormulario, agendarNoCartao } from "./actions";
+import { novaOportunidade, assumir, salvarQualificacao, novaAtividade, novaTarefa, concluir, moverPeloFormulario, agendarNoCartao, vincular, desvincular } from "./actions";
+import { lerVinculos, linkProcessoVendas, linkAvaliex } from "@/modulos/vendas/vinculos";
 
 type SP = {
   funil?: string; vendedor?: string; op?: string; nova?: string; erro?: string; ok?: string;
-  nome?: string; telefone?: string; temperatura?: string; periodo?: string; ordem?: string;
+  nome?: string; telefone?: string; temperatura?: string; periodo?: string; ordem?: string; aviso?: string;
 };
 
 export default async function Vendas({ searchParams }: { searchParams: Promise<SP> }) {
@@ -193,6 +194,8 @@ export default async function Vendas({ searchParams }: { searchParams: Promise<S
             {sp.erro && <div className="alerta erro">{sp.erro}</div>}
             {sp.ok === "salvo" && <div className="alerta ok">Salvo.</div>}
             {sp.ok === "agendado" && <div className="alerta ok">Agendado. Acompanhe em <Link href="/painel/lembretes">Meus lembretes</Link>.</div>}
+            {sp.ok === "vinculado" && <div className="alerta ok">Vínculo salvo.</div>}
+            {sp.ok === "vinculado_aviso" && <div className="alerta aviso">Vínculo salvo. {sp.aviso?.slice(0, 160)}</div>}
 
             <dl className="ficha">
               <dt>Vendedor</dt><dd>{op.vendedor_id ? nomes[op.vendedor_id] ?? "—" : "Sem vendedor"}</dd>
@@ -268,6 +271,56 @@ export default async function Vendas({ searchParams }: { searchParams: Promise<S
                 </form>
               )}
             </section>
+
+            {(() => {
+              const v = lerVinculos(op.ids_externos);
+              const linkPV = v.processo_vendas ? linkProcessoVendas(v.processo_vendas.id, v.processo_vendas.empresa) : null;
+              const linkAV = v.avaliex ? linkAvaliex(v.avaliex.unidade) : null;
+              return (
+                <section className="secao vinculos">
+                  <h3>Proposta e avaliação</h3>
+                  <div className="vinculo">
+                    <div>
+                      <strong>Processo de Vendas</strong>
+                      {v.processo_vendas
+                        ? <small className="mudo">Proposta {v.processo_vendas.id.slice(0, 13)}{v.processo_vendas.id.length > 13 ? "…" : ""} · situação: consulta automática na próxima etapa</small>
+                        : <small className="mudo">Nenhuma proposta vinculada</small>}
+                    </div>
+                    {linkPV && <a className="btn pequeno" href={linkPV} target="_blank" rel="noopener noreferrer">Abrir proposta</a>}
+                    {v.processo_vendas && editar && (
+                      <form action={desvincular}><input type="hidden" name="id" value={op.id} /><input type="hidden" name="funil" value={funil.chave} /><input type="hidden" name="tipo" value="processo_vendas" /><button className="btn pequeno">Remover</button></form>
+                    )}
+                  </div>
+                  {editar && (
+                    <form action={vincular} className="linha-form">
+                      <input type="hidden" name="id" value={op.id} /><input type="hidden" name="funil" value={funil.chave} /><input type="hidden" name="tipo" value="processo_vendas" />
+                      <input name="entrada" required maxLength={400} placeholder="Cole o link da proposta ou o ID" aria-label="Link ou ID da proposta" />
+                      <button className="btn">{v.processo_vendas ? "Trocar" : "Vincular"}</button>
+                    </form>
+                  )}
+                  <div className="vinculo">
+                    <div>
+                      <strong>Avaliex (usado na troca)</strong>
+                      {v.avaliex
+                        ? <small className="mudo">Avaliação {v.avaliex.id.slice(0, 13)}{v.avaliex.id.length > 13 ? "…" : ""} · {v.avaliex.unidade}{v.avaliex.placa ? ` · placa ${v.avaliex.placa}` : ""}</small>
+                        : <small className="mudo">{op.tem_troca ? "Tem troca: vincule a avaliação" : "Nenhuma avaliação vinculada"}</small>}
+                    </div>
+                    {linkAV && <a className="btn pequeno" href={linkAV} target="_blank" rel="noopener noreferrer">Abrir Avaliex</a>}
+                    {v.avaliex && editar && (
+                      <form action={desvincular}><input type="hidden" name="id" value={op.id} /><input type="hidden" name="funil" value={funil.chave} /><input type="hidden" name="tipo" value="avaliex" /><button className="btn pequeno">Remover</button></form>
+                    )}
+                  </div>
+                  {editar && (
+                    <form action={vincular} className="linha-form">
+                      <input type="hidden" name="id" value={op.id} /><input type="hidden" name="funil" value={funil.chave} /><input type="hidden" name="tipo" value="avaliex" />
+                      <input name="entrada" required maxLength={400} placeholder="Link ou ID da avaliação" aria-label="Link ou ID da avaliação" />
+                      <input name="placa" maxLength={8} placeholder="Placa" aria-label="Placa do usado" style={{ maxWidth: 100 }} />
+                      <button className="btn">{v.avaliex ? "Trocar" : "Vincular"}</button>
+                    </form>
+                  )}
+                </section>
+              );
+            })()}
 
             {editar && (
               <section className="secao">

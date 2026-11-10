@@ -6,7 +6,7 @@ import { exigirAcesso } from "@/lib/auth";
 import { getConfig } from "@/lib/config";
 import { localParaUtc } from "@/lib/time";
 import {
-  criarOportunidade, moverOportunidade, assumirOportunidade, atualizarQualificacao, registrarAtividade, criarTarefa, concluirTarefa, clienteDoCartao,
+  criarOportunidade, moverOportunidade, assumirOportunidade, atualizarQualificacao, registrarAtividade, criarTarefa, concluirTarefa, clienteDoCartao, vincularExterno, desvincularExterno,
 } from "@/modulos/vendas/dados";
 import { agendarLembrete, agendarMensagem } from "@/lib/agendados";
 import { lerValorBRL, ehChave, PAGAMENTOS, PRAZOS, TEMPERATURAS, QUALIFICACOES, TIPOS_ATIVIDADE, MOTIVOS_PERDA } from "@/modulos/vendas/regras";
@@ -128,4 +128,22 @@ export async function concluir(f: FormData) {
   await concluirTarefa(u, texto(f, "tarefa_id"));
   revalidatePath("/painel/vendas");
   redirect(voltar(f, { op: texto(f, "id") }));
+}
+
+/** F2-2: vincular proposta do Processo de Vendas ou avaliação do Avaliex ao cartão. */
+export async function vincular(f: FormData) {
+  const u = await exigirAcesso("vendas");
+  const id = texto(f, "id");
+  const tipo = texto(f, "tipo") === "avaliex" ? "avaliex" : "processo_vendas";
+  const r = await vincularExterno(u, id, tipo, texto(f, "entrada"), texto(f, "placa") || null);
+  revalidatePath("/painel/vendas");
+  redirect(voltar(f, r.ok ? { op: id, ok: r.aviso ? "vinculado_aviso" : "vinculado", ...(r.aviso ? { aviso: r.aviso } : {}) } : { op: id, erro: r.motivo }));
+}
+
+export async function desvincular(f: FormData) {
+  const u = await exigirAcesso("vendas");
+  const id = texto(f, "id");
+  const r = await desvincularExterno(u, id, texto(f, "tipo") === "avaliex" ? "avaliex" : "processo_vendas");
+  revalidatePath("/painel/vendas");
+  redirect(voltar(f, r.ok ? { op: id } : { op: id, erro: r.motivo }));
 }

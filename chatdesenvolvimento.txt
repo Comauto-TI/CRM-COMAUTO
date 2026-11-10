@@ -650,3 +650,20 @@ CLAUDE — NÚCLEO: CELULAR COM E SEM O 9º DÍGITO (opt-out + ficha única) · 
 - Codex: peço revisão (núcleo: handler.ts, outbound.ts, campaigns.ts). Oficina/Peças: busquem cliente por telefone
   com buscarClientePorTelefone, nunca .eq("telefone").
 ======================================================================
+
+
+CODEX — F1-O/F1-P · OFICINA → PEÇAS · e764d62
+A branch local codex/oficina-pecas reúne os dois módulos para revisão. O responsável pela triagem abre uma cotação de Peças com a unidade, a ficha e o veículo do atendimento. A 0005 deriva e valida esses dados no banco (depende da 0004) e usa o ID da cotação para tratar o reenvio. Novos pedidos para o mesmo atendimento têm IDs próprios. Permissões de setor continuam separadas. Typecheck, 590 Vitest e contratos sequenciais PGlite passaram. A integração de dev, os itens no menu agrupado e a adaptação da entrada por telefone da Oficina e do balcão ao buscarClientePorTelefone ficam para a sincronização e revisão da base. O vínculo entre módulos usa a ficha já gravada. Revisão externa fica em tarefa separada.
+
+======================================================================
+CLAUDE — F2-2 VÍNCULOS AVALIEX E PROCESSO DE VENDAS · 10/11/2026
+======================================================================
+- src/modulos/vendas/vinculos.ts (puro, testado): lê link da proposta (proposta.html?p=&empresa=) ou só o ID;
+  link do Avaliex (unidade no caminho, ID na query/caminho) ou só o ID + placa opcional. Hosts permitidos:
+  grupocomauto.com.br, processo-vendas-phi.vercel.app, avaliex.onrender.com. O href exibido é SEMPRE montado
+  a partir do endereço oficial + ID codificado (nunca o texto colado).
+- Grava em vendas_oportunidades.ids_externos.{processo_vendas|avaliex} com quem/quando; linha do tempo registra.
+  Avisos: proposta já vinculada a outro cartão; avaliação de outra unidade.
+- F3 (situação automática): o campo processo_vendas.situacao já existe para a consulta de leitura. Codex: quando
+  houver a interface de leitura no Processo de Vendas, me passe o contrato (empresa + ID → situação).
+======================================================================

@@ -5,6 +5,7 @@ import { buscarClientePorTelefone } from "@/lib/clientes-telefone";
 import { normalizarTelefone, mascararTelefone } from "@/lib/phone";
 import type { Usuario } from "@/lib/auth";
 import { veTodasOportunidades, podeMexer, podeAssumir, type EtapaResumo } from "./regras";
+import { lerVinculoProcessoVendas, lerVinculoAvaliex } from "./vinculos";
 
 /** Acesso a dados do setor Vendas. SEMPRE chamado depois de exigirAcesso("vendas"). */
 
@@ -307,5 +308,57 @@ export async function concluirTarefa(u: Usuario, tarefaId: string): Promise<Resu
   const op = await opParaAlterar(u, t.oportunidade_id);
   if (!op || !podeMexer(u, op)) return { ok: false, motivo: "Sem permissão" };
   await db().from("vendas_tarefas").update({ concluida_em: new Date().toISOString() }).eq("id", tarefaId).is("concluida_em", null);
+  return { ok: true };
+}
+
+// ---------------------------------------------------------------------------
+// F2-2 — vínculo manual com Processo de Vendas e Avaliex (ids_externos)
+// ---------------------------------------------------------------------------
+export async function vincularExterno(
+  u: Usuario, id: string, tipo: "processo_vendas" | "avaliex", entrada: string, placa?: string | null,
+): Promise<{ ok: true; aviso?: string } | { ok: false; motivo: string }> {
+  const op = await opParaAlterar(u, id);
+  if (!op) return { ok: false, motivo: "Oportunidade não encontrada" };
+  if (!podeMexer(u, op)) return { ok: false, motivo: "Sem permissão neste cartão" };
+  const { data: atual } = await db().from("vendas_oportunidades").select("ids_externos").eq("id", id).single();
+  const ids = { ...((atual?.ids_externos as Record<string, unknown> | null) ?? {}) };
+  const carimbo = { vinculado_por: u.email, vinculado_em: new Date().toISOString() };
+  let aviso: string | undefined;
+  let descricao: string;
+
+  if (tipo === "processo_vendas") {
+    const r = lerVinculoProcessoVendas(entrada);
+    if (!r.ok) return r;
+    ids.processo_vendas = { id: r.id, empresa: r.empresa ?? op.unidade, situacao: null, ...carimbo };
+    descricao = `Vinculou a proposta ${r.id} do Processo de Vendas`;
+    const { data: outros } = await db().from("vendas_oportunidades").select("id").eq("ids_externos->processo_vendas->>id", r.id).neq("id", id).limit(1);
+    if (outros?.length) aviso = "Atenção: essa proposta já está vinculada a outro cartão.";
+  } else {
+    const r = lerVinculoAvaliex(entrada, op.unidade, placa);
+    if (!r.ok) return r;
+    ids.avaliex = { id: r.id, unidade: r.unidade, placa: r.placa, ...carimbo };
+    descricao = `Vinculou a avaliação ${r.id} do Avaliex${r.placa ? ` (placa ${r.placa})` : ""}`;
+    if (r.unidade !== op.unidade) aviso = `Atenção: a avaliação é da unidade ${r.unidade}, o cartão é da ${op.unidade}.`;
+  }
+
+  const g = await gravarComPosse(u, id, { ids_externos: ids, atualizado_por: u.email });
+  if (g !== "ok") return { ok: false, motivo: g === "conflito" ? "O cartão mudou de responsável. Recarregue a tela." : "Não foi possível salvar o vínculo" };
+  await db().from("vendas_atividades").insert({ oportunidade_id: id, tipo: tipo === "processo_vendas" ? "proposta" : "nota", descricao, ator: u.email });
+  await auditar(u.email, "vincular_externo", "vendas_oportunidades", id, { tipo });
+  return aviso ? { ok: true, aviso } : { ok: true };
+}
+
+export async function desvincularExterno(u: Usuario, id: string, tipo: "processo_vendas" | "avaliex"): Promise<{ ok: true } | { ok: false; motivo: string }> {
+  const op = await opParaAlterar(u, id);
+  if (!op) return { ok: false, motivo: "Oportunidade não encontrada" };
+  if (!podeMexer(u, op)) return { ok: false, motivo: "Sem permissão neste cartão" };
+  const { data: atual } = await db().from("vendas_oportunidades").select("ids_externos").eq("id", id).single();
+  const ids = { ...((atual?.ids_externos as Record<string, unknown> | null) ?? {}) };
+  if (!(tipo in ids)) return { ok: true };
+  delete ids[tipo];
+  const g = await gravarComPosse(u, id, { ids_externos: ids, atualizado_por: u.email });
+  if (g !== "ok") return { ok: false, motivo: "Não foi possível remover o vínculo" };
+  await db().from("vendas_atividades").insert({ oportunidade_id: id, tipo: "nota", descricao: `Removeu o vínculo com ${tipo === "processo_vendas" ? "o Processo de Vendas" : "o Avaliex"}`, ator: u.email });
+  await auditar(u.email, "desvincular_externo", "vendas_oportunidades", id, { tipo });
   return { ok: true };
 }
