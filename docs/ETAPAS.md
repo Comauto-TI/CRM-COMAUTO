@@ -27,9 +27,9 @@ Atualize o status aqui sempre que concluir algo.
 ## F1 — Setores (em paralelo, após F0-2)
 | # | Tarefa | Dono | Status |
 |---|---|---|---|
-| F1-V | Vendas: funis Novos/Seminovos, etapas configuráveis (Novo → Em atendimento → Negociação → Proposta → Ganho/Perdido), cartões com arrastar, qualificação separada da etapa, carteira. **Referência visual (Simão, 10/11):** colunas por etapa com cartões, faixa do funil com % no topo, KPIs ao lado e painel de detalhe do cartão à direita (com conversa) | Claude | ⬜ |
+| F1-V | Vendas: funis Novos/Seminovos, etapas configuráveis (Novo → Em atendimento → Negociação → Proposta → Ganho/Perdido), cartões com arrastar, qualificação separada da etapa, carteira. **Referência visual (Simão, 10/11):** colunas por etapa com cartões, faixa do funil com % no topo, KPIs ao lado e painel de detalhe do cartão à direita (com conversa) | Claude | 🟨 `0003_vendas` + módulo + `/painel/vendas` (funil, kanban com arrastar, ficha, tarefas, contatos, histórico) na branch `claude/f1-vendas` (PR #2), validado em Postgres local; liga quando 0002/0003 forem aplicadas |
 | F1-O | Oficina/Agenda: fila, triagem, reserva/confirmação/reagendamento, histórico e vínculo externo | Codex | ⬜ |
-| F1-P | Peças: fila Novo → Em cotação → Aguardando cliente → Aprovado → Em separação/encomenda → Entregue (+ perda), itens, margem | Codex | 🟨 cadastro, fila de balcão e atribuição com histórico no commit f512095 em codex/pecas, validados localmente; integração aguarda revisão, F0-2 aplicada e acesso validado no dev |
+| F1-P | Peças: fila Novo → Em cotação → Aguardando cliente → Aprovado → Em separação/encomenda → Entregue (+ perda), itens, margem | Codex | 🟨 cadastro, fila, atribuição com histórico e inclusão de itens e valores no commit f37d88c em codex/pecas, validados localmente; integração aguarda revisão, F0-2 aplicada e acesso validado no dev |
 
 ## F2 — Chatbot → CRM e vínculos
 | # | Tarefa | Dono | Status |

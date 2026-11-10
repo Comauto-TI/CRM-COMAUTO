@@ -6,7 +6,16 @@ Versionamento semântico a partir de **0.0.1** (decisão do Simão, 10/11/2026).
 - Toda versão mesclada ganha **tag git** `vX.Y.Z` e uma seção aqui. O que está numa branch e ainda não foi mesclado fica em "Não lançado".
 - Quem mescla na `main` (Claude ou Codex) atualiza `package.json`, este arquivo e cria a tag.
 
+## [Não lançado] — branch `claude/f1-vendas` (F1-V Vendas, sobre a F0)
+### Adicionado
+- Migration `0003_vendas`: funis Novos/Seminovos e etapas configuráveis, oportunidades (qualificação separada da etapa,
+  troca separada do veículo desejado, canal varejo/venda direta), histórico de etapas, atividades, tarefas, motivo de perda obrigatório.
+- `/painel/vendas`: faixa do funil (90 dias) + indicadores, kanban com arrastar, carteira do vendedor + leads sem dono (assumir),
+  painel lateral com qualificação, tarefas, contatos e linha do tempo.
+
 ## [Não lançado] — branch `claude/f0-nucleo` (F0 Fundação)
+### Corrigido
+- 0002: delimitadores `$` dos blocos DO (F0-2-003, achado também pelo Codex). Validada em Postgres local.
 ### Adicionado
 - Migration `0002_nucleo`: unidades, usuarios (setor/papel/unidade), usuario_unidades, ficha única de cliente
   (CPF/CNPJ, nascimento, vendedor da carteira, ids externos), veículo (chassi/renavam), `unidade` nas tabelas
