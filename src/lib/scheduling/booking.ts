@@ -243,7 +243,7 @@ export async function reagendar(agendamentoId: string, novoInicioISO: string, at
 export async function agendamentosDoCliente(clienteId: string) {
   const { data } = await db()
     .from("agendamentos")
-    .select("id, inicio, status, servicos(nome), recursos(nome)")
+    .select("id, inicio, status, servicos!agendamentos_servico_id_fkey(nome), recursos!agendamentos_recurso_id_fkey(nome)")
     .eq("cliente_id", clienteId)
     .in("status", ["pendente", "confirmado"])
     .gte("inicio", new Date().toISOString())

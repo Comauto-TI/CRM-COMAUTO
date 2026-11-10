@@ -35,7 +35,7 @@ export default async function VisaoGeral({ searchParams }: { searchParams: Promi
       ? doUsuario(
           db()
             .from("agendamentos")
-            .select("id, inicio, status, confirmado_por, clientes(nome), servicos(nome), recursos(nome)")
+            .select("id, inicio, status, confirmado_por, clientes(nome), servicos!agendamentos_servico_id_fkey(nome), recursos!agendamentos_recurso_id_fkey(nome)")
             .in("status", ["pendente", "confirmado"])
             .gte("inicio", new Date().toISOString())
             .order("inicio")

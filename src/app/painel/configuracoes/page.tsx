@@ -20,7 +20,7 @@ export default async function Configuracoes() {
     db().from("servicos").select("*").order("nome"),
     db().from("recursos").select("id, nome, tipo").order("nome"),
     db().from("horarios_funcionamento").select("dia_semana, abre, fecha").order("dia_semana").order("abre"),
-    db().from("bloqueios").select("id, inicio, fim, motivo, recursos(nome)").gte("fim", new Date().toISOString()).order("inicio"),
+    db().from("bloqueios").select("id, inicio, fim, motivo, recursos!bloqueios_recurso_id_fkey(nome)").gte("fim", new Date().toISOString()).order("inicio"),
     db().from(tabelaEquipe).select("*").order("nome"),
   ]);
   const precoAtual = (cat: string) => (precos.data ?? []).find((p) => p.categoria === cat);

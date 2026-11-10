@@ -14,7 +14,7 @@ export async function GET(_req: NextRequest, ctx: { params: Promise<{ id: string
     db().from("clientes").select("nome, telefone, email, cidade, tags, origem, criado_em, ultimo_contato_em").eq("id", id).single(),
     db().from("veiculos").select("placa, modelo, ano, km_atual, ultima_revisao_em, proxima_revisao_em").eq("cliente_id", id),
     db().from("consentimentos").select("tipo, status, texto, origem, concedido_em, revogado_em").eq("cliente_id", id),
-    db().from("agendamentos").select("inicio, status, confirmado_em, confirmado_canal, servicos(nome)").eq("cliente_id", id),
+    db().from("agendamentos").select("inicio, status, confirmado_em, confirmado_canal, servicos!agendamentos_servico_id_fkey(nome)").eq("cliente_id", id),
     db().from("inscricoes_evento").select("status, confirmado_em, eventos(nome, inicio)").eq("cliente_id", id),
     db().from("mensagens").select("direcao, autor, conteudo, criado_em").eq("cliente_id", id).order("criado_em").limit(5000),
   ]);

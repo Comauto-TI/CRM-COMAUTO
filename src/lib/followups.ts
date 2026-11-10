@@ -82,7 +82,7 @@ export async function enviarFollowupsPendentes() {
   const cfg = await getConfig();
   const { data: lista } = await db()
     .from("followups")
-    .select("id, cliente_id, agendamento_id, evento_id, tipo, tentativas, resultado, clientes(nome), agendamentos(servicos(nome)), eventos(nome)")
+    .select("id, cliente_id, agendamento_id, evento_id, tipo, tentativas, resultado, clientes(nome), agendamentos(servicos!agendamentos_servico_id_fkey(nome)), eventos(nome)")
     .eq("status", "pendente")
     .lte("agendar_para", new Date().toISOString())
     .limit(100);
@@ -141,7 +141,7 @@ export async function enviarLembretes() {
   for (const j of janelas) {
     const { data } = await db()
       .from("agendamentos")
-      .select("id, cliente_id, inicio, clientes(nome), servicos(nome)")
+      .select("id, cliente_id, inicio, clientes(nome), servicos!agendamentos_servico_id_fkey(nome)")
       .in("status", ["pendente", "confirmado"])
       .is(j.coluna, null)
       .gte("inicio", new Date(agora + j.de).toISOString())

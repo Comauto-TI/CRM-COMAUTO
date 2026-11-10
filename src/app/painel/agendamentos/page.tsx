@@ -34,7 +34,7 @@ export default async function Agendamentos({ searchParams }: { searchParams: Pro
 
   let q = db()
     .from("agendamentos")
-    .select("id, inicio, status, origem, observacoes, motivo_cancelamento, confirmado_por, confirmado_em, confirmado_canal, clientes(nome, telefone), servicos(nome), recursos(nome), veiculos(modelo, placa), agendamento_historico(acao, ator, criado_em, para_status)")
+    .select("id, inicio, status, origem, observacoes, motivo_cancelamento, confirmado_por, confirmado_em, confirmado_canal, clientes(nome, telefone), servicos!agendamentos_servico_id_fkey(nome), recursos!agendamentos_recurso_id_fkey(nome), veiculos(modelo, placa), agendamento_historico(acao, ator, criado_em, para_status)")
     .gte("inicio", localParaUtc(de, "00:00", off).toISOString())
     .lt("inicio", new Date(localParaUtc(ate, "00:00", off).getTime() + 86400_000).toISOString())
     .order("inicio")

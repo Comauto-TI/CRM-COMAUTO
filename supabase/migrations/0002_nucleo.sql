@@ -177,5 +177,9 @@ begin
   foreach t in array array['unidades','usuarios','usuario_unidades','notificacoes','lembretes'] loop
     execute format('alter table %I enable row level security', t);
     execute format('revoke all on %I from anon, authenticated', t);
+    -- grants explícitos para o servidor (mesmo raciocínio do F1-V-004), sem depender de grant implícito
+    if exists (select 1 from pg_roles where rolname = 'service_role') then
+      execute format('grant select, insert, update, delete on %I to service_role', t);
+    end if;
   end loop;
 end $$;

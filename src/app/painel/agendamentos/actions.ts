@@ -23,7 +23,7 @@ export async function mudarStatus(formData: FormData) {
   if (status === "confirmado") await confirmarAgendamento(id, u.email, "painel", ator);
   else if (status === "cancelado") await cancelarAgendamento(id, String(formData.get("motivo") || "cancelado pela recepção"), ator);
   else {
-    const { data: ag } = await db().from("agendamentos").select("status, veiculo_id, servicos(nome)").eq("id", id).single();
+    const { data: ag } = await db().from("agendamentos").select("status, veiculo_id, servicos!agendamentos_servico_id_fkey(nome)").eq("id", id).single();
     await db().from("agendamentos").update({ status }).eq("id", id);
     await db().from("agendamento_historico").insert({ agendamento_id: id, acao: "status_alterado", de_status: ag?.status, para_status: status, ator });
     // Compareceu em revisão => atualiza o veículo e alimenta o lembrete de revisão periódica

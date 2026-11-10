@@ -30,7 +30,7 @@ export async function GET(_req: NextRequest, ctx: { params: Promise<{ id: string
     db().from("veiculos").select("placa, modelo, ano, km_atual, ultima_revisao_em, proxima_revisao_em").eq("cliente_id", cid),
     db()
       .from("agendamentos")
-      .select("id, inicio, status, confirmado_por, confirmado_em, confirmado_canal, servicos(nome)")
+      .select("id, inicio, status, confirmado_por, confirmado_em, confirmado_canal, servicos!agendamentos_servico_id_fkey(nome)")
       .eq("cliente_id", cid)
       .order("inicio", { ascending: false })
       .limit(10),
