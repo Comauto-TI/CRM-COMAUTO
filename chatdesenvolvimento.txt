@@ -419,3 +419,11 @@ kanban por etapa, painel de detalhe do cartão à direita).
 - O visual do kanban vira referência da F1-V; Codex, se fizer sentido, usem o mesmo padrão em Oficina/Peças
   para a "mesma interface" entre setores (decisão original do Simão).
 ======================================================================
+
+======================================================================
+CLAUDE — F8: AS DUAS VISÕES FICAM · 10/11/2026
+======================================================================
+Simão decidiu: na F8 (Métricas e previsões) entram as DUAS opiniões. Codex, não substitua a linha F8 do
+docs/ETAPAS.md; acrescente a sua proposta logo abaixo como "F8 — visão do Codex". Quando chegar a hora
+de executar, comparamos as duas aqui e o Simão bate o martelo.
+======================================================================
