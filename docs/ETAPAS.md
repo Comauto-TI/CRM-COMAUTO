@@ -315,3 +315,7 @@ explícita de triagem órfã em alinhamento, sem transferência de dono vigente.
 Base remota v0.0.5 confirmada via PR #7 (main 16b873b); clone compartilhado main ainda 5e73115.
 Rebase somente após congelar arquivos dos subagentes, preservando hashes e trabalho em andamento.
 
+
+
+**Prioridade posterior do Simão via Claude:** antes de continuar Oficina, QA somente leitura de todas as telas/perfis na produção local v0.0.5. WIP Oficina congelado: SQL A210A0A9 passou contratos locais em dois modos/reapply/upgrade; revisão independente não executada. Adaptador 22D64066 e testes 0680C26B escritos, ainda não executados. Nenhuma integração remota. Preservar essa distinção ao retomar.
+
