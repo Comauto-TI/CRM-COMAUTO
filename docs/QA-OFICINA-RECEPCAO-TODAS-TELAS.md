@@ -101,4 +101,3 @@ Limite do roteiro: a restauração para desktop ficava após essa asserção; co
 - A rodada comum anterior aprovou cinco verificações por perfil (login/menu/dashboard/Agenda básica/proteção de leitura), com relatórios em `work/qa-perfis-005`, antes das alterações de login e Conta desta rodada.
 - Esta entrega verifica acesso, navegação, filtros e leitura autorizada da interface disponível. Não valida criação/edição, opt-out, exportação, atribuição/transferência, envio WhatsApp, troca de senha, marcação de notificação ou os fluxos de gravação de cada tela.
 - A fila própria de Oficina ainda estava em WIP pausado por decisão do coordenador. Não foi tratada como tela publicada nem testada nesta rodada. Nenhum arquivo de produto, migration ou contrato de Oficina foi alterado.
-
