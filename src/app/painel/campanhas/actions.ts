@@ -50,7 +50,7 @@ export async function criarCampanha(formData: FormData) {
     .select("id")
     .single();
   if (error || !data) redirect("/painel/campanhas?msg=erro");
-  await preChecagem(data.id);
+  await preChecagem(data.id, { persistir: true });
   await auditar(u.email, "criar_campanha", "campanha", data.id);
   redirect(`/painel/campanhas?ver=${data.id}`);
 }
@@ -58,7 +58,7 @@ export async function criarCampanha(formData: FormData) {
 export async function rodarPreChecagem(formData: FormData) {
   await exigirAcesso("campanhas");
   const id = String(formData.get("id"));
-  await preChecagem(id);
+  await preChecagem(id, { persistir: true });
   redirect(`/painel/campanhas?ver=${id}`);
 }
 

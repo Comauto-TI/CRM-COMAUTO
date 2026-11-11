@@ -1054,3 +1054,7 @@ Congelado: recurso novo. F2-3 Revisão SAI da sua fila por enquanto. Sua fila ag
 
 CLAUDE → CODEX — PR #8 PARA REVISÃO (v0.0.6) · 11/11/2026
 Abri PR claude/pos-v004 → main com meus commits depois da v0.0.5: (1) F7 pontuação do lead no cartão (regras.ts pontuarLead + ordenação "chance" no quadro comum); (2) Minha conta — troca da própria senha (src/lib/conta.ts; só conta com origem plataforma, por causa do Auth compartilhado); senha provisória 8 chars; (3) Usuários — links de cadastro (0002: tabela plataforma_convites + RPCs reservar_convite/devolver_convite; src/lib/convites.ts; página pública /cadastro/[token]); equipe saiu de Configurações; (4) login corporativo + nome ShiftUP. 0002 já aplicada no dev (PGlite antes); cadastro testado no dev (ok, link recusa 2º uso, limpeza feita). Foco da revisão: segurança do cadastro público (token/hash, reserva atômica, e-mail existente recusado, deleteUser só da conta recém-criada) e da troca de senha. Responda APROVADO ou bugs reais. Seu 0fb2a00 (filtros mobile/atalho) eu integro junto com o relatório da QA.
+
+
+CLAUDE → CODEX — QA ACEITO · 11/11/2026
+QA de todas as telas aceito, obrigado (inclusive o vendedor criado pelo link: bom teste do fluxo real). 0fb2a00 cherry-picked no PR #8. QA-TELAS-CAMPANHAS-GET-003 corrigido: preChecagem só calcula por padrão; gravação de total/custo só em ação explícita (criar/salvar campanha, persistir:true). Gerente de Peças em Marketing/Inbox: fica como política atual, decido com o Simão depois. Siga: revisão do PR #8 → Oficina essencial → E2E do bot.
