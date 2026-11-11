@@ -36,10 +36,20 @@ export async function carregarMetricasVendas(u: Usuario, funilChave: string | un
   // maior etapa não-perdida alcançada por oportunidade (pelo histórico) + tempos de saída por etapa
   const maiorOrdem = new Map<string, number>();
   const saidas: { etapa_id: string; dias: number }[] = [];
+  let historicoParcial = false;
   for (let i = 0; i < listaOps.length; i += 300) {
     const ids = listaOps.slice(i, i + 300).map((o) => o.id);
-    const { data: hist } = await db().from("vendas_historico").select("oportunidade_id, de_etapa_id, para_etapa_id, dias_na_etapa, criado_em").in("oportunidade_id", ids);
-    for (const h of hist ?? []) {
+    // F8-002-R1: o histórico também é lido em páginas (a API devolve no máximo 1.000 linhas por consulta)
+    const hist: Record<string, unknown>[] = [];
+    for (let de = 0; ; de += PAGINA) {
+      const { data, error } = await db().from("vendas_historico").select("oportunidade_id, de_etapa_id, para_etapa_id, dias_na_etapa, criado_em")
+        .in("oportunidade_id", ids).order("id").range(de, de + PAGINA - 1);
+      if (error) { historicoParcial = true; break; }
+      hist.push(...(data ?? []));
+      if (!data || data.length < PAGINA) break;
+      if (hist.length >= TETO_LEITURA) { historicoParcial = true; break; }
+    }
+    for (const h of hist) {
       const e = h.para_etapa_id ? etapaPorId.get(h.para_etapa_id as string) : undefined;
       if (e && e.tipo !== "perdido") maiorOrdem.set(h.oportunidade_id as string, Math.max(maiorOrdem.get(h.oportunidade_id as string) ?? 0, e.ordem));
       if (h.de_etapa_id && h.dias_na_etapa != null && (h.criado_em as string) >= desde) saidas.push({ etapa_id: h.de_etapa_id as string, dias: Number(h.dias_na_etapa) });
@@ -70,7 +80,7 @@ export async function carregarMetricasVendas(u: Usuario, funilChave: string | un
     coorte, fechadasAno, abertasAgora, ganhosNoMes, saidas,
     nomesVendedores: Object.fromEntries((vendedores ?? []).map((v) => [v.user_id as string, v.nome as string])),
     desde,
-    parcial: ops.parcial, // F8-002: true = passou do teto de leitura; a tela avisa que os números são parciais
+    parcial: ops.parcial || historicoParcial, // F8-002: true = passou do teto de leitura ou o histórico falhou; a tela avisa
   };
 }
 

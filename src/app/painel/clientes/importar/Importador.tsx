@@ -143,7 +143,7 @@ export default function Importador({ vendedores }: { vendedores: { user_id: stri
         <section className="card secao">
           {resultado.ok ? (
             <div className="alerta ok">
-              Importação concluída: <strong>{resultado.criados}</strong> clientes novos, <strong>{resultado.completados}</strong> fichas completadas, {resultado.semMudanca} sem mudança{resultado.recusados ? `, ${resultado.recusados} recusados na conferência do servidor` : ""}.{" "}
+              Importação concluída: <strong>{resultado.criados}</strong> clientes novos, <strong>{resultado.completados}</strong> fichas completadas, {resultado.semMudanca} sem mudança{resultado.recusados ? `, ${resultado.recusados} recusados (conferência do servidor ou erro de gravação: rode de novo, quem já entrou não duplica)` : ""}.{" "}
               <Link href="/painel/clientes">Abrir clientes</Link>
             </div>
           ) : <div className="alerta erro">{resultado.motivo}</div>}

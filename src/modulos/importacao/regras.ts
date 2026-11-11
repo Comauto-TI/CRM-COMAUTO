@@ -20,7 +20,7 @@ export type Campo = keyof typeof CAMPOS;
 export type Mapeamento = Partial<Record<Campo, number>>; // campo → índice da coluna
 
 /** Máximo de linhas por lote (o envio ao servidor tem limite de tamanho). Planilha maior: dividir. */
-export const LIMITE_LINHAS = 3000;
+export const LIMITE_LINHAS = 1000; // ~560 B/linha serializada: 1.000 linhas ≈ 0,6 MB, abaixo do limite de 1 MiB da Server Action
 
 /** Lê CSV com ; , ou TAB (detecta pelo cabeçalho), aspas, quebras CRLF e BOM. Linhas vazias saem. */
 export function lerCSV(texto: string): string[][] {

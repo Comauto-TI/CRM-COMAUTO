@@ -128,19 +128,24 @@ export async function importarClientes(u: Usuario, entrada: unknown, opcoes: { v
     semMudanca += bloco.length - (data?.length ?? 0);
   }
 
-  // completar fichas existentes: só campos vazios (o filtro .is(null) repete a regra na gravação)
-  let completados = 0;
+  // completar fichas existentes: só campos vazios. A condição .is(null) de CADA campo é repetida na gravação
+  // (revisão Codex PR #5): se alguém preencheu o campo entre a leitura e a gravação, a linha não é tocada.
+  let completados = 0, falhas = 0;
   for (let i = 0; i < atualizar.length; i += 20) {
     const r = await Promise.all(atualizar.slice(i, i + 20).map(async ({ id, patch }) => {
       let q = db().from("clientes").update(patch).eq("id", id).eq("anonimizado", false);
-      if ("vendedor_id" in patch) q = q.is("vendedor_id", null);
+      for (const campo of Object.keys(patch)) {
+        q = campo === "ids_externos" ? q.is("ids_externos->importacao", null) : q.is(campo, null);
+      }
       const { data, error } = await q.select("id");
-      return !error && !!data?.length;
+      return error ? "falha" : data?.length ? "ok" : "sem";
     }));
-    completados += r.filter(Boolean).length;
-    semMudanca += r.filter((x) => !x).length;
+    completados += r.filter((x) => x === "ok").length;
+    semMudanca += r.filter((x) => x === "sem").length;
+    falhas += r.filter((x) => x === "falha").length;
   }
 
-  await auditar(u.email, "importar_clientes", "clientes", null, { recebidos, criados, completados, semMudanca, recusados, vendedorId, completar: opcoes.completar });
+  recusados += falhas; // erro de gravação nunca vira "sem mudança"
+  await auditar(u.email, "importar_clientes", "clientes", null, { recebidos, criados, completados, semMudanca, recusados, falhas, vendedorId, completar: opcoes.completar });
   return { ok: true, criados, completados, semMudanca, recusados };
 }

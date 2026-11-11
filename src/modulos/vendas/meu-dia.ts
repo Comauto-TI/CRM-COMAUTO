@@ -3,6 +3,8 @@ import { db } from "@/lib/supabase/admin";
 import type { Usuario } from "@/lib/auth";
 import { classificarMeuDia, type CartaoDia, type TarefaDia } from "./meu-dia-regras";
 
+const TIPOS_CONTATO = ["ligacao", "whatsapp", "visita", "test_drive", "proposta", "email"];
+
 /** "Meu dia": só o que é DA PESSOA (tarefas dela e cartões em que ela é a vendedora), nas unidades dela. */
 export async function carregarMeuDia(u: Usuario, agora: Date, fimDoDia: Date) {
   const [{ data: tarefasBrutas, error: e1 }, { data: opsBrutas, error: e2 }] = await Promise.all([
@@ -39,10 +41,10 @@ export async function carregarMeuDia(u: Usuario, agora: Date, fimDoDia: Date) {
     primeiraOrdem.set(f, Math.min(primeiraOrdem.get(f) ?? Infinity, e.ordem as number));
   }
 
-  // contato humano = qualquer atividade registrada por alguém que não seja o assistente
+  // contato humano = atividade de CONTATO registrada pela equipe (nota interna/transferência não conta — revisão Codex PR #5)
   const comContato = new Set<string>();
   for (let i = 0; i < ops.length; i += 300) {
-    const { data } = await db().from("vendas_atividades").select("oportunidade_id").in("oportunidade_id", ops.slice(i, i + 300).map((o) => o.id as string)).neq("ator", "assistente");
+    const { data } = await db().from("vendas_atividades").select("oportunidade_id").in("oportunidade_id", ops.slice(i, i + 300).map((o) => o.id as string)).neq("ator", "assistente").in("tipo", TIPOS_CONTATO);
     for (const a of data ?? []) comContato.add(a.oportunidade_id as string);
   }
 
