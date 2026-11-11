@@ -1,6 +1,6 @@
 # A1 — Plano de acesso aos atendimentos por módulo
 
-Status: A1 em andamento. A fatia A1.1a tem código local isolado, descrito abaixo.
+Status: A1 em andamento. As fatias A1.1a e A1.1b têm código local isolado, descrito abaixo.
 As demais fatias continuam propostas; não houve integração de UI, teste de login, E2E
 nem aplicação de migrations em dev/produção.
 
@@ -51,12 +51,64 @@ Validação local: typecheck, 846 testes Vitest (71 novos dos wrappers) e contra
 replay, revogações e reaplicação com dados. SQL e wrapper tiveram revisão independente.
 Migration revisada: SHA256 `97bb8a1f243e2e8fb0b671fd85eb09cfab3e2afcd54f016fbf2dd93de337fb5d`.
 
-**Ainda pendente:** classificar e associar mensagens, vincular os encaminhamentos do bot,
+**Ainda pendente após A1.1a:** classificar e associar mensagens, vincular os encaminhamentos do bot,
 Oficina/triagem, filas sem dono, leitura/listagem/contadores por módulo, liberação do canal,
 encerramento/reabertura, transferências completas, envio e adaptadores legados.
 A reserva nova não impede uma API legada de assumir depois, nem libera o envio modular.
 Por isso esta fatia permanece sem UI e não prova exclusividade entre todos os fluxos do sistema.
 Os testes de concorrência entre sessões e os logins reais continuam necessários antes da integração.
+
+## A1.1b — Mensagem inicial comprovada de Peças
+
+Migration `20261111142602_mensagens_atendimento.sql`, dependente de A1.1a e de
+`20261111130139_encaminhamentos_bot`, mais os schemas dos módulos já indicados.
+
+- O vínculo só aceita a mensagem inicial identificada por `encaminhamentos_bot`, para uma
+  cotação de Peças aberta, já atribuída e com atendimento existente. O banco revalida o
+  responsável atual/supervisão, unidade e cliente usando o contexto da A1.1a.
+- Atendimento, cotação, cliente, conversa, unidade e referência precisam coincidir. A cotação
+  deve corroborar `origem=whatsapp` e `origem_ref` no momento da associação. O ledger
+  permanece como prova histórica; essa checagem não congela eternamente os metadados
+  de origem da cotação. As identidades do ledger associado ficam protegidas por FK.
+- `atendimento_mensagens` guarda uma única associação por mensagem e referência, com
+  três FKs compostas para atendimento, ledger e mensagem. Não existe operação genérica
+  de anexar um ID de mensagem do histórico ao cliente ou ao setor.
+- A coluna gerada `mensagens.entrada_cliente_externa` é verdadeira somente para entrada
+  com autor cliente e sinal `metadata.interno` ausente ou booleano falso. A FK exige esse
+  valor verdadeiro, impedindo associar alertas internos e retaggear uma mensagem vinculada
+  para interna, outro autor, direção, cliente, conversa ou referência.
+- Atualizar status e metadados de processamento, ou redigir conteúdo e remover metadata
+  na anonimização, preserva a classificação externa e não exige desfazer o vínculo.
+  O acesso atual ao cliente anonimizado continua recusado pelo resolvedor de contexto.
+- A associação e a auditoria são atômicas. Repetição no mesmo atendimento não duplica
+  efeitos; o contexto atual é conferido também no replay. Essa operação classifica a origem,
+  sem assumir o canal nem exigir a posse de envio da A1.1a.
+- Wrappers server-only enviam somente atendimento, referência exata e ator autenticado.
+  RLS permanece fechado; o serviço recebe SELECT/INSERT na associação, sem UPDATE/DELETE.
+  O ledger continua sem UPDATE concedido ao serviço; a FK comprova a chave referenciada
+  na inserção. A ordem de locks de canal e atendimento acompanha a A1.1a.
+
+Esta migration acrescenta uma coluna gerada armazenada e índices nas fontes existentes.
+Antes de aplicar no dev, avaliar tamanho de `mensagens`, custo da reescrita e criação de
+índices e a compatibilidade conjunta das migrations. Ainda não foi aplicada remotamente.
+
+**Vendas continua pendente:** seu roteamento atual não registra a referência da mensagem
+em um ledger equivalente; `vendas_oportunidades.origem_ref` pode ser código de link/QR.
+Não é uma prova para associar a conversa inteira ou escolher uma mensagem do histórico.
+O vínculo de Vendas exige registrar sua proveniência na criação/atualização do lead.
+
+**Próximas partes:** roteamento das novas mensagens com contexto comprovado, proveniência
+de Vendas, Oficina/triagem, leitura e contadores por atendimento, lifecycle/transferência/posse,
+envio e fechamento dos caminhos legados. Nenhum handler, API pública ou tela foi ligado
+a essa associação nesta fatia. Nenhum histórico foi importado automaticamente.
+
+Validação local: typecheck, 917 Vitest (71 novos do wrapper) e contratos SQL de vínculo,
+rollback e reaplicação passaram. Os quatro contratos de Encaminhamentos, Aniversários,
+Atendimentos e Mensagens também passaram juntos na base completa, com e sem defaults
+permissivos. Processamento/status, redação de conteúdo e limpeza de metadata foram
+conferidos sem desfazer a associação. SQL e wrapper tiveram revisão independente.
+Migration revisada: SHA256 `762aae646a114fd58d1c9aac791fa07d633b3290741156180f5053d3f0aa8d8f`.
+Não houve prova multissessão, login real, integração de runtime ou banco remoto.
 
 ## Problema e limites atuais
 

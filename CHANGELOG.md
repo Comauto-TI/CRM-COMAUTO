@@ -8,6 +8,7 @@ Versionamento semântico a partir de **0.0.1** (decisão do Simão, 10/11/2026).
 
 ## [Não lançado] — branch `claude/f2-piloto`
 ### Adicionado
+- A1.1b, vínculo da mensagem inicial de Peças com prova do encaminhamento do bot, cotação e atendimento. FKs preservam a origem e impedem reclassificar a mensagem vinculada como interna; auditoria e associação são atômicas. Sem importar histórico, integrar telas ou liberar envio. Requer `20261111142602_mensagens_atendimento`; proveniência de Vendas e mensagens seguintes permanecem pendentes.
 - A1.1a, base local de atendimentos por oportunidade/cotação atribuída: contexto de acesso derivado no banco, abertura idempotente e posse com versão, reserva única por canal modular e auditoria atômica. Wrappers apenas no servidor, sem liberar interface, envio ou rotas legadas. Requer `20261111140755_atendimentos_modulares`; demais partes de A1 seguem pendentes.
 - Plano técnico A1 por fatias para autorizar atendimentos por setor, vínculo de negócio, unidade e posse antes de compartilhar a interface WhatsApp; implementação e testes de login seguem pendentes.
 - Matriz de testes por perfil, com rodadas de subagentes, logins/sessões isolados e cobertura das telas e acessos proibidos.
