@@ -9,23 +9,28 @@ import { podeAcessar, type Area, type Papel, type Setor } from "@/lib/permissoes
 type Item = { href: string; rotulo: string; icone: string; area: Area; badge?: boolean; emBreve?: boolean };
 type Grupo = { chave: string; rotulo: string; icone: string; itens: Item[] };
 
-/** Acesso rápido: sempre no topo, fora dos grupos. */
+/**
+ * Acesso rápido, comum a todos os setores: a ficha do cliente é ÚNICA (todos os setores enxergam a mesma).
+ * O atendimento WhatsApp ainda é a central geral; vira "por setor" quando o A1 do Codex for ligado.
+ */
 const FIXOS: Item[] = [
   { href: "/painel", rotulo: "Visão geral", icone: "inicio", area: "inicio" },
   { href: "/painel/busca", rotulo: "Buscar cliente", icone: "busca", area: "busca" },
+  { href: "/painel/clientes", rotulo: "Clientes", icone: "clientes", area: "clientes" },
+  { href: "/painel/conversas", rotulo: "Atendimento WhatsApp", icone: "atendimento", area: "atendimento", badge: true },
+  { href: "/painel/lembretes", rotulo: "Meus lembretes", icone: "relogio", area: "lembretes" },
 ];
 
 /**
- * Menu por setor (pedido do Simão: menos opções soltas, grupos com subitens).
- * Oficina e Peças (Codex): acrescentar os itens dos módulos nos grupos "oficina" e "pecas".
+ * Menu SEPARADO POR SETOR (decisão do Simão, 11/11): cada setor com as próprias telas.
+ * O filtro por papel (podeAcessar) faz cada pessoa ver só o(s) seu(s) setor(es); o admin vê todos.
+ * O grupo do setor de quem entrou abre sozinho.
  */
 const GRUPOS: Grupo[] = [
   {
-    chave: "relacionamento", rotulo: "Relacionamento", icone: "clientes", itens: [
-      { href: "/painel/vendas", rotulo: "Vendas", icone: "vendas", area: "vendas" },
-      { href: "/painel/clientes", rotulo: "Clientes", icone: "clientes", area: "clientes" },
-      { href: "/painel/conversas", rotulo: "Atendimento", icone: "atendimento", area: "atendimento", badge: true },
-      { href: "/painel/lembretes", rotulo: "Lembretes", icone: "relogio", area: "lembretes" },
+    chave: "vendas", rotulo: "Vendas", icone: "vendas", itens: [
+      { href: "/painel/vendas", rotulo: "Quadro de vendas", icone: "vendas", area: "vendas" },
+      { href: "/painel/metricas", rotulo: "Métricas de vendas", icone: "metricas", area: "metricas" },
     ],
   },
   {
@@ -46,8 +51,7 @@ const GRUPOS: Grupo[] = [
     ],
   },
   {
-    chave: "gestao", rotulo: "Gestão", icone: "financeiro", itens: [
-      { href: "/painel/metricas", rotulo: "Métricas", icone: "metricas", area: "metricas" },
+    chave: "administracao", rotulo: "Administração", icone: "financeiro", itens: [
       { href: "/painel/financeiro", rotulo: "Financeiro", icone: "financeiro", area: "financeiro" },
       { href: "/painel/seguranca", rotulo: "Segurança", icone: "seguranca", area: "seguranca" },
       { href: "/painel/piloto", rotulo: "Prontidão do piloto", icone: "seguranca", area: "configuracoes" },
@@ -65,16 +69,21 @@ export default function Nav({ papel, setor, fila }: { papel: Papel; setor: Setor
   const grupos = GRUPOS.map((g) => ({ ...g, itens: g.itens.filter(pode) })).filter((g) => g.itens.length);
   const grupoAtual = grupos.find((g) => g.itens.some((i) => !i.emBreve && ativoEm(i.href, pathname)))?.chave;
 
-  // grupos abertos: lembra a escolha da pessoa neste computador; o grupo da página atual sempre abre
+  // grupos abertos: lembra a escolha da pessoa neste computador; o grupo da página atual e o do
+  // SETOR de quem entrou abrem sozinhos
+  const padrao = [setor];
   const [abertos, setAbertos] = useState<string[] | null>(null);
   useEffect(() => {
     let salvos: string[] = [];
     try { salvos = JSON.parse(localStorage.getItem(CHAVE_LOCAL) ?? "[]"); } catch { /* sem armazenamento: usa o padrão */ }
-    setAbertos(Array.isArray(salvos) && salvos.length ? salvos : ["relacionamento"]);
+    // chaves antigas do menu por função ("relacionamento", "gestao") não valem mais
+    const validos = Array.isArray(salvos) ? salvos.filter((c) => GRUPOS.some((g) => g.chave === c)) : [];
+    setAbertos(validos.length ? validos : padrao);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
-  const estaAberto = (chave: string) => chave === grupoAtual || (abertos ?? ["relacionamento"]).includes(chave);
+  const estaAberto = (chave: string) => chave === grupoAtual || (abertos ?? padrao).includes(chave);
   function alternar(chave: string) {
-    const atual = abertos ?? ["relacionamento"];
+    const atual = abertos ?? padrao;
     const novo = atual.includes(chave) ? atual.filter((c) => c !== chave) : [...atual, chave];
     setAbertos(novo);
     try { localStorage.setItem(CHAVE_LOCAL, JSON.stringify(novo)); } catch { /* ignora */ }
