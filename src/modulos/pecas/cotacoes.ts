@@ -12,6 +12,7 @@ type Cotacao = {
   criado_em: string;
   clientes: { nome: string | null } | null;
   veiculos: { placa: string | null } | null;
+  responsavel: { nome: string | null } | null;
 };
 
 function tabelaPendente(codigo: string) {
@@ -21,7 +22,7 @@ function tabelaPendente(codigo: string) {
 export async function listarCotacoes(unidades: string[]) {
   const { data, error } = await db()
     .from("pecas_cotacoes")
-    .select("id, unidade, origem, descricao, status, criado_em, clientes(nome), veiculos(placa)")
+    .select("id, unidade, origem, descricao, status, criado_em, clientes(nome), veiculos(placa), responsavel:usuarios!pecas_cotacoes_responsavel_id_fkey(nome)")
     .in("unidade", unidades)
     .order("criado_em", { ascending: false })
     .limit(100);
@@ -31,6 +32,12 @@ export async function listarCotacoes(unidades: string[]) {
 }
 
 type ResultadoCotacao = "criada" | "cliente" | "veiculo" | "unidade" | "pendente" | "erro";
+
+export async function iniciarCotacao(u: Usuario, id: string): Promise<"iniciada" | "indisponivel" | "pendente" | "erro_inicio"> {
+  const { data, error } = await db().rpc("pecas_assumir_cotacao", { p_id: id, p_unidades: u.unidades, p_ator: u.id });
+  if (error) return tabelaPendente(error.code) || error.code === "PGRST202" ? "pendente" : "erro_inicio";
+  return data === true ? "iniciada" : "indisponivel";
+}
 
 export async function registrarCotacao(u: Usuario, dados: DadosCotacao): Promise<ResultadoCotacao> {
   if (!u.unidades.includes(u.unidade)) return "unidade";
