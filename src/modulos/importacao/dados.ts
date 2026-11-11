@@ -107,9 +107,8 @@ export async function importarClientes(u: Usuario, entrada: unknown, opcoes: { v
     if (!f.data_nascimento && c.data_nascimento) patch.data_nascimento = c.data_nascimento;
     if (!f.cpf_cnpj && c.cpf_cnpj && e.por === "telefone") patch.cpf_cnpj = c.cpf_cnpj;
     if (!f.vendedor_id && vendedorId) patch.vendedor_id = vendedorId;
-    if (c.codigo_externo && !(f.ids_externos ?? {}).importacao) {
-      patch.ids_externos = { ...(f.ids_externos ?? {}), importacao: { codigo: c.codigo_externo, em: agora, por: u.email } };
-    }
+    // ids_externos de ficha existente NÃO é tocado (revisão Codex 58327bb): regravar o JSON lido poderia apagar
+    // um vínculo (ex.: Avaliex) acrescentado entre a leitura e a gravação. O código de origem só entra em fichas novas.
     if (Object.keys(patch).length) atualizar.push({ id: f.id, patch });
     else semMudanca++;
   }
@@ -135,7 +134,7 @@ export async function importarClientes(u: Usuario, entrada: unknown, opcoes: { v
     const r = await Promise.all(atualizar.slice(i, i + 20).map(async ({ id, patch }) => {
       let q = db().from("clientes").update(patch).eq("id", id).eq("anonimizado", false);
       for (const campo of Object.keys(patch)) {
-        q = campo === "ids_externos" ? q.is("ids_externos->importacao", null) : q.is(campo, null);
+        q = q.is(campo, null);
       }
       const { data, error } = await q.select("id");
       return error ? "falha" : data?.length ? "ok" : "sem";
