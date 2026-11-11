@@ -8,6 +8,11 @@ Versionamento semântico a partir de **0.0.1** (decisão do Simão, 10/11/2026).
 
 ## [Não lançado] — branch `claude/f2-piloto`
 ### Adicionado
+- Importar clientes por planilha CSV (Bravus ou qualquer sistema): mapeamento de colunas sugerido, prévia com erros/avisos/duplicados, confere a base por telefone (com/sem o 9) e CPF, nunca sobrescreve (só completa campos vazios), carteira opcional; não cria consentimento de WhatsApp (LGPD). Gerente de Vendas e admin.
+- Visão geral por setor: cartão de Vendas, Peças e Oficina conforme o perfil (admin vê todos; vendedor/peças só o que é deles + sem dono).
+- Métricas por pessoa: vendedor vê “Minhas métricas”; gerente filtra por vendedor.
+- Menu separado por setor (Vendas, Oficina, Peças, Marketing, Administração), sem barra de rolagem visível.
+- Quadro Kanban comum a todos os setores (`_components/quadro`), Vendas migrado; base para o quadro de Peças.
 - F5 Aniversários: semáforo 🟡 próximo / 🟢 hoje / 🔴 passou sem contato na Visão geral (carteira do vendedor; gerente vê todas); "Contato feito" e lembrete insistente em pop-up até registrar o contato.
 - Ficha do cliente: editar nome, e-mail, cidade, CPF/CNPJ (validado, mascarado, sem duplicar ficha) e data de nascimento.
 - Transferir lead (botão de setas no cartão e no painel): dono ou gerente passa para outro vendedor com motivo; registra na linha do tempo, avisa o novo vendedor e pode mover a carteira do cliente.

@@ -1177,3 +1177,11 @@ a { color: var(--vw-azul); }
 .setor-numeros strong { font-size: 22px; font-variant-numeric: tabular-nums; color: var(--vw-marinho); }
 .setor-numeros strong.texto-aviso { color: var(--aviso, #b45309); }
 .setor-numeros span { font-size: 12px; line-height: 1.25; }
+
+/* Importação de clientes (F3) */
+.importador .card h2 { margin-top: 0; }
+.importar-mapa { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 12px; margin: 12px 0 16px; }
+.importar-mapa label, .importar-opcoes label { display: grid; gap: 4px; }
+.importar-mapa label > span, .importar-opcoes label > span { font-weight: 600; font-size: 13px; }
+.importar-opcoes { display: grid; gap: 12px; margin-top: 16px; max-width: 520px; }
+.linha-check { display: flex; align-items: center; gap: 8px; margin: 6px 0; }

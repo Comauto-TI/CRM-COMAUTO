@@ -31,6 +31,7 @@ const GRUPOS: Grupo[] = [
     chave: "vendas", rotulo: "Vendas", icone: "vendas", itens: [
       { href: "/painel/vendas", rotulo: "Quadro de vendas", icone: "vendas", area: "vendas" },
       { href: "/painel/metricas", rotulo: "Métricas de vendas", icone: "metricas", area: "metricas" },
+      { href: "/painel/clientes/importar", rotulo: "Importar clientes", icone: "clientes", area: "importacao" },
     ],
   },
   {

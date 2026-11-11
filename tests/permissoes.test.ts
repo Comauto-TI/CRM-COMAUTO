@@ -119,3 +119,13 @@ describe("métricas por pessoa", () => {
     expect(podeAcessar({ papel: "recepcao", setor: "oficina" }, "metricas")).toBe(false);
   });
 });
+
+describe("importação de clientes", () => {
+  it("só gerente de Vendas/administração e admin importam", () => {
+    expect(podeAcessar({ papel: "admin", setor: "administracao" }, "importacao")).toBe(true);
+    expect(podeAcessar({ papel: "gerente", setor: "vendas" }, "importacao")).toBe(true);
+    expect(podeAcessar({ papel: "gerente", setor: "pecas" }, "importacao")).toBe(false);
+    expect(podeAcessar({ papel: "vendedor", setor: "vendas" }, "importacao")).toBe(false);
+    expect(podeAcessar({ papel: "recepcao", setor: "oficina" }, "importacao")).toBe(false);
+  });
+});
