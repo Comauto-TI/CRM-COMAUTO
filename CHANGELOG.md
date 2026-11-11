@@ -16,6 +16,7 @@ Versionamento semântico a partir de **0.0.1** (decisão do Simão, 10/11/2026).
 - Prontidão do piloto (Gestão): o que bloqueia e o que falta, com a ação de cada item — só verifica se as chaves existem, nunca mostra valores.
 - Pedido de peças pelo WhatsApp entra direto na fila de cotações de Peças (sem duplicar se a mensagem chegar repetida); o aviso à equipe abre a cotação.
 ### Alterado
+- Direção de organização por setores documentada: atendimento, relacionamento, carteira e métricas em Vendas, Peças e Oficina; visão pessoal, gerencial e administrativa com escopo validado no servidor.
 - Troca de vendedor só pela transferência (registrada e avisada); saiu o campo solto do formulário de qualificação.
 - Painel sem animações contínuas nem desfoque.
 ### Corrigido
