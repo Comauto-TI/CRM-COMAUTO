@@ -176,11 +176,14 @@ export async function clienteDoCartao(u: Usuario, id: string): Promise<{ cliente
  * F1-V-003: a permissão é conferida DE NOVO na própria gravação (unidade + posse vigente).
  * Se o gerente reatribuiu o cartão entre a leitura e a gravação, nada é alterado.
  */
-async function gravarComPosse(u: Usuario, id: string, patch: Record<string, unknown>): Promise<"ok" | "conflito" | "erro"> {
+const CONVERSA_ASSUMIDA = "Este cartão está com a conversa do WhatsApp assumida. Devolva a conversa ao assistente antes de fechar ou passar para outro vendedor.";
+
+/** "conversa" = o banco recusou porque há atendimento de WhatsApp em posse neste cartão (trigger vendas_posse_aberta, 55000). */
+async function gravarComPosse(u: Usuario, id: string, patch: Record<string, unknown>): Promise<"ok" | "conflito" | "erro" | "conversa"> {
   let q = db().from("vendas_oportunidades").update(patch).eq("id", id).in("unidade", u.unidades);
   if (!veTodasOportunidades(u)) q = q.eq("vendedor_id", u.id);
   const { data, error } = await q.select("id");
-  if (error) return "erro";
+  if (error) return error.code === "55000" ? "conversa" : "erro";
   return data?.length ? "ok" : "conflito";
 }
 
@@ -257,6 +260,7 @@ export async function moverOportunidade(u: Usuario, id: string, etapaId: string,
   if (etapa.tipo === "ganho" && typeof valorGanho === "number" && Number.isFinite(valorGanho) && valorGanho > 0) patch.valor_estimado = valorGanho;
   const r = await gravarComPosse(u, id, patch);
   if (r === "conflito") return { ok: false, motivo: "O cartão mudou de responsável. Recarregue a tela." };
+  if (r === "conversa") return { ok: false, motivo: CONVERSA_ASSUMIDA };
   if (r === "erro") return { ok: false, motivo: "Não foi possível mover" };
   if (etapaId !== op.etapa_id) await auditar(u.email, "mover_oportunidade", "vendas_oportunidades", id, { de: op.etapa_id, para: etapaId });
   return { ok: true };
@@ -289,7 +293,7 @@ export async function atualizarQualificacao(
   // F1-V-T005: responsável NÃO muda por aqui — só pela transferência (destino validado, motivo, nota e aviso)
   const r = await gravarComPosse(u, id, patch);
   if (r === "conflito") return { ok: false, motivo: "O cartão mudou de responsável. Recarregue a tela." };
-  if (r === "erro") return { ok: false, motivo: "Não foi possível salvar" };
+  if (r !== "ok") return { ok: false, motivo: r === "conversa" ? CONVERSA_ASSUMIDA : "Não foi possível salvar" };
   await auditar(u.email, "editar_oportunidade", "vendas_oportunidades", id);
   return { ok: true };
 }
@@ -403,7 +407,7 @@ export async function transferirOportunidade(
     p_mover_carteira: moverCarteira, p_ator: u.email,
     p_descricao: `Transferido de ${deNome} para ${novo.nome} (${MOTIVOS_TRANSFERENCIA[motivo]})`,
   });
-  if (error) return { ok: false, motivo: "Não foi possível transferir — nada foi alterado" };
+  if (error) return { ok: false, motivo: error.code === "55000" ? CONVERSA_ASSUMIDA : "Não foi possível transferir — nada foi alterado" };
   const r = data as RetornoTransferir | null;
   if (!r?.ok || !r.cliente_id) return { ok: false, motivo: "O cartão mudou de responsável. Recarregue a tela." };
   const clienteId = r.cliente_id;
