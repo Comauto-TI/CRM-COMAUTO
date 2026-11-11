@@ -48,6 +48,7 @@ Versionamento semântico a partir de **0.0.1** (decisão do Simão, 10/11/2026).
 - Exportação integral do cliente só com permissão LGPD; início mostra só o que o perfil pode ver.
 - Equipe: papéis compatíveis com a tabela antiga e auditoria só após gravar.
 ### Alterado
+- Peças (`codex/pecas`): foco no acompanhamento comercial, com venda confirmada na fila e retirada dos controles de preparo e entrega da tela.
 - Caixa de busca da lateral removida (busca pelo menu "Buscar cliente").
 - Gerente também supervisiona conversas (pode intervir na posse), como o admin.
 - Retirada a caixa de busca da lateral. Buscar cliente continua acessível pelo menu.

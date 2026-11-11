@@ -61,7 +61,7 @@ export default async function PecasPage({ searchParams }: { searchParams: Promis
                       <td>{c.descricao}</td>
                       <td>{c.unidade}</td>
                       <td>{ORIGENS[c.origem]}</td>
-                      <td><Status valor={etapaCotacao(c.status, c.tipo_preparo)} /></td>
+                      <td><Status valor={etapaCotacao(c.status, c.tipo_preparo, c.venda_confirmada_em !== null)} /></td>
                       <td>{c.responsavel?.nome ?? "—"}</td>
                       <td>
                         {c.proxima_acao ?? "A definir"}

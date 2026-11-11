@@ -6,7 +6,7 @@ import { formatarBRL } from "@/lib/time";
 import { obterCotacao } from "@/modulos/pecas/cotacoes";
 import { centavosParaCampo, etapaCotacao, formatarPrazo, totalizarCotacao, uuidV4Valido } from "@/modulos/pecas/dados-cotacao";
 import { Cabecalho, Status, Vazio } from "../../_components/ui";
-import { adicionarItemCotacao, confirmarVenda, editarItemCotacao, registrarApresentacao, registrarAprovacao, registrarAtendimento, registrarEncerramento, salvarAcompanhamento } from "../actions";
+import { adicionarItemCotacao, confirmarVenda, editarItemCotacao, registrarApresentacao, registrarAprovacao, registrarEncerramento, salvarAcompanhamento } from "../actions";
 
 const ETAPAS_ENCERRAVEIS = ["em_cotacao", "aguardando_cliente", "aprovado", "em_separacao"];
 
@@ -22,9 +22,6 @@ const MENSAGENS: Record<string, string> = {
   erro_aprovacao: "Não foi possível registrar a aprovação. Tente novamente.",
   venda_confirmada: "Venda confirmada.",
   erro_venda: "Não foi possível confirmar a venda. Tente novamente.",
-  preparo_registrado: "Preparo do pedido registrado.",
-  entrega_registrada: "Entrega registrada.",
-  erro_atendimento: "Não foi possível atualizar o pedido. Tente novamente.",
   perda_registrada: "Perda da cotação registrada.",
   cancelamento_registrado: "Cancelamento registrado.",
   motivo_invalido: "Escolha o encerramento e informe o motivo em até 500 caracteres.",
@@ -86,8 +83,7 @@ export default async function DetalheCotacaoPage({ params, searchParams }: {
         <h2>Solicitação</h2>
         <p>{cotacao.descricao}</p>
         <div className="acoes">
-          <Status valor={etapaCotacao(cotacao.status, cotacao.tipo_preparo)} />
-          {vendaConfirmada && <span>Venda confirmada</span>}
+          <Status valor={etapaCotacao(cotacao.status, cotacao.tipo_preparo, vendaConfirmada)} />
           <span className="mudo">Responsável · {cotacao.responsavel?.nome ?? "A definir"}</span>
         </div>
         {cotacao.motivo_encerramento && <p><strong>Motivo do encerramento</strong> · {cotacao.motivo_encerramento}</p>}
@@ -213,31 +209,6 @@ export default async function DetalheCotacaoPage({ params, searchParams }: {
           <p className="mudo">Registre após confirmar a venda no sistema atual.</p>
           <form action={confirmarVenda.bind(null, cotacao.id)}>
             <button className="btn primario" type="submit">Confirmar venda</button>
-          </form>
-        </section>
-      )}
-      {cotacao.status === "aprovado" && vendaConfirmada && responsavel && (
-        <section className="card secao">
-          <h2>Preparo do pedido</h2>
-          <form action={registrarAtendimento.bind(null, cotacao.id)} className="linha-form">
-            <label>
-              Tipo de preparo
-              <select name="acao" defaultValue="" required>
-                <option value="" disabled>Selecione</option>
-                <option value="separacao">Separação</option>
-                <option value="encomenda">Encomenda</option>
-              </select>
-            </label>
-            <button className="btn primario" type="submit">Registrar preparo</button>
-          </form>
-        </section>
-      )}
-      {cotacao.status === "em_separacao" && cotacao.tipo_preparo && vendaConfirmada && responsavel && (
-        <section className="card secao">
-          <h2>Entrega do pedido</h2>
-          <form action={registrarAtendimento.bind(null, cotacao.id)}>
-            <input type="hidden" name="acao" value="entrega" />
-            <button className="btn primario" type="submit">Registrar entrega</button>
           </form>
         </section>
       )}

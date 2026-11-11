@@ -100,9 +100,9 @@ export function formatarPrazo(prazo: string): string {
 }
 
 export type TipoPreparo = "separacao" | "encomenda";
-export type AcaoAtendimento = TipoPreparo | "entrega";
 
-export function etapaCotacao(status: string, tipoPreparo: TipoPreparo | null): string {
+export function etapaCotacao(status: string, tipoPreparo: TipoPreparo | null, vendaConfirmada = false): string {
+  if (status === "aprovado" && vendaConfirmada) return "venda confirmada";
   if (status !== "em_separacao") return status;
   return tipoPreparo === "encomenda" ? "em encomenda" : "em separação";
 }

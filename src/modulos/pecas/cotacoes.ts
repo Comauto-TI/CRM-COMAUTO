@@ -1,7 +1,7 @@
 import "server-only";
 import type { Usuario } from "@/lib/auth";
 import { db } from "@/lib/supabase/admin";
-import type { AcaoAtendimento, DadosAcompanhamento, DadosCotacao, DadosEdicaoItem, DadosEncerramento, DadosItem, TipoPreparo } from "./dados-cotacao";
+import type { DadosAcompanhamento, DadosCotacao, DadosEdicaoItem, DadosEncerramento, DadosItem, TipoPreparo } from "./dados-cotacao";
 
 type Cotacao = {
   id: string;
@@ -13,6 +13,7 @@ type Cotacao = {
   proxima_acao: string | null;
   prazo: string | null;
   criado_em: string;
+  venda_confirmada_em: string | null;
   clientes: { nome: string | null } | null;
   veiculos: { placa: string | null } | null;
   responsavel: { nome: string | null } | null;
@@ -29,13 +30,12 @@ type ItemCotacao = {
 
 type CotacaoDetalhada = Cotacao & {
   responsavel_id: string | null;
-  venda_confirmada_em: string | null;
   motivo_encerramento: string | null;
   acompanhamento_versao: number;
   itens: ItemCotacao[];
 };
 
-const RESUMO_COTACAO = "id, unidade, origem, descricao, status, tipo_preparo, proxima_acao, prazo, criado_em, clientes(nome), veiculos(placa), responsavel:usuarios!pecas_cotacoes_responsavel_id_fkey(nome)";
+const RESUMO_COTACAO = "id, unidade, origem, descricao, status, tipo_preparo, proxima_acao, prazo, criado_em, venda_confirmada_em, clientes(nome), veiculos(placa), responsavel:usuarios!pecas_cotacoes_responsavel_id_fkey(nome)";
 
 function tabelaPendente(codigo: string) {
   return codigo === "PGRST205" || codigo === "42P01";
@@ -56,7 +56,7 @@ export async function listarCotacoes(unidades: string[]) {
 export async function obterCotacao(unidades: string[], id: string) {
   const { data, error } = await db()
     .from("pecas_cotacoes")
-    .select(`${RESUMO_COTACAO}, responsavel_id, venda_confirmada_em, motivo_encerramento, acompanhamento_versao, itens:pecas_cotacao_itens(id, versao, descricao, quantidade, preco_unitario_centavos, custo_unitario_centavos)`)
+    .select(`${RESUMO_COTACAO}, responsavel_id, motivo_encerramento, acompanhamento_versao, itens:pecas_cotacao_itens(id, versao, descricao, quantidade, preco_unitario_centavos, custo_unitario_centavos)`)
     .in("unidade", unidades)
     .eq("id", id)
     .order("criado_em", { referencedTable: "itens" })
@@ -180,20 +180,6 @@ export async function marcarVendaConfirmada(u: Usuario, id: string): Promise<Res
   });
   if (error) return tabelaPendente(error.code) || error.code === "PGRST202" ? "pendente" : "erro_venda";
   return data === true ? "venda_confirmada" : "indisponivel";
-}
-
-type ResultadoAtendimento = "preparo_registrado" | "entrega_registrada" | "indisponivel" | "pendente" | "erro_atendimento";
-
-export async function avancarAtendimento(u: Usuario, id: string, acao: AcaoAtendimento): Promise<ResultadoAtendimento> {
-  const { data, error } = await db().rpc("pecas_avancar_atendimento", {
-    p_id: id,
-    p_unidades: u.unidades,
-    p_ator: u.id,
-    p_acao: acao,
-  });
-  if (error) return tabelaPendente(error.code) || error.code === "PGRST202" ? "pendente" : "erro_atendimento";
-  if (data !== true) return "indisponivel";
-  return acao === "entrega" ? "entrega_registrada" : "preparo_registrado";
 }
 
 type ResultadoEncerramento = "perda_registrada" | "cancelamento_registrado" | "indisponivel" | "pendente" | "erro_encerramento";
