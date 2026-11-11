@@ -37,6 +37,7 @@ Versionamento semântico a partir de **0.0.1** (decisão do Simão, 10/11/2026).
 - Peças (`codex/pecas`): detalhe da cotação com inclusão de itens pelo responsável, quantidade, preço, custo opcional e total cotado.
 - Peças (`codex/pecas`): edição dos itens em cotação com verificação de versão para preservar alterações recentes.
 - Peças (`codex/pecas`): registro da apresentação leva a Aguardando cliente, confirma a versão dos itens e guarda a mudança no histórico.
+- Peças (`codex/pecas`): registro da aprovação do cliente com histórico da etapa, separado da confirmação de venda.
 ### Corrigido (revisão do Codex)
 - Agenda respeita a unidade no banco (FK composta) e no servidor; pg_trgm independe do search_path.
 - Exportação integral do cliente só com permissão LGPD; início mostra só o que o perfil pode ver.

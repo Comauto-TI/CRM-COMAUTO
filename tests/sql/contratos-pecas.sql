@@ -18,6 +18,8 @@ alter table public.pecas_cotacoes_historico add constraint fixture_rejeita_histo
   check (cotacao_id <> '00000000-0000-4000-8000-000000000056');
 alter table public.pecas_cotacoes_historico add constraint fixture_rejeita_apresentacao
   check (cotacao_id <> '00000000-0000-4000-8000-000000000058' or para_status <> 'aguardando_cliente');
+alter table public.pecas_cotacoes_historico add constraint fixture_rejeita_aprovacao
+  check (cotacao_id <> '00000000-0000-4000-8000-000000000058' or para_status <> 'aprovado');
 
 set local role service_role;
 
@@ -245,6 +247,7 @@ declare
   itens_apresentados jsonb;
   itens_antes_edicao jsonb;
   itens_antes_inclusao jsonb;
+  itens_antes_aprovacao jsonb;
   restricao text;
 begin
   select jsonb_object_agg(id::text, versao) into itens_apresentados
@@ -268,6 +271,9 @@ begin
   if (select status from public.pecas_cotacoes where id = cotacao_fixture) is distinct from 'em_cotacao' then
     raise exception 'Um mapa desatualizado deve preservar a etapa.';
   end if;
+  if public.pecas_registrar_aprovacao(cotacao_fixture, unidades_fixture, ator_fixture) is distinct from false then
+    raise exception 'A aprovação exige apresentação prévia.';
+  end if;
 
   if public.pecas_registrar_apresentacao(cotacao_fixture, unidades_fixture, ator_fixture, itens_apresentados) is distinct from 'apresentada'
     or public.pecas_registrar_apresentacao(cotacao_fixture, unidades_fixture, ator_fixture, itens_apresentados) is distinct from 'apresentada' then
@@ -287,11 +293,29 @@ begin
     raise exception 'Após apresentar a cotação, os itens devem permanecer bloqueados.';
   end if;
 
-  update public.pecas_cotacoes set status = 'aprovado' where id = cotacao_fixture;
+  select jsonb_agg(to_jsonb(i) order by i.id) into itens_antes_aprovacao
+  from public.pecas_cotacao_itens i where i.cotacao_id = cotacao_fixture;
+
+  if public.pecas_registrar_aprovacao(cotacao_fixture, array['santaluzia'], ator_fixture) is distinct from false
+    or public.pecas_registrar_aprovacao(cotacao_fixture, unidades_fixture, outro_ator) is distinct from false then
+    raise exception 'A aprovação exige a unidade e o responsável corretos.';
+  end if;
+  if public.pecas_registrar_aprovacao(cotacao_fixture, unidades_fixture, ator_fixture) is distinct from true
+    or public.pecas_registrar_aprovacao(cotacao_fixture, unidades_fixture, ator_fixture) is distinct from true then
+    raise exception 'O responsável deve conseguir aprovar e repetir a aprovação.';
+  end if;
+  if (select status from public.pecas_cotacoes where id = cotacao_fixture) is distinct from 'aprovado'
+    or public.pecas_registrar_aprovacao(cotacao_fixture, array['santaluzia'], ator_fixture) is distinct from false
+    or public.pecas_registrar_aprovacao(cotacao_fixture, unidades_fixture, outro_ator) is distinct from false then
+    raise exception 'O reenvio deve preservar a aprovação e revalidar o acesso.';
+  end if;
   if public.pecas_registrar_apresentacao(cotacao_fixture, unidades_fixture, ator_fixture, itens_apresentados) is distinct from 'indisponivel' then
     raise exception 'Uma cotação aprovada não deve voltar para aguardando cliente.';
   end if;
-  update public.pecas_cotacoes set status = 'aguardando_cliente' where id = cotacao_fixture;
+  if (select jsonb_agg(to_jsonb(i) order by i.id)
+      from public.pecas_cotacao_itens i where i.cotacao_id = cotacao_fixture) is distinct from itens_antes_aprovacao then
+    raise exception 'A aprovação comercial deve preservar os itens.';
+  end if;
 
   if public.pecas_adicionar_item(cotacao_vazia, gen_random_uuid(), unidades_fixture, ator_fixture, 'Peça única', 1, 100, null) is distinct from 'adicionado' then
     raise exception 'Não criou o item para testar a falha no histórico da apresentação.';
@@ -312,6 +336,18 @@ begin
   if public.pecas_adicionar_item(cotacao_vazia, gen_random_uuid(), unidades_fixture, ator_fixture, 'Segunda peça', 1, 100, null) is distinct from 'adicionado'
     or public.pecas_registrar_apresentacao(cotacao_vazia, unidades_fixture, ator_fixture, itens_antes_inclusao) is distinct from 'desatualizada' then
     raise exception 'Incluir um item deve invalidar o mapa anterior de apresentação.';
+  end if;
+
+  update public.pecas_cotacoes set status = 'aguardando_cliente' where id = cotacao_vazia;
+  begin
+    perform public.pecas_registrar_aprovacao(cotacao_vazia, unidades_fixture, ator_fixture);
+    raise exception 'O evento de aprovação deveria ter falhado.';
+  exception when check_violation then
+    get stacked diagnostics restricao = constraint_name;
+    if restricao is distinct from 'fixture_rejeita_aprovacao' then raise; end if;
+  end;
+  if (select status from public.pecas_cotacoes where id = cotacao_vazia) is distinct from 'aguardando_cliente' then
+    raise exception 'A falha no histórico deve reverter a aprovação.';
   end if;
 end $$;
 
@@ -334,11 +370,13 @@ begin
     or has_function_privilege('anon', 'public.pecas_assumir_cotacao(uuid,text[],uuid)', 'EXECUTE')
     or has_function_privilege('authenticated', 'public.pecas_assumir_cotacao(uuid,text[],uuid)', 'EXECUTE')
     or has_function_privilege('anon', 'public.pecas_registrar_apresentacao(uuid,text[],uuid,jsonb)', 'EXECUTE')
-    or has_function_privilege('authenticated', 'public.pecas_registrar_apresentacao(uuid,text[],uuid,jsonb)', 'EXECUTE') then
+    or has_function_privilege('authenticated', 'public.pecas_registrar_apresentacao(uuid,text[],uuid,jsonb)', 'EXECUTE')
+    or has_function_privilege('anon', 'public.pecas_registrar_aprovacao(uuid,text[],uuid)', 'EXECUTE')
+    or has_function_privilege('authenticated', 'public.pecas_registrar_aprovacao(uuid,text[],uuid)', 'EXECUTE') then
     raise exception 'A cotação e seu histórico devem manter RLS fechada e os grants mínimos do servidor.';
   end if;
 
-  if (select count(*) from public.pecas_cotacoes_historico) <> 2 or not exists (
+  if (select count(*) from public.pecas_cotacoes_historico) <> 3 or not exists (
     select 1 from public.pecas_cotacoes_historico
     where cotacao_id = '00000000-0000-4000-8000-000000000054'
       and unidade = 'comauto' and de_status = 'novo' and para_status = 'em_cotacao'
@@ -354,6 +392,15 @@ begin
       and ocorrido_em between transaction_timestamp() and clock_timestamp()
   ) then
     raise exception 'Apresentar e repetir deve produzir um único evento com unidade, etapa, autor e horário corretos.';
+  end if;
+  if not exists (
+    select 1 from public.pecas_cotacoes_historico
+    where cotacao_id = '00000000-0000-4000-8000-000000000054'
+      and unidade = 'comauto' and de_status = 'aguardando_cliente' and para_status = 'aprovado'
+      and ator_id = '00000000-0000-4000-8000-000000000051'
+      and ocorrido_em between transaction_timestamp() and clock_timestamp()
+  ) then
+    raise exception 'Aprovar e repetir deve produzir um único evento com unidade, etapa, autor e horário corretos.';
   end if;
 
   if not (select relrowsecurity from pg_class where oid = 'public.pecas_cotacao_itens'::regclass)

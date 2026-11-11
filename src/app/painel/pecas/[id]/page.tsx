@@ -6,7 +6,7 @@ import { formatarBRL } from "@/lib/time";
 import { obterCotacao } from "@/modulos/pecas/cotacoes";
 import { centavosParaCampo, uuidV4Valido } from "@/modulos/pecas/dados-cotacao";
 import { Cabecalho, Status, Vazio } from "../../_components/ui";
-import { adicionarItemCotacao, editarItemCotacao, registrarApresentacao } from "../actions";
+import { adicionarItemCotacao, editarItemCotacao, registrarApresentacao, registrarAprovacao } from "../actions";
 
 const MENSAGENS: Record<string, string> = {
   adicionado: "Item incluído na cotação.",
@@ -16,6 +16,8 @@ const MENSAGENS: Record<string, string> = {
   invalido: "Confira a descrição, a quantidade e os valores.",
   indisponivel: "A ação está indisponível para esta cotação. Atualize a página e tente novamente.",
   apresentada: "Apresentação registrada. Aguardando resposta do cliente.",
+  aprovada: "Aprovação do cliente registrada.",
+  erro_aprovacao: "Não foi possível registrar a aprovação. Tente novamente.",
   sem_itens: "Inclua pelo menos um item para registrar a apresentação.",
   desatualizada: "Os itens da cotação mudaram. Confira o total atual antes de registrar a apresentação.",
   erro_apresentacao: "Não foi possível registrar a apresentação. Tente novamente.",
@@ -145,6 +147,15 @@ export default async function DetalheCotacaoPage({ params, searchParams }: {
           <p className="mudo">Registre após apresentar os itens e valores ao cliente. A cotação fica bloqueada para edição enquanto aguarda o retorno.</p>
           <form action={registrarApresentacao.bind(null, cotacao.id, versoesItens)}>
             <button className="btn primario" type="submit">Registrar apresentação</button>
+          </form>
+        </section>
+      )}
+      {cotacao.status === "aguardando_cliente" && cotacao.responsavel_id === u.id && (
+        <section className="card secao">
+          <h2>Aprovação da cotação</h2>
+          <p className="mudo">Registre quando o cliente aprovar os itens e valores. A confirmação da venda é uma etapa separada.</p>
+          <form action={registrarAprovacao.bind(null, cotacao.id)}>
+            <button className="btn primario" type="submit">Registrar aprovação</button>
           </form>
         </section>
       )}

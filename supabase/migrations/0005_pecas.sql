@@ -291,3 +291,41 @@ end $$;
 revoke all on function public.pecas_registrar_apresentacao(uuid, text[], uuid, jsonb)
   from public, anon, authenticated, service_role;
 grant execute on function public.pecas_registrar_apresentacao(uuid, text[], uuid, jsonb) to service_role;
+
+create function public.pecas_registrar_aprovacao(p_id uuid, p_unidades text[], p_ator uuid)
+returns boolean
+language plpgsql
+security invoker
+set search_path = ''
+as $$
+declare
+  unidade_atual text;
+  status_atual text;
+begin
+  select unidade, status into unidade_atual, status_atual
+  from public.pecas_cotacoes
+  where id = p_id
+    and unidade = any (p_unidades)
+    and responsavel_id = p_ator
+    and status in ('aguardando_cliente', 'aprovado')
+  for update;
+
+  if not found then
+    return false;
+  end if;
+  if status_atual = 'aprovado' then
+    return true;
+  end if;
+
+  update public.pecas_cotacoes
+  set status = 'aprovado'
+  where id = p_id;
+
+  insert into public.pecas_cotacoes_historico (cotacao_id, unidade, de_status, para_status, ator_id)
+  values (p_id, unidade_atual, status_atual, 'aprovado', p_ator);
+  return true;
+end $$;
+
+revoke all on function public.pecas_registrar_aprovacao(uuid, text[], uuid)
+  from public, anon, authenticated, service_role;
+grant execute on function public.pecas_registrar_aprovacao(uuid, text[], uuid) to service_role;

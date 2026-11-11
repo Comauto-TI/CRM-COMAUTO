@@ -114,6 +114,18 @@ export async function marcarApresentada(u: Usuario, id: string, itens: Record<st
   return "erro_apresentacao";
 }
 
+type ResultadoAprovacao = "aprovada" | "indisponivel" | "pendente" | "erro_aprovacao";
+
+export async function marcarAprovada(u: Usuario, id: string): Promise<ResultadoAprovacao> {
+  const { data, error } = await db().rpc("pecas_registrar_aprovacao", {
+    p_id: id,
+    p_unidades: u.unidades,
+    p_ator: u.id,
+  });
+  if (error) return tabelaPendente(error.code) || error.code === "PGRST202" ? "pendente" : "erro_aprovacao";
+  return data === true ? "aprovada" : "indisponivel";
+}
+
 export async function registrarCotacao(u: Usuario, dados: DadosCotacao): Promise<ResultadoCotacao> {
   if (!u.unidades.includes(u.unidade)) return "unidade";
 
