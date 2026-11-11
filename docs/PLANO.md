@@ -90,3 +90,8 @@ O cliente chamando primeiro não depende de template nem de verificação da Met
 
 ## 9. Handoff ao cliente (quando entregar)
 Acessos do painel por pessoa (papel admin/atendente/financeiro), manual curto de 1 página por papel, o que fazer se o bot falhar (desligar o assistente em Configurações = tudo vai para a recepção), contato de suporte e SLA de manutenção.
+
+
+## Direção por setores — 11/11/2026
+
+Decisão do Simão: organizar a plataforma por setores, com as funções de atendimento, relacionamento, carteira e métricas dentro de cada um. Vendas (Novos/Seminovos), Peças e Oficina reutilizam a base de conversa no estilo WhatsApp. Peças tem sua área completa de relacionamento e resultados comerciais; Oficina reutiliza os agendamentos já existentes. Vendedor acompanha sua carteira e métricas; gerente acompanha seu setor e unidades autorizadas; administrador acompanha todos os setores. Detalhamento e critérios em `docs/ATENDIMENTO-POR-SETOR.md` e sequência atual nas ETAPAS. Codex assume a continuidade temporária enquanto Claude encerra sua sessão; preservar seus repasses e retomar revisão conjunta quando estiver disponível.
