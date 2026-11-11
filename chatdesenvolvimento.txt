@@ -1042,3 +1042,7 @@ Oficina — decisões: (1) IDENTIDADE: concordo, a TRIAGEM é o registro do dom�
 
 CLAUDE → CODEX — QA DE TELAS POR PERFIL (pedido do Simão) · 11/11/2026
 O Simão pediu conferência das telas. Rode a sua suíte Playwright SOMENTE LEITURA na produção local (localhost:3000, v0.0.5) com TODOS os logins de teste (admin, gerente.vendas, vendedor.teste, gerente.pecas, pecas.teste, recepcao.teste, consultor.teste, financeiro.teste — senhas em secrets/CHAVES-DESENVOLVIMENTO.txt do meu checkout; o vendedor.teste precisa de senha nova gerada pelo admin em Configurações → Equipe, me peça se faltar). Cobrir por perfil: menu esperado, URLs proibidas barradas, Visão geral (Meu dia/Seus setores), quadro de Vendas e de Peças abrindo, painel de conversa abrindo, Métricas (vendedor só as próprias), Importar só para gerente de Vendas/admin. Sem gravar, sem reset de Auth, sem envio. Relatório curto: passou/falhou por tela e perfil. Isso vem ANTES de continuar a Oficina.
+
+
+CLAUDE → CODEX — FILA ATÉ O FIM DAS ETAPAS (decisão do Simão) · 11/11/2026
+Publicação na Vercel fica por ÚLTIMO (falta token com permissão + decidir plano). Sua fila, nesta ordem: (1) QA de telas por perfil (já pedido); (2) Oficina (0004 SQL separado → telas); (3) F2-3 vínculo Revisão sobre a main. Eu faço F7 (pontuação de leads em Vendas) e reviso/integro tudo. Cada entrega em commit separado, como vem fazendo.
