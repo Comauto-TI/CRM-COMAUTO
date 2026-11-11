@@ -115,7 +115,10 @@ export async function removerBloqueio(formData: FormData) {
 /** Equipe: telefone de alerta e consentimento para receber alertas de atendimento no WhatsApp. */
 export async function salvarEquipe(formData: FormData) {
   const u = await exigirAcesso("configuracoes");
-  const userId = String(formData.get("user_id"));
+  const userId = String(formData.get("user_id")).toLowerCase();
+  if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/.test(userId)) return;
+  const ativo = formData.get("ativo") === "on";
+  if (userId === u.id.toLowerCase() && !ativo) return;
   const tel = normalizarTelefone(String(formData.get("telefone") || ""));
   const recebe = formData.get("recebe_alertas") === "on" && !!tel;
   const papel = formData.get("papel");
@@ -129,7 +132,7 @@ export async function salvarEquipe(formData: FormData) {
     .update({
       papel,
       ...(tabela === "usuarios" && setorValido(setor) ? { setor } : {}),
-      ativo: formData.get("ativo") === "on",
+      ativo,
       telefone_whatsapp: tel,
       recebe_alertas: recebe,
       consentimento_alertas_em: recebe ? atual?.consentimento_alertas_em ?? new Date().toISOString() : null,

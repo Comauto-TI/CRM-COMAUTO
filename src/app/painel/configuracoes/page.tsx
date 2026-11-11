@@ -191,7 +191,8 @@ export default async function Configuracoes() {
                           {tabelaEquipe === "usuarios" && <select name="setor" defaultValue={p.setor} aria-label="Setor">{SETORES.map((x) => <option key={x} value={x}>{ROTULO_SETOR[x]}</option>)}</select>}
                           <input name="telefone" defaultValue={p.telefone_whatsapp ?? ""} placeholder="WhatsApp p/ alertas" />
                           <label style={{ display: "flex", gap: 4, alignItems: "center", flex: "0 0 auto" }}><input type="checkbox" name="recebe_alertas" defaultChecked={p.recebe_alertas} style={{ width: "auto" }} /> recebe alertas</label>
-                          <label style={{ display: "flex", gap: 4, alignItems: "center", flex: "0 0 auto" }}><input type="checkbox" name="ativo" defaultChecked={p.ativo} style={{ width: "auto" }} /> ativo</label>
+                          {p.user_id === u.id && <input type="hidden" name="ativo" value="on" />}
+                          <label style={{ display: "flex", gap: 4, alignItems: "center", flex: "0 0 auto" }}><input type="checkbox" name="ativo" defaultChecked={p.ativo} disabled={p.user_id === u.id} style={{ width: "auto" }} /> {p.user_id === u.id ? "seu acesso ativo" : "ativo"}</label>
                           <button className="btn pequeno" style={{ flex: "0 0 auto" }}>Salvar</button>
                         </form>
                         {tabelaEquipe === "usuarios" && p.user_id !== u.id && <RedefinirSenha userId={p.user_id} />}

@@ -9,7 +9,7 @@ import type { Usuario } from "@/lib/auth";
  * Equipe da plataforma (cadastro pelo admin, sem mexer no Supabase na mão).
  * CUIDADO: o Auth do banco de dev é COMPARTILHADO com o processo-vendas-teste.
  *  - e-mail que já tem login em outro sistema → só vincula ao painel (não troca a senha dele);
- *  - redefinir senha → só de quem foi criado pela plataforma (user_metadata.origem);
+ *  - redefinir senha → só de quem foi criado pela plataforma (app_metadata controlado pelo servidor);
  *  - desativar → tira o acesso ao PAINEL (usuarios.ativo = false); nunca apaga usuário do Auth.
  */
 
@@ -28,15 +28,14 @@ export function gerarSenhaProvisoria(tamanho = 12): string {
 }
 
 async function acharNoAuthPorEmail(email: string): Promise<{ id: string; origem: string | null } | null> {
-  // o Auth não tem busca por e-mail na API admin: percorre as páginas (poucos usuários no projeto)
-  for (let page = 1; page <= 20; page++) {
+  // A listagem admin é paginada: só termina depois de conferir a última página.
+  for (let page = 1; ; page++) {
     const { data, error } = await db().auth.admin.listUsers({ page, perPage: 200 });
     if (error) throw error;
     const achou = data.users.find((x) => (x.email ?? "").toLowerCase() === email);
-    if (achou) return { id: achou.id, origem: (achou.user_metadata?.origem as string | undefined) ?? null };
+    if (achou) return { id: achou.id, origem: (achou.app_metadata?.origem as string | undefined) ?? null };
     if (data.users.length < 200) return null;
   }
-  return null;
 }
 
 export type ResultadoEquipe =
@@ -59,32 +58,58 @@ export async function criarMembro(
   let userId: string;
   let senhaProvisoria: string | undefined;
   let vinculado = false;
-  const existente = await acharNoAuthPorEmail(email);
+  let recuperado = false;
+  let existente: Awaited<ReturnType<typeof acharNoAuthPorEmail>>;
+  try {
+    existente = await acharNoAuthPorEmail(email);
+  } catch {
+    return { ok: false, motivo: "Não foi possível consultar os logins existentes. Tente novamente." };
+  }
   if (existente) {
-    const { data: ja } = await db().from("usuarios").select("user_id").eq("user_id", existente.id).maybeSingle();
+    const { data: ja, error: erroConsulta } = await db().from("usuarios").select("user_id").eq("user_id", existente.id).maybeSingle();
+    if (erroConsulta) return { ok: false, motivo: "Não foi possível consultar a equipe. Tente novamente." };
     if (ja) return { ok: false, motivo: "Essa pessoa já está na equipe" };
     userId = existente.id;
-    vinculado = true;
+    if (existente.origem === ORIGEM) {
+      // Retoma somente um login cuja criação pelo CRM foi registrada pelo servidor.
+      // A primeira tentativa pode ter criado o Auth e falhado ao incluir na equipe.
+      recuperado = true;
+    } else {
+      vinculado = true;
+    }
   } else {
     senhaProvisoria = gerarSenhaProvisoria();
     const { data, error } = await db().auth.admin.createUser({
-      email, password: senhaProvisoria, email_confirm: true, user_metadata: { nome, origem: ORIGEM },
+      email, password: senhaProvisoria, email_confirm: true,
+      user_metadata: { nome }, app_metadata: { origem: ORIGEM },
     });
     if (error || !data.user) return { ok: false, motivo: "Não foi possível criar o login" };
     userId = data.user.id;
   }
 
   const { error } = await db().from("usuarios").insert({ user_id: userId, nome, papel: d.papel, setor: d.setor, unidade: d.unidade, ativo: true });
-  if (error) return { ok: false, motivo: "Login criado, mas não foi possível incluir na equipe — tente de novo" };
-  await auditar(admin.email, "equipe_criar", "usuarios", userId, { papel: d.papel, setor: d.setor, unidade: d.unidade, vinculado });
-  return vinculado
-    ? { ok: true, mensagem: `${nome} já tinha login em outro sistema do grupo: foi vinculado ao painel e entra com a mesma senha de lá.` }
-    : { ok: true, mensagem: `${nome} foi cadastrado. Passe a senha provisória pessoalmente — ela aparece só agora.`, senhaProvisoria };
+  if (error) return { ok: false, motivo: "Não foi possível incluir o login na equipe — tente de novo" };
+  await auditar(admin.email, "equipe_criar", "usuarios", userId, { papel: d.papel, setor: d.setor, unidade: d.unidade, vinculado, recuperado });
+  if (recuperado) {
+    // O INSERT único escolhe quem pode recuperar. Uma tentativa concorrente que
+    // perdeu a inclusão não pode invalidar a senha devolvida pela vencedora.
+    senhaProvisoria = gerarSenhaProvisoria();
+    const { error } = await db().auth.admin.updateUserById(userId, { password: senhaProvisoria });
+    if (error) {
+      return { ok: false, motivo: `${nome} foi incluído na equipe, mas não foi possível preparar a senha. Use “Nova senha” na linha dessa pessoa.` };
+    }
+    return { ok: true, mensagem: `Cadastro de ${nome} retomado. Passe a nova senha provisória pessoalmente — ela aparece só agora.`, senhaProvisoria };
+  }
+  if (vinculado) {
+    return { ok: true, mensagem: `${nome} já tinha login: foi vinculado ao painel com a senha existente preservada.` };
+  }
+  return { ok: true, mensagem: `${nome} foi cadastrado. Passe a senha provisória pessoalmente — ela aparece só agora.`, senhaProvisoria };
 }
 
 export async function definirAtivo(admin: Usuario, userId: string, ativo: boolean): Promise<ResultadoEquipe> {
-  if (!/^[0-9a-f-]{36}$/i.test(userId)) return { ok: false, motivo: "Usuário inválido" };
-  if (userId === admin.id && !ativo) return { ok: false, motivo: "Você não pode desativar o próprio acesso" };
+  userId = userId.toLowerCase();
+  if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/.test(userId)) return { ok: false, motivo: "Usuário inválido" };
+  if (userId === admin.id.toLowerCase() && !ativo) return { ok: false, motivo: "Você não pode desativar o próprio acesso" };
   const { data } = await db().from("usuarios").update({ ativo }).eq("user_id", userId).select("user_id");
   if (!data?.length) return { ok: false, motivo: "Usuário não encontrado" };
   await auditar(admin.email, ativo ? "equipe_reativar" : "equipe_desativar", "usuarios", userId);
@@ -97,8 +122,8 @@ export async function redefinirSenha(admin: Usuario, userId: string): Promise<Re
   if (!membro) return { ok: false, motivo: "Usuário não encontrado" };
   const { data: au, error } = await db().auth.admin.getUserById(userId);
   if (error || !au.user) return { ok: false, motivo: "Login não encontrado" };
-  if (au.user.user_metadata?.origem !== ORIGEM) {
-    return { ok: false, motivo: "Esse login veio de outro sistema do grupo — a senha é trocada por lá (para não derrubar o acesso dele no outro sistema)." };
+  if (au.user.app_metadata?.origem !== ORIGEM) {
+    return { ok: false, motivo: "O CRM não tem comprovação de que criou este login. A senha foi preservada; faça a recuperação pelo sistema de origem." };
   }
   const senhaProvisoria = gerarSenhaProvisoria();
   const { error: e2 } = await db().auth.admin.updateUserById(userId, { password: senhaProvisoria });
