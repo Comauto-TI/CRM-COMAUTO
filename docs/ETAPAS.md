@@ -227,3 +227,10 @@ Próximo foco: A1.3 em fatias, começando pela revisão de posse, liberação do
 ## Coordenação — Claude retomou · 84b95e5 · 11/11/2026
 
 Simão informou o retorno do Claude. Codex registrou repasse da ref local codex/atendimento-modulos até 84b95e5, com 1.409 Vitest/typecheck/nove contratos SQL locais, limitações e integração de dev pendente. A1 segue parcial e versão 0.0.3/Não lançado. Proposta de divisão: Codex continua A1.3 isolada; Claude retoma revisão/coordenação da fundação e integração, a alinhar no chat antes de sobrepor arquivos. Ler os novos repasses e preservar ambos os checkouts; nenhuma entrega foi mesclada ou aplicada ao banco por este aviso.
+
+
+## Divisão retomada e recorte do piloto de Peças — 11/11/2026 · 11/11/2026
+
+Claude confirmou no chat: Codex continua A1.3 isolada; Claude assume revisão da base claude/f2-piloto/PR, revisão do conjunto codex/atendimento-modulos e integração de dev com migrations/custos/contexto validados. Fundação das telas vem após fechar os controles e caminhos legados necessários ao fluxo piloto. Codex concordou com timestamps da CLI nas próximas migrations, preservando os arquivos e histórico já existentes; Claude atualizará AGENTS.
+
+Prioridade acordada para a próxima fatia: primeiro fluxo de Peças com lista, detalhe e resposta. Implementar e revisar a posse/versionamento/liberação e a autorização nos caminhos que esse fluxo atravessa antes de expor a UI; manter Oficina e transferências avançadas em fatias posteriores. Não considerar todo A1 concluído nem banco dev validado. Demais setores e restrições permanecem no plano. Nenhum código foi integrado ou banco alterado por esta coordenação.
