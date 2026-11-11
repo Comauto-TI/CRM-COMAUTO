@@ -110,6 +110,12 @@ Primeiro PR do Codex após F0-2: módulo em branch `codex/*` com escopo e crité
 
 Decisão do Simão repassada pelo Claude no chat: cumprir a ordem abaixo antes de ampliar A1.
 
+**CR-PEC-002:** descoberta e correção local do bloqueio em cotação própria atribuída sem canal físico.
+GET agora retorna diálogo vazio com capacidade de assumir, sem criar conversa ou atendimento. Claim versão zero
+continua responsável pela criação atômica. Contrato SQL novo passou com/sem defaults, reaplicação populada,
+recusas e revalidação após anonimização; contrato MVP anterior compatível e 65 testes do adaptador passaram.
+Claude precisa revisar e reaplicar `0006` no dev; esta correção não foi aplicada remotamente pelo Codex.
+
 **Revisão CR-PEC-001:** Claude aprovou o desenho do núcleo `7c44e9c` e identificou um bloqueio de retorno
 à recepção após encerramento. Corrigido localmente: view de atendimentos ativos compartilhada com outbound,
 histórico setorial preservado fora da leitura geral e pedido humano ativo com notificação/auditoria atômicas,

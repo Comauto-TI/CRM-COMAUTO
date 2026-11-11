@@ -17,6 +17,9 @@ Peças continua como CRM comercial, sem estoque ou faturamento. A1 inteiro perma
   Preparo e entrega antigos permanecem consultáveis; o quadro não cria um fluxo de estoque.
 - Assumir o atendimento atribui a cotação quando necessário, reserva o canal físico, incrementa a versão
   e pausa o bot atomicamente. Outra pessoa, canal ocupado ou versão antiga não produz efeitos parciais.
+- CR-PEC-002: uma cotação pode estar atribuída antes da primeira conversa física. Nesse caso o diálogo
+  próprio retorna vazio e permite assumir; GET não cria canal ou atendimento. Supervisão pode consultar
+  o registro autorizado, mas não ganha capacidade de assumir cotação alheia. A criação permanece no claim.
 - Assumir exige cotação própria ou fila sem dono, inclusive para gestão. Devolver libera somente a reserva daquele atendimento. A gestão autorizada pode recuperar uma posse
   cujo atendente foi desativado; essa capacidade não permite responder na posse de outra pessoa.
 - Encerrar ou reatribuir uma cotação com reserva ativa exige devolver antes. Transferências avançadas
@@ -63,6 +66,13 @@ ao cliente pelo outbound. Uma falha no ACK opcional não desfaz um aviso já con
    metadados de outras contas nesta entrega. Sem produção ou operação destrutiva implícita.
 
 ## Evidências e limites
+
+CR-PEC-002: `tests/sql/contratos-pecas-sem-canal.sql` passou com e sem defaults e com reaplicação populada,
+incluindo Novo/Em cotação, supervisão, colega/unidade indevida, ator inativo, cliente anonimizado, encerramento
+e anonimização entre GET e claim. O contrato MVP existente também passou, assim como 65 testes do adaptador.
+Harness local `work/validar-pecas-sem-canal.mjs`. Fonte 0006 dessa correção: SHA256
+`58E33778504CA01C8DDA96661C1EAA51E262AECD6FE67283D38165576A070813`.
+Ainda exige revisão/reaplicação no dev; sem nova API remota, fixture remota ou teste de navegador nesta correção.
 
 CR-PEC-001: regressão final com **1.695 Vitest / 40 arquivos**, typecheck, gitleaks e diff check aprovados.
 Contrato `tests/sql/contratos-pecas-retorno-legado.sql` validado nos dois modos de permissões e com

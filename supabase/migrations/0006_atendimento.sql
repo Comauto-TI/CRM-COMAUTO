@@ -1292,13 +1292,27 @@ begin
   if not found or not (pessoa.papel in ('admin','pecas') or (pessoa.papel = 'gerente' and pessoa.setor in ('pecas','administracao'))) then
     return pg_catalog.jsonb_build_object('ok',false,'codigo','nao_encontrado');
   end if;
-  select c.responsavel_id,c.unidade into cotacao from public.pecas_cotacoes c join public.unidades u on u.chave = c.unidade and u.ativa
-    where c.id = p_cotacao and c.status not in ('entregue','perdido','cancelado');
+  select c.responsavel_id,c.unidade,c.cliente_id into cotacao from public.pecas_cotacoes c join public.unidades u on u.chave = c.unidade and u.ativa
+    where c.id = p_cotacao and c.status not in ('entregue','perdido','cancelado') for share of c;
   if not found or (pessoa.papel <> 'admin' and pessoa.unidade <> cotacao.unidade and not exists(
     select 1 from public.usuario_unidades x where x.user_id = p_ator and x.unidade = cotacao.unidade)) then
     return pg_catalog.jsonb_build_object('ok',false,'codigo','nao_encontrado');
   end if;
   if cotacao.responsavel_id is null then return pg_catalog.jsonb_build_object('ok',false,'codigo','sem_responsavel'); end if;
+  if cotacao.responsavel_id <> p_ator and pessoa.papel not in ('admin','gerente') then
+    return pg_catalog.jsonb_build_object('ok',false,'codigo','nao_encontrado');
+  end if;
+  select nome,ultimo_contato_em into cliente from public.clientes where id=cotacao.cliente_id and not anonimizado for share;
+  if not found then return pg_catalog.jsonb_build_object('ok',false,'codigo','nao_encontrado'); end if;
+  if not exists(select 1 from public.conversas c where c.cliente_id=cotacao.cliente_id) then
+    -- Cotação pode ter sido atribuída antes do primeiro contato. GET não cria canal;
+    -- a ação de assumir fará isso atomicamente e revalidará a versão/posse atuais.
+    return pg_catalog.jsonb_build_object('ok',true,'id',null,'cotacaoId',p_cotacao,'versao',0,
+      'clienteNome',coalesce(cliente.nome,'Cliente'),'estado','livre',
+      'podeAssumir',cotacao.responsavel_id=p_ator,'podeDevolver',false,
+      'janelaAberta',coalesce(cliente.ultimo_contato_em>now()-interval '24 hours',false),
+      'mensagens','[]'::jsonb,'revisaoPendente',false);
+  end if;
   select * into ctx from public.contexto_atendimento_modular('pecas',p_cotacao,p_ator);
   if not found then return pg_catalog.jsonb_build_object('ok',false,'codigo','nao_encontrado'); end if;
   select nome,ultimo_contato_em into cliente from public.clientes where id = ctx.cliente_id;

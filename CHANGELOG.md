@@ -8,6 +8,7 @@ Versionamento semântico a partir de **0.0.1** (decisão do Simão, 10/11/2026).
 
 ## [Não lançado] — branches `claude/*` e `codex/*`
 ### MVP de atendimento de Peças (local, aguardando integração)
+- CR-PEC-002: cotação já atribuída antes da primeira conversa oferece a ação de assumir. A leitura retorna diálogo vazio autorizado e não cria dados; o canal só nasce no claim atômico. Correção local posterior à integração de CR-PEC-001, aguardando reaplicação de `0006` pelo Claude.
 - CR-PEC-001: negócios modulares encerrados deixam de bloquear o retorno à recepção. Negócio aberto ou reserva vigente ainda bloqueia os caminhos gerais; histórico associado permanece isolado. Pedido humano em canal setorial notifica responsável ou apoio da unidade e registra auditoria, com falha explícita e sem alterar a posse.
 - Quadro comum do Claude adaptado aos status de Peças, encerradas recolhidas e conversa no cartão. Carteira/fila e detalhe autorizados pelo banco; mudança de etapa usa transições e histórico existentes, sem estoque/faturamento.
 - Assumir/devolver com reserva por canal e versão, mensagens explicitamente vinculadas e resposta pelo outbound oficial na janela de 24h. UUID por tentativa, autorização no despacho, opt-out e proteção contra reenvio automático após resultado incerto.
