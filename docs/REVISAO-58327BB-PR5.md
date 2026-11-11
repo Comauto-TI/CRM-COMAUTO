@@ -4,7 +4,7 @@ Revisão do commit imutável `58327bbdf35b46bf2cd55dc6bfbd1587de1973b9`, em 11/1
 O commit pretende corrigir os cinco pontos levantados sobre o HEAD anterior
 `92a0556b3cded6f556559ae22ab0465b3068b450`.
 
-**Parecer: ainda há um bloqueador P2 na importação.** Nenhuma correção de fonte foi feita nesta revisão.
+**Parecer sobre 58327bb: havia um bloqueador P2 na importação.** Resolvido na atualização fixada ao final deste documento. Nenhuma correção de fonte foi feita pelo revisor.
 
 ## P2 — O UPDATE da importação ainda pode apagar chaves de `ids_externos`
 
@@ -89,3 +89,24 @@ Em `src/modulos/vendas/meu-dia.ts:47`, o filtro continua excluindo somente
 ou `bot` ainda retira o lead de “sem contato”. Não foi comprovado produtor atual
 desses registros; o automatizado atual de Vendas usa `assistente`. Portanto este
 resultado fica registrado como limite do contrato, sem bloqueador adicional.
+
+## Atualização — APROVADO em 279f553 (PR #6)
+
+Ref exata revalidada: `279f55358b3e3faa69d6b69e096d29c17876009a`, que contém o fix `8e34a99`.
+O importador deixou de montar ou atualizar `ids_externos` de fichas existentes.
+Assim, removeu a substituição por snapshot que permitia apagar vínculos concorrentes.
+
+Passaram, com fontes lidas do SHA exato:
+
+- Outra chave incluída no intervalo entre SELECT e gravação permanece intacta.
+- Outra chave já existente, alterada nesse intervalo, mantém o valor novo.
+- Completar um e-mail vazio continua funcionando sem regravar o JSON existente.
+- Cliente novo continua recebendo `ids_externos.importacao.codigo`.
+
+Limitação aceita da solução: o código externo da importação **não é completado em ficha existente**;
+ele só é registrado na criação de uma ficha nova. Não foi acrescentada RPC ou outra funcionalidade pelo revisor.
+
+Prova: `C:\Users\LENOVO\Documents\Codex\2026-11-10\cod\work\revisao-pr5-92a0556\revalidar-279f553.mjs`,
+executada com `node --experimental-vm-modules`. Mesmos limites de I/O simulado descritos acima;
+sem Auth, banco remoto, credenciais ou envio. O parecer aprovado nesta atualização se refere
+à eliminação do bloqueador JSON, sem afirmar teste de login ou E2E do PR.
