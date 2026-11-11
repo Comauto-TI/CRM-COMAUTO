@@ -1,10 +1,62 @@
 # A1 — Plano de acesso aos atendimentos por módulo
 
-Status: proposta técnica por fatias. Não representa runtime implementado, integração de UI,
-teste de login, E2E executado nem aplicação de migrations em dev/produção.
+Status: A1 em andamento. A fatia A1.1a tem código local isolado, descrito abaixo.
+As demais fatias continuam propostas; não houve integração de UI, teste de login, E2E
+nem aplicação de migrations em dev/produção.
 
 Levantamento inicial: branch `codex/atendimento-modulos`, base `f6370a1`.
 Nenhum acesso a Auth/banco remoto é necessário para preparar e testar o contrato localmente.
+
+## A1.1a — Contexto e posse de registros atribuídos
+
+Implementação local na branch `codex/atendimento-modulos`, após `6f87052`:
+
+- Migration `20261111140755_atendimentos_modulares.sql`, dependente de 0001, 0002, 0003 e 0005.
+- `atendimentos_modulares` mantém um vínculo tipado e único por oportunidade ou cotação, com
+  cliente, conversa física e unidade derivados do negócio. `atendimento_canais` reserva um
+  único atendimento modular por conversa, com FK composta que impede cruzar os canais.
+- `contexto_atendimento_modular` revalida usuário ativo, papel/setor, unidade ativa, unidade
+  principal/adicional e responsável atual. Admin tem alcance global em unidades ativas.
+  A carteira do cliente não concede acesso a uma oportunidade de outro vendedor.
+- A abertura só aceita negócios **abertos e já atribuídos**. Vendas exige oportunidade não
+  encerrada e funil ativo; Peças segue seus status abertos, inclusive uma cotação aprovada
+  cuja venda já foi confirmada. Sem responsável, é preciso atribuir pelo domínio existente
+  antes de abrir o atendimento; não há atalho de fila que exponha o histórico do cliente.
+- A conversa é derivada do cliente. Sua unidade física não substitui a unidade do negócio.
+  A RPC recusa um vínculo existente se cliente, conversa ou unidade do negócio mudaram,
+  preservando o registro original. Não faz rebind automático.
+- `abrir_atendimento_modular` reutiliza o mesmo ID sem repetir auditoria. `assumir_atendimento_modular`
+  exige versão exata, conversa humana e posse legada vazia. Dois atendimentos modulares
+  não reservam o mesmo canal. Replay do ator com a **versão corrente** mantém a versão;
+  versão antiga retorna conflito, mesmo se tiver sido a tentativa anterior do mesmo ator.
+- A posse guarda o dono do negócio na ocasião. Após transferir o negócio, o responsável
+  antigo perde acesso; o novo pode substituir essa posse obsoleta no mesmo atendimento,
+  mediante versão corrente. Isso ainda não implementa a transferência completa da A1.3.
+- As RPCs mantêm locks nas linhas usadas de ator, domínio, unidade, autorização adicional
+  e cliente. A ordem de escrita modular é canal e depois atendimento. Slot, posse,
+  incremento de versão e auditoria ficam na mesma transação; falha deve desfazer tudo.
+- RLS fechado, `SECURITY INVOKER`, `search_path` vazio e grants explícitos. Só o servidor
+  pode executar. Os wrappers em `src/modulos/atendimento/acesso.ts` recebem o usuário já
+  autenticado e enviam sua identidade, referências e versão; não aceitam cliente, unidade,
+  conversa ou posse do navegador como autoridade. Nenhuma rota pública foi adicionada.
+
+Contratos de retorno: sucesso contém `ok`, `id`, `versao`, `setor` e `registroId`.
+Ausência ou registro fora do escopo usa `nao_encontrado`; conflito usa `conflito`, sem nome,
+e-mail ou posse de terceiros. O wrapper normaliza entrada inválida, falta de acesso,
+ausência, conflito e indisponibilidade em 400/403/404/409/503 e descarta detalhes internos.
+
+Validação local: typecheck, 846 testes Vitest (71 novos dos wrappers) e contratos em
+`tests/sql/contratos-atendimentos.sql` passaram. PostgreSQL/PGlite executou as RPCs como
+`service_role`, com e sem defaults permissivos, incluindo rollback real da auditoria,
+replay, revogações e reaplicação com dados. SQL e wrapper tiveram revisão independente.
+Migration revisada: SHA256 `97bb8a1f243e2e8fb0b671fd85eb09cfab3e2afcd54f016fbf2dd93de337fb5d`.
+
+**Ainda pendente:** classificar e associar mensagens, vincular os encaminhamentos do bot,
+Oficina/triagem, filas sem dono, leitura/listagem/contadores por módulo, liberação do canal,
+encerramento/reabertura, transferências completas, envio e adaptadores legados.
+A reserva nova não impede uma API legada de assumir depois, nem libera o envio modular.
+Por isso esta fatia permanece sem UI e não prova exclusividade entre todos os fluxos do sistema.
+Os testes de concorrência entre sessões e os logins reais continuam necessários antes da integração.
 
 ## Problema e limites atuais
 
