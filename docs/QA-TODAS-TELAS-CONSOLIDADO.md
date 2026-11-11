@@ -84,3 +84,15 @@ Não testados: envio/persistência dos formulários, campanhas/disparos, dados e
 controles positivos de carteira/unidade, concorrência multissessão ou toda a UI mobile. O detalhe de
 campanha não foi aberto porque escreve em GET. A fila própria de Oficina ainda não está publicada;
 seu WIP permaneceu preservado. Login de Vendedor QA 2 comprova o perfil novo, não a senha da conta antiga.
+
+
+## Atualização do repasse ao encerrar
+
+Claude abriu PR #8, ainda não mesclado no momento da consulta, HEAD
+194e6cf975db1c3318cfc4f6ae0ddd182b646627 sobre main16b873b. Ele reúne as mudanças de login/Conta/Usuários
+observadas no runtime, além de cadastro público por convite e pontuação. A revisão de segurança de
+convites/troca de senha foi solicitada separadamente e NÃO está aprovada por este QA de navegação.
+A página pública de cadastro com token válido ficou fora do inventário das páginas autenticadas e não
+foi certificada sem um convite de teste controlado; nenhum convite foi gerado pelo coordenador.
+Claude confirmou que integrará o commit0fb2a00 junto ao relatório. Confirmar a aplicação real antes de
+tratar as duas correções como disponíveis no servidor.
