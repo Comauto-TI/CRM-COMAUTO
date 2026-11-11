@@ -6,6 +6,13 @@ Versionamento semântico a partir de **0.0.1** (decisão do Simão, 10/11/2026).
 - Toda versão mesclada ganha **tag git** `vX.Y.Z` e uma seção aqui. O que está numa branch e ainda não foi mesclado fica em "Não lançado".
 - Quem mescla na `main` (Claude ou Codex) atualiza `package.json`, este arquivo e cria a tag.
 
+## [Não lançado] — branch `claude/f2-piloto`
+### Adicionado
+- Equipe em Configurações: o admin cadastra a pessoa (login + papel, setor e unidade) com senha provisória exibida uma vez (nunca na URL); vincula e-mail que já tem login em outro sistema do grupo sem trocar a senha; nova senha só para quem foi criado pela plataforma.
+- Prontidão do piloto (Gestão): o que bloqueia e o que falta, com a ação de cada item — só verifica se as chaves existem, nunca mostra valores.
+### Corrigido
+- Rótulos do funil de Vendas não quebram mais no meio da palavra.
+
 ## [0.0.3] — 11/11/2026 — Setor Peças (PR #3, Codex; revisado pelo Claude)
 ### Adicionado
 - Fila de cotações por unidade, com responsável, origem, próxima ação e prazo.

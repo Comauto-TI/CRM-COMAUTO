@@ -50,6 +50,7 @@ const GRUPOS: Grupo[] = [
       { href: "/painel/metricas", rotulo: "Métricas", icone: "metricas", area: "metricas" },
       { href: "/painel/financeiro", rotulo: "Financeiro", icone: "financeiro", area: "financeiro" },
       { href: "/painel/seguranca", rotulo: "Segurança", icone: "seguranca", area: "seguranca" },
+      { href: "/painel/piloto", rotulo: "Prontidão do piloto", icone: "seguranca", area: "configuracoes" },
       { href: "/painel/configuracoes", rotulo: "Configurações", icone: "config", area: "custos_config" },
     ],
   },

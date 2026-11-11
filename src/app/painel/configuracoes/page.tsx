@@ -4,6 +4,7 @@ import { getConfig } from "@/lib/config";
 import { formatarDataHora, DIAS } from "@/lib/time";
 import { Cabecalho, Status } from "../_components/ui";
 import { tabelaUsuarios } from "@/lib/usuarios";
+import { NovoMembro, RedefinirSenha } from "./Equipe";
 import { PAPEIS, PAPEIS_LEGADO, SETORES, ROTULO_PAPEL, ROTULO_SETOR } from "@/lib/permissoes";
 import { salvarEmpresa, salvarFinanceiro, salvarCustoFixo, salvarTemplate, salvarServico, adicionarBloqueio, removerBloqueio, salvarEquipe } from "./actions";
 
@@ -12,6 +13,7 @@ export default async function Configuracoes() {
   const admin = u.papel === "admin";
   const cfg = await getConfig();
   const tabelaEquipe = await tabelaUsuarios();
+  const unidadesLista = tabelaEquipe === "usuarios" ? (((await db().from("unidades").select("chave, nome").order("ativa", { ascending: false }).order("nome")).data ?? []) as { chave: string; nome: string }[]) : [];
 
   const [precos, fixos, templates, servicos, recursos, horarios, bloqueios, equipe] = await Promise.all([
     db().from("precos_meta").select("categoria, valor_brl, vigente_desde").order("vigente_desde", { ascending: false }),
@@ -167,7 +169,14 @@ export default async function Configuracoes() {
 
           <div className="card secao">
             <h2>Equipe e alertas de atendimento</h2>
-            <p className="mudo">Quem marcar &quot;recebe alertas&quot; recebe no próprio WhatsApp o aviso de cliente aguardando (template utility, ~R$ 0,035 cada), com link direto para responder pelo painel. Marcar = a pessoa autorizou receber esses alertas. Novos usuários: crie no Supabase Auth e insira na tabela usuarios com setor, papel e unidade (ver tests/e2e/README.md).</p>
+            {tabelaEquipe === "usuarios" && (
+              <details className="secao" open={!(equipe.data ?? []).length || (equipe.data ?? []).length < 3}>
+                <summary style={{ cursor: "pointer", fontWeight: 600 }}>+ Cadastrar pessoa</summary>
+                <p className="mudo">Cria o login e já define papel, setor e unidade. Se o e-mail já tiver login em outro sistema do grupo, a pessoa só é vinculada ao painel (a senha dela não muda).</p>
+                <NovoMembro unidades={unidadesLista} />
+              </details>
+            )}
+            <p className="mudo">Quem marcar &quot;recebe alertas&quot; recebe no próprio WhatsApp o aviso de cliente aguardando (template utility, ~R$ 0,035 cada), com link direto para responder pelo painel. Marcar = a pessoa autorizou receber esses alertas.</p>
             <div className="tabela-wrap">
               <table className="tabela">
                 <thead><tr><th>Pessoa</th><th colSpan={2}>Configuração</th></tr></thead>
@@ -185,6 +194,7 @@ export default async function Configuracoes() {
                           <label style={{ display: "flex", gap: 4, alignItems: "center", flex: "0 0 auto" }}><input type="checkbox" name="ativo" defaultChecked={p.ativo} style={{ width: "auto" }} /> ativo</label>
                           <button className="btn pequeno" style={{ flex: "0 0 auto" }}>Salvar</button>
                         </form>
+                        {tabelaEquipe === "usuarios" && p.user_id !== u.id && <RedefinirSenha userId={p.user_id} />}
                       </td>
                     </tr>
                   ))}

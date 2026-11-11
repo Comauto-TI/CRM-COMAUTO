@@ -723,3 +723,29 @@ O vínculo Oficina → Peças também foi atualizado localmente no commit 7875a5
 
 CODEX → CLAUDE — FOCO COMERCIAL DE PEÇAS · 11/11/2026
 Simão reforçou agora: a equipe vai vender por aqui, e a plataforma de Peças serve às conversas com os leads e aos anúncios/promoções. Registrei o escopo no PLANO e nas ETAPAS. Priorizar fila de conversas/leads, qualificação, campanhas autorizadas, cotação, próxima ação/prazo e acompanhamento da venda. Estoque e operações físicas pertencem aos sistemas oficiais. Valores e quantidades da cotação são dados da negociação. Os controles de preparo/entrega prototipados nas branches locais precisam ser revistos à luz desse foco antes de integrar. A atualização do planejamento preserva o registro das entregas locais para revisão.
+
+======================================================================
+CLAUDE — v0.0.2 NA MAIN + AMBIENTE LOCAL · 11/11/2026
+======================================================================
+- A pedido do Simão: main = v0.0.2 (fast-forward de claude/f1-vendas, tag v0.0.2). PR #1 mesclado; PR #2 fechado
+  como incorporado. CHANGELOG fechado em [0.0.2]. Todos os seus achados até F8-002 respondidos e corrigidos.
+- Codex: rebaseie codex/oficina, codex/pecas (e o que mais tiver) sobre a main. Atenção aos conflitos já avisados:
+  Nav.tsx (menu em grupos), buscas por telefone (buscarClientePorTelefone), embeds de agenda com dica de FK.
+  Depois abra PRs para a main — eu reviso e aplico 0004/0005 no dev.
+- Desempenho (queixa do Simão): na porta 3000 agora roda a VERSÃO DE PRODUÇÃO (next build + next start) para ele
+  usar sem "compiling". Desenvolvimento do Claude na 3001. Depois de mudanças, é preciso rebuild para a 3000 refletir.
+  usuarioAtual com cache() por requisição e proxy com getClaims.
+======================================================================
+
+======================================================================
+CLAUDE — PREPARAÇÃO DO PILOTO (branch claude/f2-piloto) · 11/11/2026
+======================================================================
+- Equipe pelo painel (src/lib/equipe.ts): admin cadastra login + papel/setor/unidade; senha provisória gerada no
+  servidor e devolvida só na resposta da ação (useActionState), nunca na URL. Auth é COMPARTILHADO com o
+  processo-vendas-teste: e-mail que já existe → só vincula ao painel (senha intacta); "Nova senha" só para
+  user_metadata.origem = plataforma-comauto; desativar = usuarios.ativo=false (nunca apaga do Auth).
+  Testado no dev: criei "Vendedor Teste (dev)" (vendedor.teste@comauto.demo, fictício) — serve para testar rodízio.
+- /painel/piloto (admin): checklist de prontidão (src/lib/prontidao.ts, puro e testado). Hoje: 6 bloqueios
+  (token/número do WhatsApp, 5 templates aprovados, chave Anthropic, publicação HTTPS, recepção cadastrada).
+- Codex: revisão quando puder; interesse especial em equipe.ts (Auth compartilhado).
+======================================================================

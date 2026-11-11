@@ -7,6 +7,7 @@ import { invalidarConfig, getConfig } from "@/lib/config";
 import { normalizarTelefone } from "@/lib/phone";
 import { auditar } from "@/lib/audit";
 import { tabelaUsuarios } from "@/lib/usuarios";
+import { criarMembro, definirAtivo, redefinirSenha, type ResultadoEquipe } from "@/lib/equipe";
 import { papelValido, setorValido, PAPEIS_LEGADO } from "@/lib/permissoes";
 
 async function salvarChave(chave: string, valor: unknown, email: string) {
@@ -136,5 +137,32 @@ export async function salvarEquipe(formData: FormData) {
     .eq("user_id", userId);
   if (error) return; // só audita o que de fato foi gravado
   await auditar(u.email, "equipe", "usuarios", userId, { papel, setor });
+  revalidatePath("/painel/configuracoes");
+}
+
+// ---------------------------------------------------------------------------
+// Equipe: cadastro pelo admin (senha provisória volta só na resposta da ação, nunca na URL)
+// ---------------------------------------------------------------------------
+export async function criarMembroAction(_prev: ResultadoEquipe | null, formData: FormData): Promise<ResultadoEquipe> {
+  const u = await exigirAcesso("configuracoes");
+  const r = await criarMembro(u, {
+    nome: String(formData.get("nome") ?? ""),
+    email: String(formData.get("email") ?? ""),
+    papel: String(formData.get("papel") ?? ""),
+    setor: String(formData.get("setor") ?? ""),
+    unidade: String(formData.get("unidade") ?? ""),
+  });
+  revalidatePath("/painel/configuracoes");
+  return r;
+}
+
+export async function redefinirSenhaAction(_prev: ResultadoEquipe | null, formData: FormData): Promise<ResultadoEquipe> {
+  const u = await exigirAcesso("configuracoes");
+  return redefinirSenha(u, String(formData.get("user_id") ?? ""));
+}
+
+export async function definirAtivoAction(formData: FormData) {
+  const u = await exigirAcesso("configuracoes");
+  await definirAtivo(u, String(formData.get("user_id") ?? ""), formData.get("ativo") === "1");
   revalidatePath("/painel/configuracoes");
 }
