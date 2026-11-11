@@ -6,7 +6,7 @@ import { formatarBRL } from "@/lib/time";
 import { obterCotacao } from "@/modulos/pecas/cotacoes";
 import { centavosParaCampo, uuidV4Valido } from "@/modulos/pecas/dados-cotacao";
 import { Cabecalho, Status, Vazio } from "../../_components/ui";
-import { adicionarItemCotacao, editarItemCotacao } from "../actions";
+import { adicionarItemCotacao, editarItemCotacao, registrarApresentacao } from "../actions";
 
 const MENSAGENS: Record<string, string> = {
   adicionado: "Item incluído na cotação.",
@@ -14,7 +14,11 @@ const MENSAGENS: Record<string, string> = {
   desatualizado: "O item foi alterado em outra edição. Confira os dados atuais antes de salvar novamente.",
   erro_edicao: "Não foi possível salvar o item. Tente novamente.",
   invalido: "Confira a descrição, a quantidade e os valores.",
-  indisponivel: "Este item está indisponível. Atualize a cotação e tente novamente.",
+  indisponivel: "A ação está indisponível para esta cotação. Atualize a página e tente novamente.",
+  apresentada: "Apresentação registrada. Aguardando resposta do cliente.",
+  sem_itens: "Inclua pelo menos um item para registrar a apresentação.",
+  desatualizada: "Os itens da cotação mudaram. Confira o total atual antes de registrar a apresentação.",
+  erro_apresentacao: "Não foi possível registrar a apresentação. Tente novamente.",
   limite: "A cotação já tem 100 itens.",
   pendente: "Os itens de Peças ainda precisam ser habilitados neste ambiente.",
   erro_item: "Não foi possível incluir o item. Tente novamente.",
@@ -50,6 +54,7 @@ export default async function DetalheCotacaoPage({ params, searchParams }: {
   const acaoItem = itemEmEdicao ? editarItemCotacao : adicionarItemCotacao;
   const linkCotacao = `/painel/pecas/${cotacao.id}`;
   const totalCentavos = cotacao.itens.reduce((total, item) => total + item.quantidade * item.preco_unitario_centavos, 0);
+  const versoesItens = Object.fromEntries(cotacao.itens.map((item) => [item.id, item.versao]));
 
   return (
     <>
@@ -133,6 +138,15 @@ export default async function DetalheCotacaoPage({ params, searchParams }: {
             </tfoot>
           </table>
         </div>
+      )}
+      {podeEditarItens && !itemEmEdicao && cotacao.itens.length > 0 && (
+        <section className="card secao">
+          <h2>Apresentação da cotação</h2>
+          <p className="mudo">Registre após apresentar os itens e valores ao cliente. A cotação fica bloqueada para edição enquanto aguarda o retorno.</p>
+          <form action={registrarApresentacao.bind(null, cotacao.id, versoesItens)}>
+            <button className="btn primario" type="submit">Registrar apresentação</button>
+          </form>
+        </section>
       )}
     </>
   );

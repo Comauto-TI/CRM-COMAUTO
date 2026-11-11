@@ -100,6 +100,20 @@ export async function atualizarItem(u: Usuario, cotacaoId: string, dados: DadosE
   return "erro_edicao";
 }
 
+type ResultadoApresentacao = "apresentada" | "sem_itens" | "desatualizada" | "indisponivel" | "pendente" | "erro_apresentacao";
+
+export async function marcarApresentada(u: Usuario, id: string, itens: Record<string, number>): Promise<ResultadoApresentacao> {
+  const { data, error } = await db().rpc("pecas_registrar_apresentacao", {
+    p_id: id,
+    p_unidades: u.unidades,
+    p_ator: u.id,
+    p_itens: itens,
+  });
+  if (error) return tabelaPendente(error.code) || error.code === "PGRST202" ? "pendente" : "erro_apresentacao";
+  if (data === "apresentada" || data === "sem_itens" || data === "desatualizada" || data === "indisponivel") return data;
+  return "erro_apresentacao";
+}
+
 export async function registrarCotacao(u: Usuario, dados: DadosCotacao): Promise<ResultadoCotacao> {
   if (!u.unidades.includes(u.unidade)) return "unidade";
 

@@ -242,3 +242,52 @@ revoke all on function public.pecas_atualizar_item(uuid, uuid, text[], uuid, int
   from public, anon, authenticated, service_role;
 grant execute on function public.pecas_atualizar_item(uuid, uuid, text[], uuid, integer, text, integer, integer, integer)
   to service_role;
+
+create function public.pecas_registrar_apresentacao(p_id uuid, p_unidades text[], p_ator uuid, p_itens jsonb)
+returns text
+language plpgsql
+security invoker
+set search_path = ''
+as $$
+declare
+  unidade_atual text;
+  status_atual text;
+  itens_atuais jsonb;
+begin
+  select unidade, status into unidade_atual, status_atual
+  from public.pecas_cotacoes
+  where id = p_id
+    and unidade = any (p_unidades)
+    and responsavel_id = p_ator
+    and status in ('em_cotacao', 'aguardando_cliente')
+  for update;
+
+  if not found then
+    return 'indisponivel';
+  end if;
+  select jsonb_object_agg(id::text, versao) into itens_atuais
+  from public.pecas_cotacao_itens
+  where cotacao_id = p_id;
+
+  if itens_atuais is null then
+    return 'sem_itens';
+  end if;
+  if itens_atuais is distinct from p_itens then
+    return 'desatualizada';
+  end if;
+  if status_atual = 'aguardando_cliente' then
+    return 'apresentada';
+  end if;
+
+  update public.pecas_cotacoes
+  set status = 'aguardando_cliente'
+  where id = p_id;
+
+  insert into public.pecas_cotacoes_historico (cotacao_id, unidade, de_status, para_status, ator_id)
+  values (p_id, unidade_atual, status_atual, 'aguardando_cliente', p_ator);
+  return 'apresentada';
+end $$;
+
+revoke all on function public.pecas_registrar_apresentacao(uuid, text[], uuid, jsonb)
+  from public, anon, authenticated, service_role;
+grant execute on function public.pecas_registrar_apresentacao(uuid, text[], uuid, jsonb) to service_role;
