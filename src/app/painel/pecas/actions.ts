@@ -2,7 +2,7 @@
 
 import { redirect } from "next/navigation";
 import { exigirAcesso } from "@/lib/auth";
-import { atualizarAcompanhamento, atualizarItem, encerrarCotacao, iniciarCotacao, marcarApresentada, marcarAprovada, marcarVendaConfirmada, registrarCotacao, registrarItem } from "@/modulos/pecas/cotacoes";
+import { atualizarAcompanhamento, atualizarItem, encerrarCotacao, iniciarCotacao, marcarApresentada, marcarAprovada, marcarVendaConfirmada, reatribuirCotacao, registrarCotacao, registrarItem } from "@/modulos/pecas/cotacoes";
 import { lerDadosAcompanhamento, lerDadosCotacao, lerDadosEdicaoItem, lerDadosEncerramento, lerDadosItem, lerIdCotacao, uuidV4Valido } from "@/modulos/pecas/dados-cotacao";
 
 export async function criarCotacao(form: FormData) {
@@ -77,4 +77,15 @@ export async function salvarAcompanhamento(id: string, form: FormData) {
   const dados = lerDadosAcompanhamento(form);
   const resultado = dados ? await atualizarAcompanhamento(u, id, dados) : "acompanhamento_invalido";
   redirect(`/painel/pecas/${id}?msg=${resultado}#acompanhamento`);
+}
+
+export async function mudarResponsavel(id: string, form: FormData) {
+  const u = await exigirAcesso("pecas");
+  const responsavelId = form.get("responsavel");
+  if (!uuidV4Valido(id)) redirect("/painel/pecas?msg=indisponivel");
+  if (typeof responsavelId !== "string" || !uuidV4Valido(responsavelId)) {
+    redirect(`/painel/pecas/${id}?msg=indisponivel`);
+  }
+  const resultado = await reatribuirCotacao(u, id, responsavelId);
+  redirect(`/painel/pecas/${id}?msg=${resultado}`);
 }

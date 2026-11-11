@@ -4,6 +4,8 @@ begin;
 -- A RPC do bot só lê estas colunas da ficha e da unidade.
 grant select (id, anonimizado) on public.clientes to service_role;
 grant select (chave, ativa) on public.unidades to service_role;
+grant select (user_id, papel, setor, ativo, unidade) on public.usuarios to service_role;
+grant select (user_id, unidade) on public.usuario_unidades to service_role;
 
 insert into public.unidades (chave, nome, ativa) values ('pecas_fixture', 'Unidade fixture de Peças', true);
 
@@ -22,6 +24,55 @@ insert into public.clientes (id, telefone, nome, anonimizado) values
 insert into public.veiculos (id, cliente_id)
 values ('00000000-0000-4000-8000-000000000053', '00000000-0000-4000-8000-000000000052');
 
+insert into auth.users (id)
+select ('00000000-0000-4000-8000-' || lpad(n::text, 12, '0'))::uuid from generate_series(101, 111) n;
+insert into public.usuarios (user_id, nome, papel, setor, unidade, ativo) values
+  ('00000000-0000-4000-8000-000000000101', 'Admin fixture', 'admin', 'administracao', 'comauto', true),
+  ('00000000-0000-4000-8000-000000000102', 'Gerente Peças', 'gerente', 'pecas', 'comauto', true),
+  ('00000000-0000-4000-8000-000000000103', 'Gerente Oficina', 'gerente', 'oficina', 'comauto', true),
+  ('00000000-0000-4000-8000-000000000104', 'Admin inativo', 'admin', 'administracao', 'comauto', true),
+  ('00000000-0000-4000-8000-000000000105', 'Peças sem unidade', 'pecas', 'pecas', 'pecas_fixture', true),
+  ('00000000-0000-4000-8000-000000000106', 'Peças unidade extra', 'pecas', 'pecas', 'pecas_fixture', true),
+  ('00000000-0000-4000-8000-000000000107', 'Vendedor fixture', 'vendedor', 'vendas', 'comauto', true),
+  ('00000000-0000-4000-8000-000000000108', 'Responsável removido', 'pecas', 'pecas', 'comauto', true),
+  ('00000000-0000-4000-8000-000000000109', 'Gerente administração', 'gerente', 'administracao', 'comauto', true),
+  ('00000000-0000-4000-8000-000000000110', 'Gerente unidade extra', 'gerente', 'pecas', 'pecas_fixture', true),
+  ('00000000-0000-4000-8000-000000000111', 'Admin sem unidade', 'admin', 'administracao', 'pecas_fixture', true);
+insert into public.usuario_unidades (user_id, unidade) values
+  ('00000000-0000-4000-8000-000000000105', 'comauto'),
+  ('00000000-0000-4000-8000-000000000106', 'comauto'),
+  ('00000000-0000-4000-8000-000000000110', 'comauto');
+
+insert into public.pecas_cotacoes (
+  id, cliente_id, descricao, status, responsavel_id, venda_confirmada_em, venda_confirmada_por, tipo_preparo
+)
+select ('00000000-0000-4000-8000-' || lpad(f.numero::text, 12, '0'))::uuid,
+  '00000000-0000-4000-8000-000000000052', 'Fixture de atribuição', f.status,
+  case when f.responsavel is not null then ('00000000-0000-4000-8000-' || lpad(f.responsavel::text, 12, '0'))::uuid end,
+  case when f.vendida then now() end,
+  case when f.vendida then ('00000000-0000-4000-8000-' || lpad(f.responsavel::text, 12, '0'))::uuid end,
+  f.preparo
+from (values
+  (201, 'novo', null::integer, false, null::text),
+  (202, 'em_cotacao', 51, false, null),
+  (203, 'aguardando_cliente', 51, false, null),
+  (204, 'aprovado', 51, true, null),
+  (205, 'em_separacao', 51, true, 'encomenda'),
+  (206, 'aprovado', 51, true, null),
+  (207, 'em_cotacao', 104, false, null),
+  (208, 'aguardando_cliente', 105, false, null),
+  (211, 'em_cotacao', 108, false, null),
+  (212, 'aguardando_cliente', 108, false, null),
+  (213, 'aprovado', 108, true, null),
+  (214, 'em_separacao', 108, true, 'separacao'),
+  (216, 'aprovado', 108, true, null)
+) f (numero, status, responsavel, vendida, preparo);
+insert into public.pecas_cotacao_itens (cotacao_id, descricao, quantidade, preco_unitario_centavos, custo_unitario_centavos)
+values ('00000000-0000-4000-8000-000000000204', 'Item preservado', 2, 15000, 9000);
+update public.usuarios set ativo = false where user_id = '00000000-0000-4000-8000-000000000104';
+delete from public.usuario_unidades where user_id = '00000000-0000-4000-8000-000000000105' and unidade = 'comauto';
+delete from auth.users where id = '00000000-0000-4000-8000-000000000108';
+
 -- Induz falha no histórico para verificar o rollback da mudança de etapa.
 alter table public.pecas_cotacoes_historico add constraint fixture_rejeita_historico
   check (cotacao_id <> '00000000-0000-4000-8000-000000000056');
@@ -33,6 +84,8 @@ alter table public.pecas_cotacoes_historico add constraint fixture_rejeita_entre
   check (cotacao_id <> '00000000-0000-4000-8000-000000000063' or para_status <> 'entregue');
 alter table public.pecas_cotacoes_historico add constraint fixture_rejeita_encerramento
   check (cotacao_id <> '00000000-0000-4000-8000-000000000065' or para_status <> 'cancelado');
+alter table public.pecas_cotacoes_historico add constraint fixture_rejeita_atribuicao
+  check (cotacao_id not in ('00000000-0000-4000-8000-000000000206', '00000000-0000-4000-8000-000000000216'));
 
 set local role service_role;
 
@@ -739,6 +792,142 @@ begin
   end if;
 end $$;
 
+do $$
+declare
+  admin_fixture constant uuid := '00000000-0000-4000-8000-000000000101';
+  gerente_pecas constant uuid := '00000000-0000-4000-8000-000000000102';
+  gerente_outro_setor constant uuid := '00000000-0000-4000-8000-000000000103';
+  inativo constant uuid := '00000000-0000-4000-8000-000000000104';
+  sem_unidade constant uuid := '00000000-0000-4000-8000-000000000105';
+  alvo_extra constant uuid := '00000000-0000-4000-8000-000000000106';
+  sem_acesso_pecas constant uuid := '00000000-0000-4000-8000-000000000107';
+  removido constant uuid := '00000000-0000-4000-8000-000000000108';
+  gerente_administracao constant uuid := '00000000-0000-4000-8000-000000000109';
+  gerente_extra constant uuid := '00000000-0000-4000-8000-000000000110';
+  admin_sem_unidade constant uuid := '00000000-0000-4000-8000-000000000111';
+  operador constant uuid := '00000000-0000-4000-8000-000000000051';
+  outro_operador constant uuid := '00000000-0000-4000-8000-000000000055';
+  nova constant uuid := '00000000-0000-4000-8000-000000000201';
+  vendida constant uuid := '00000000-0000-4000-8000-000000000204';
+  falha_transferencia constant uuid := '00000000-0000-4000-8000-000000000206';
+  falha_retomada constant uuid := '00000000-0000-4000-8000-000000000216';
+  unidades_fixture constant text[] := array['comauto'];
+  cotacao_orfa uuid;
+  dados_anteriores jsonb;
+  itens_anteriores jsonb;
+  restricao text;
+begin
+  if public.pecas_reatribuir_cotacao(nova, unidades_fixture, gerente_outro_setor, outro_operador)
+    or public.pecas_reatribuir_cotacao(nova, unidades_fixture, inativo, outro_operador)
+    or public.pecas_reatribuir_cotacao(nova, unidades_fixture, operador, outro_operador)
+    or public.pecas_reatribuir_cotacao(nova, unidades_fixture, admin_sem_unidade, outro_operador)
+    or public.pecas_reatribuir_cotacao(nova, array['pecas_fixture'], admin_fixture, outro_operador) then
+    raise exception 'A transferência exige supervisor ativo, acesso a Peças e escopo atual no banco.';
+  end if;
+  if public.pecas_reatribuir_cotacao(nova, unidades_fixture, admin_fixture, inativo)
+    or public.pecas_reatribuir_cotacao(nova, unidades_fixture, admin_fixture, sem_unidade)
+    or public.pecas_reatribuir_cotacao(nova, unidades_fixture, admin_fixture, sem_acesso_pecas)
+    or public.pecas_reatribuir_cotacao(nova, unidades_fixture, admin_fixture, removido)
+    or public.pecas_reatribuir_cotacao(nova, unidades_fixture, admin_fixture, null) then
+    raise exception 'O novo responsável exige usuário ativo, acesso ao setor e unidade principal ou adicional.';
+  end if;
+  if public.pecas_reatribuir_cotacao(nova, unidades_fixture, admin_fixture, alvo_extra) is distinct from true
+    or public.pecas_reatribuir_cotacao(nova, unidades_fixture, admin_fixture, alvo_extra) is distinct from true
+    or public.pecas_assumir_cotacao(nova, unidades_fixture, alvo_extra) is distinct from true
+    or public.pecas_assumir_cotacao(nova, unidades_fixture, operador) is distinct from false then
+    raise exception 'Atribuir uma nova inicia a cotação e a repetição preserva o responsável.';
+  end if;
+  if not exists (select 1 from public.pecas_cotacoes where id = nova and status = 'em_cotacao' and responsavel_id = alvo_extra) then
+    raise exception 'A atribuição inicial deve registrar o destinatário e a etapa em cotação.';
+  end if;
+
+  if public.pecas_reatribuir_cotacao('00000000-0000-4000-8000-000000000202', unidades_fixture, gerente_pecas, outro_operador) is distinct from true
+    or public.pecas_reatribuir_cotacao('00000000-0000-4000-8000-000000000202', unidades_fixture, gerente_pecas, outro_operador) is distinct from true
+    or public.pecas_reatribuir_cotacao('00000000-0000-4000-8000-000000000203', unidades_fixture, gerente_extra, outro_operador) is distinct from true
+    or public.pecas_reatribuir_cotacao('00000000-0000-4000-8000-000000000205', unidades_fixture, gerente_administracao, outro_operador) is distinct from true then
+    raise exception 'Gerentes de Peças e administração podem transferir dentro da unidade principal ou adicional.';
+  end if;
+  if public.pecas_assumir_cotacao('00000000-0000-4000-8000-000000000207', unidades_fixture, inativo)
+    or public.pecas_assumir_cotacao('00000000-0000-4000-8000-000000000208', unidades_fixture, sem_unidade) then
+    raise exception 'O antigo responsável precisa de acesso atual para continuar operando a cotação.';
+  end if;
+  if public.pecas_reatribuir_cotacao('00000000-0000-4000-8000-000000000207', unidades_fixture, admin_fixture, outro_operador) is distinct from true
+    or public.pecas_reatribuir_cotacao('00000000-0000-4000-8000-000000000207', unidades_fixture, admin_fixture, outro_operador) is distinct from true
+    or public.pecas_reatribuir_cotacao('00000000-0000-4000-8000-000000000208', unidades_fixture, gerente_pecas, outro_operador) is distinct from true then
+    raise exception 'O supervisor deve recuperar cotações de responsáveis desativados ou sem a unidade.';
+  end if;
+  if not exists (select 1 from public.pecas_cotacoes where id = '00000000-0000-4000-8000-000000000207' and status = 'em_cotacao' and responsavel_id = outro_operador)
+    or not exists (select 1 from public.pecas_cotacoes where id = '00000000-0000-4000-8000-000000000208' and status = 'aguardando_cliente' and responsavel_id = outro_operador) then
+    raise exception 'A recuperação deve manter a etapa e registrar o novo responsável.';
+  end if;
+
+  select to_jsonb(c) - 'responsavel_id' into dados_anteriores from public.pecas_cotacoes c where c.id = vendida;
+  select jsonb_agg(to_jsonb(i) order by i.id) into itens_anteriores from public.pecas_cotacao_itens i where i.cotacao_id = vendida;
+  if public.pecas_reatribuir_cotacao(vendida, unidades_fixture, admin_fixture, outro_operador) is distinct from true
+    or public.pecas_reatribuir_cotacao(vendida, unidades_fixture, admin_fixture, outro_operador) is distinct from true then
+    raise exception 'O supervisor deve conseguir transferir uma cotação aprovada.';
+  end if;
+  if (select to_jsonb(c) - 'responsavel_id' from public.pecas_cotacoes c where c.id = vendida) is distinct from dados_anteriores
+    or (select jsonb_agg(to_jsonb(i) order by i.id) from public.pecas_cotacao_itens i where i.cotacao_id = vendida) is distinct from itens_anteriores then
+    raise exception 'A transferência deve preservar etapa, itens, venda e acompanhamento.';
+  end if;
+
+  foreach cotacao_orfa in array array[
+    '00000000-0000-4000-8000-000000000211'::uuid,
+    '00000000-0000-4000-8000-000000000212'::uuid,
+    '00000000-0000-4000-8000-000000000213'::uuid,
+    '00000000-0000-4000-8000-000000000214'::uuid
+  ] loop
+    select to_jsonb(c) - 'responsavel_id' into dados_anteriores from public.pecas_cotacoes c where c.id = cotacao_orfa;
+    if not exists (select 1 from public.pecas_cotacoes where id = cotacao_orfa and responsavel_id is null) then
+      raise exception 'Remover o usuário deve deixar a cotação disponível para retomada.';
+    end if;
+    if public.pecas_assumir_cotacao(cotacao_orfa, unidades_fixture, inativo)
+      or public.pecas_assumir_cotacao(cotacao_orfa, unidades_fixture, sem_acesso_pecas)
+      or public.pecas_assumir_cotacao(cotacao_orfa, unidades_fixture, sem_unidade) then
+      raise exception 'Assumir uma órfã exige usuário ativo com acesso atual ao setor e unidade.';
+    end if;
+    if public.pecas_assumir_cotacao(cotacao_orfa, unidades_fixture, operador) is distinct from true
+      or public.pecas_assumir_cotacao(cotacao_orfa, unidades_fixture, operador) is distinct from true then
+      raise exception 'Uma órfã em andamento deve aceitar retomada e repetição.';
+    end if;
+    if (select to_jsonb(c) - 'responsavel_id' from public.pecas_cotacoes c where c.id = cotacao_orfa) is distinct from dados_anteriores
+      or not exists (select 1 from public.pecas_cotacoes where id = cotacao_orfa and responsavel_id = operador) then
+      raise exception 'A retomada deve preservar a etapa original e os dados comerciais.';
+    end if;
+  end loop;
+
+  foreach cotacao_orfa in array array[
+    '00000000-0000-4000-8000-000000000054'::uuid,
+    '00000000-0000-4000-8000-000000000063'::uuid,
+    '00000000-0000-4000-8000-000000000064'::uuid
+  ] loop
+    if public.pecas_assumir_cotacao(cotacao_orfa, unidades_fixture, operador)
+      or public.pecas_reatribuir_cotacao(cotacao_orfa, unidades_fixture, admin_fixture, outro_operador) then
+      raise exception 'Uma etapa terminal bloqueia retomada e transferência.';
+    end if;
+  end loop;
+
+  begin
+    perform public.pecas_reatribuir_cotacao(falha_transferencia, unidades_fixture, admin_fixture, outro_operador);
+    raise exception 'O histórico da transferência deveria falhar.';
+  exception when check_violation then
+    get stacked diagnostics restricao = constraint_name;
+    if restricao is distinct from 'fixture_rejeita_atribuicao' then raise; end if;
+  end;
+  begin
+    perform public.pecas_assumir_cotacao(falha_retomada, unidades_fixture, operador);
+    raise exception 'O histórico da retomada deveria falhar.';
+  exception when check_violation then
+    get stacked diagnostics restricao = constraint_name;
+    if restricao is distinct from 'fixture_rejeita_atribuicao' then raise; end if;
+  end;
+  if not exists (select 1 from public.pecas_cotacoes where id = falha_transferencia and status = 'aprovado' and responsavel_id = operador)
+    or not exists (select 1 from public.pecas_cotacoes where id = falha_retomada and status = 'aprovado' and responsavel_id is null) then
+    raise exception 'Falha no histórico deve reverter o responsável e a etapa.';
+  end if;
+end $$;
+
 reset role;
 
 do $$
@@ -764,6 +953,8 @@ begin
     or has_table_privilege('service_role', 'public.pecas_cotacoes_historico', 'SELECT, UPDATE, DELETE')
     or has_function_privilege('anon', 'public.pecas_assumir_cotacao(uuid,text[],uuid)', 'EXECUTE')
     or has_function_privilege('authenticated', 'public.pecas_assumir_cotacao(uuid,text[],uuid)', 'EXECUTE')
+    or has_function_privilege('anon', 'public.pecas_reatribuir_cotacao(uuid,text[],uuid,uuid)', 'EXECUTE')
+    or has_function_privilege('authenticated', 'public.pecas_reatribuir_cotacao(uuid,text[],uuid,uuid)', 'EXECUTE')
     or has_function_privilege('anon', 'public.pecas_registrar_apresentacao(uuid,text[],uuid,jsonb)', 'EXECUTE')
     or has_function_privilege('authenticated', 'public.pecas_registrar_apresentacao(uuid,text[],uuid,jsonb)', 'EXECUTE')
     or has_function_privilege('anon', 'public.pecas_registrar_aprovacao(uuid,text[],uuid)', 'EXECUTE')
@@ -781,7 +972,7 @@ begin
     raise exception 'A cotação e seu histórico devem manter RLS fechada e os grants mínimos do servidor.';
   end if;
 
-  if (select count(*) from public.pecas_cotacoes_historico) <> 11 or not exists (
+  if (select count(*) from public.pecas_cotacoes_historico) <> 22 or not exists (
     select 1 from public.pecas_cotacoes_historico
     where cotacao_id = '00000000-0000-4000-8000-000000000054'
       and unidade = 'comauto' and de_status = 'novo' and para_status = 'em_cotacao'
@@ -833,6 +1024,35 @@ begin
       and h.ocorrido_em between transaction_timestamp() and clock_timestamp()
   ) <> 4 then
     raise exception 'Cada encerramento deve guardar a transição, unidade, autor e horário corretos.';
+  end if;
+  if (
+    select count(*) from public.pecas_cotacoes_historico h
+    join (values
+      ('00000000-0000-4000-8000-000000000201'::uuid, 'novo', 'em_cotacao', '00000000-0000-4000-8000-000000000101'::uuid, null::uuid, '00000000-0000-4000-8000-000000000106'::uuid),
+      ('00000000-0000-4000-8000-000000000202'::uuid, 'em_cotacao', 'em_cotacao', '00000000-0000-4000-8000-000000000102'::uuid, '00000000-0000-4000-8000-000000000051'::uuid, '00000000-0000-4000-8000-000000000055'::uuid),
+      ('00000000-0000-4000-8000-000000000203'::uuid, 'aguardando_cliente', 'aguardando_cliente', '00000000-0000-4000-8000-000000000110'::uuid, '00000000-0000-4000-8000-000000000051'::uuid, '00000000-0000-4000-8000-000000000055'::uuid),
+      ('00000000-0000-4000-8000-000000000204'::uuid, 'aprovado', 'aprovado', '00000000-0000-4000-8000-000000000101'::uuid, '00000000-0000-4000-8000-000000000051'::uuid, '00000000-0000-4000-8000-000000000055'::uuid),
+      ('00000000-0000-4000-8000-000000000205'::uuid, 'em_separacao', 'em_separacao', '00000000-0000-4000-8000-000000000109'::uuid, '00000000-0000-4000-8000-000000000051'::uuid, '00000000-0000-4000-8000-000000000055'::uuid),
+      ('00000000-0000-4000-8000-000000000207'::uuid, 'em_cotacao', 'em_cotacao', '00000000-0000-4000-8000-000000000101'::uuid, '00000000-0000-4000-8000-000000000104'::uuid, '00000000-0000-4000-8000-000000000055'::uuid),
+      ('00000000-0000-4000-8000-000000000208'::uuid, 'aguardando_cliente', 'aguardando_cliente', '00000000-0000-4000-8000-000000000102'::uuid, '00000000-0000-4000-8000-000000000105'::uuid, '00000000-0000-4000-8000-000000000055'::uuid)
+    ) esperado (cotacao_id, de_status, para_status, ator_id, anterior, novo)
+      on h.cotacao_id = esperado.cotacao_id and h.de_status = esperado.de_status and h.para_status = esperado.para_status
+        and h.ator_id = esperado.ator_id and h.responsavel_anterior_id is not distinct from esperado.anterior
+        and h.responsavel_novo_id = esperado.novo
+    where h.unidade = 'comauto'
+  ) <> 7 then
+    raise exception 'A trilha de transferência deve preservar autor, unidade, etapa e responsáveis anterior e novo.';
+  end if;
+  if (
+    select count(*) from public.pecas_cotacoes_historico
+    where cotacao_id in (
+      '00000000-0000-4000-8000-000000000211', '00000000-0000-4000-8000-000000000212',
+      '00000000-0000-4000-8000-000000000213', '00000000-0000-4000-8000-000000000214'
+    ) and de_status = para_status and responsavel_anterior_id is null
+      and responsavel_novo_id = '00000000-0000-4000-8000-000000000051'
+      and ator_id = responsavel_novo_id and unidade = 'comauto'
+  ) <> 4 then
+    raise exception 'Cada retomada deve registrar uma única atribuição sem mudança de etapa.';
   end if;
 
   if not (select relrowsecurity from pg_class where oid = 'public.pecas_cotacao_itens'::regclass)

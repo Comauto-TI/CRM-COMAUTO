@@ -2,7 +2,8 @@ import "server-only";
 import type { Usuario } from "@/lib/auth";
 import { db } from "@/lib/supabase/admin";
 import { buscarClientePorTelefone } from "@/lib/clientes-telefone";
-import type { DadosAcompanhamento, DadosCotacao, DadosEdicaoItem, DadosEncerramento, DadosItem, TipoPreparo } from "./dados-cotacao";
+import { podeAcessar, supervisiona, type Papel, type Setor } from "@/lib/permissoes";
+import { COTACOES_POR_PAGINA, ETAPAS_ABERTAS, ETAPAS_ENCERRADAS, type DadosAcompanhamento, type DadosCotacao, type DadosEdicaoItem, type DadosEncerramento, type DadosItem, type FilaCotacoes, type TipoPreparo } from "./dados-cotacao";
 
 type Cotacao = {
   id: string;
@@ -15,6 +16,7 @@ type Cotacao = {
   prazo: string | null;
   criado_em: string;
   venda_confirmada_em: string | null;
+  responsavel_id: string | null;
   clientes: { nome: string | null } | null;
   veiculos: { placa: string | null } | null;
   responsavel: { nome: string | null } | null;
@@ -30,34 +32,40 @@ type ItemCotacao = {
 };
 
 type CotacaoDetalhada = Cotacao & {
-  responsavel_id: string | null;
   motivo_encerramento: string | null;
   acompanhamento_versao: number;
   itens: ItemCotacao[];
 };
 
-const RESUMO_COTACAO = "id, unidade, origem, descricao, status, tipo_preparo, proxima_acao, prazo, criado_em, venda_confirmada_em, clientes(nome), veiculos(placa), responsavel:usuarios!pecas_cotacoes_responsavel_id_fkey(nome)";
+const RESUMO_COTACAO = "id, unidade, origem, descricao, status, tipo_preparo, proxima_acao, prazo, criado_em, venda_confirmada_em, responsavel_id, clientes(nome), veiculos(placa), responsavel:usuarios!pecas_cotacoes_responsavel_id_fkey(nome)";
 
 function tabelaPendente(codigo: string) {
   return codigo === "PGRST205" || codigo === "42P01";
 }
 
-export async function listarCotacoes(unidades: string[]) {
+export async function listarCotacoes(unidades: string[], filtros: { pagina: number; fila: FilaCotacoes } = { pagina: 1, fila: "abertas" }) {
+  const inicio = (filtros.pagina - 1) * COTACOES_POR_PAGINA;
   const { data, error } = await db()
     .from("pecas_cotacoes")
     .select(RESUMO_COTACAO)
     .in("unidade", unidades)
+    .in("status", filtros.fila === "abertas" ? ETAPAS_ABERTAS : ETAPAS_ENCERRADAS)
     .order("criado_em", { ascending: false })
-    .limit(100);
+    .order("id")
+    .range(inicio, inicio + COTACOES_POR_PAGINA);
 
   if (error) return { ok: false as const, pendente: tabelaPendente(error.code) };
-  return { ok: true as const, cotacoes: (data ?? []) as unknown as Cotacao[] };
+  return {
+    ok: true as const,
+    cotacoes: (data ?? []).slice(0, COTACOES_POR_PAGINA) as unknown as Cotacao[],
+    temMais: (data?.length ?? 0) > COTACOES_POR_PAGINA,
+  };
 }
 
 export async function obterCotacao(unidades: string[], id: string) {
   const { data, error } = await db()
     .from("pecas_cotacoes")
-    .select(`${RESUMO_COTACAO}, responsavel_id, motivo_encerramento, acompanhamento_versao, itens:pecas_cotacao_itens(id, versao, descricao, quantidade, preco_unitario_centavos, custo_unitario_centavos)`)
+    .select(`${RESUMO_COTACAO}, motivo_encerramento, acompanhamento_versao, itens:pecas_cotacao_itens(id, versao, descricao, quantidade, preco_unitario_centavos, custo_unitario_centavos)`)
     .in("unidade", unidades)
     .eq("id", id)
     .order("criado_em", { referencedTable: "itens" })
@@ -69,6 +77,42 @@ export async function obterCotacao(unidades: string[], id: string) {
 }
 
 type ResultadoItem = "adicionado" | "indisponivel" | "limite" | "pendente" | "erro_item";
+
+type Responsavel = {
+  user_id: string;
+  nome: string;
+  papel: Papel;
+  setor: Setor;
+  unidade: string;
+  usuario_unidades: { unidade: string }[];
+};
+
+export async function listarResponsaveis(u: Usuario, unidade: string) {
+  if (!supervisiona(u) || !podeAcessar(u, "pecas") || !u.unidades.includes(unidade)) {
+    return { ok: false as const };
+  }
+  const { data, error } = await db().from("usuarios")
+    .select("user_id, nome, papel, setor, unidade, usuario_unidades(unidade)")
+    .eq("ativo", true)
+    .order("nome");
+  if (error) return { ok: false as const };
+  const usuarios = ((data ?? []) as unknown as Responsavel[])
+    .filter((pessoa) => podeAcessar(pessoa, "pecas") &&
+      (pessoa.unidade === unidade || pessoa.usuario_unidades.some((extra) => extra.unidade === unidade)))
+    .map((pessoa) => ({ id: pessoa.user_id, nome: pessoa.nome }));
+  return { ok: true as const, usuarios };
+}
+
+type ResultadoResponsavel = "responsavel_atualizado" | "indisponivel" | "pendente" | "erro_responsavel";
+
+export async function reatribuirCotacao(u: Usuario, id: string, responsavelId: string): Promise<ResultadoResponsavel> {
+  if (!supervisiona(u) || !podeAcessar(u, "pecas")) return "indisponivel";
+  const { data, error } = await db().rpc("pecas_reatribuir_cotacao", {
+    p_id: id, p_unidades: u.unidades, p_ator: u.id, p_responsavel: responsavelId,
+  });
+  if (error) return tabelaPendente(error.code) || error.code === "PGRST202" ? "pendente" : "erro_responsavel";
+  return data === true ? "responsavel_atualizado" : "indisponivel";
+}
 
 function parametrosItem(u: Usuario, cotacaoId: string, dados: DadosItem) {
   return {

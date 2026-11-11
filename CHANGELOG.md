@@ -14,8 +14,11 @@ Versionamento semântico a partir de **0.0.1** (decisão do Simão, 10/11/2026).
 - Encerramento por perda ou cancelamento com motivo e histórico.
 - Entrada de pedidos do WhatsApp com proteção contra duplicação por mensagem.
 - Menu de Peças no grupo próprio e busca da ficha pelos dois formatos do celular.
+- Reatribuição de cotações pela gestão, retomada de cotações sem responsável e histórico da troca.
 ### Alterado
 - A tela acompanha o fluxo comercial até a venda confirmada, conforme o escopo definido pelo Simão.
+- Fila separada entre abertas e encerradas, com paginação para consultar pedidos antigos.
+- Migration de Peças reaplicável, preservando cotações e permissões.
 
 ## [0.0.2] — 11/11/2026 — Vendas, chatbot→CRM, lembretes, Clientes, Métricas (PR #2)
 ### Adicionado

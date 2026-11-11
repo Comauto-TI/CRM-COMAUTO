@@ -78,6 +78,20 @@ export function lerDadosEncerramento(form: FormData) {
 
 export type DadosEncerramento = NonNullable<ReturnType<typeof lerDadosEncerramento>>;
 
+export const COTACOES_POR_PAGINA = 50;
+export const ETAPAS_ABERTAS = ["novo", "em_cotacao", "aguardando_cliente", "aprovado", "em_separacao"];
+export const ETAPAS_ENCERRADAS = ["entregue", "perdido", "cancelado"];
+export type FilaCotacoes = "abertas" | "encerradas";
+
+export function lerFiltrosFila(busca: { pagina?: string | string[]; fila?: string | string[] }) {
+  const numero = typeof busca.pagina === "string" && /^[1-9]\d*$/.test(busca.pagina) ? Number(busca.pagina) : 1;
+  const limite = Math.floor(2147483647 / COTACOES_POR_PAGINA);
+  return {
+    pagina: Number.isSafeInteger(numero) && numero <= limite ? numero : 1,
+    fila: busca.fila === "encerradas" ? "encerradas" as const : "abertas" as const,
+  };
+}
+
 export function lerDadosAcompanhamento(form: FormData) {
   const entradaVersao = campo(form, "versao");
   const proximaAcao = campo(form, "proxima_acao");

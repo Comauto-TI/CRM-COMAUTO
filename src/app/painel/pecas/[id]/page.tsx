@@ -3,10 +3,11 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { exigirAcesso } from "@/lib/auth";
 import { formatarBRL } from "@/lib/time";
-import { obterCotacao } from "@/modulos/pecas/cotacoes";
-import { centavosParaCampo, etapaCotacao, formatarPrazo, totalizarCotacao, uuidV4Valido } from "@/modulos/pecas/dados-cotacao";
+import { listarResponsaveis, obterCotacao } from "@/modulos/pecas/cotacoes";
+import { supervisiona } from "@/lib/permissoes";
+import { centavosParaCampo, etapaCotacao, ETAPAS_ABERTAS, formatarPrazo, totalizarCotacao, uuidV4Valido } from "@/modulos/pecas/dados-cotacao";
 import { Cabecalho, Status, Vazio } from "../../_components/ui";
-import { adicionarItemCotacao, confirmarVenda, editarItemCotacao, registrarApresentacao, registrarAprovacao, registrarEncerramento, salvarAcompanhamento } from "../actions";
+import { adicionarItemCotacao, confirmarVenda, editarItemCotacao, mudarResponsavel, registrarApresentacao, registrarAprovacao, registrarEncerramento, salvarAcompanhamento } from "../actions";
 
 const ETAPAS_ENCERRAVEIS = ["em_cotacao", "aguardando_cliente", "aprovado", "em_separacao"];
 
@@ -36,6 +37,8 @@ const MENSAGENS: Record<string, string> = {
   acompanhamento_desatualizado: "Outra edição alterou a próxima ação ou o prazo. Confira os dados atuais antes de salvar.",
   acompanhamento_invalido: "Confira a próxima ação e a data do prazo.",
   erro_acompanhamento: "Não foi possível salvar a próxima ação. Tente novamente.",
+  responsavel_atualizado: "Responsável atualizado.",
+  erro_responsavel: "Não foi possível atualizar o responsável. Tente novamente.",
 };
 
 export default async function DetalheCotacaoPage({ params, searchParams }: {
@@ -74,6 +77,8 @@ export default async function DetalheCotacaoPage({ params, searchParams }: {
   const podeRegistrarPerda = !vendaRegistrada && cotacao.status !== "em_separacao";
   const { totalCentavos, margemCentavos } = totalizarCotacao(cotacao.itens, vendaConfirmada);
   const versoesItens = Object.fromEntries(cotacao.itens.map((item) => [item.id, item.versao]));
+  const podeReatribuir = supervisiona(u) && ETAPAS_ABERTAS.includes(cotacao.status);
+  const equipe = podeReatribuir ? await listarResponsaveis(u, cotacao.unidade) : null;
 
   return (
     <>
@@ -87,6 +92,20 @@ export default async function DetalheCotacaoPage({ params, searchParams }: {
           <span className="mudo">Responsável · {cotacao.responsavel?.nome ?? "A definir"}</span>
         </div>
         {cotacao.motivo_encerramento && <p><strong>Motivo do encerramento</strong> · {cotacao.motivo_encerramento}</p>}
+        {equipe && (
+          equipe.ok ? (
+            <form action={mudarResponsavel.bind(null, cotacao.id)} className="linha-form secao">
+              <label>
+                Reatribuir para
+                <select name="responsavel" defaultValue="" required>
+                  <option value="" disabled>Selecione o responsável</option>
+                  {equipe.usuarios.map((pessoa) => <option key={pessoa.id} value={pessoa.id}>{pessoa.nome}</option>)}
+                </select>
+              </label>
+              <button className="btn" type="submit">Reatribuir cotação</button>
+            </form>
+          ) : <p role="status">Não foi possível carregar a equipe para reatribuição.</p>
+        )}
       </section>
       <section id="acompanhamento" className="card secao">
         <h2>Próxima ação e prazo</h2>

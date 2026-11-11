@@ -1,11 +1,10 @@
 -- Fila de cotações de Peças por unidade e histórico das etapas.
-create table public.pecas_cotacoes (
+create table if not exists public.pecas_cotacoes (
   id uuid primary key default gen_random_uuid(),
   unidade text not null default 'comauto' references public.unidades (chave),
   cliente_id uuid not null references public.clientes (id) on delete restrict,
   veiculo_id uuid references public.veiculos (id) on delete set null,
-  origem text not null default 'balcao' check (origem in ('balcao', 'oficina', 'whatsapp')),
-  origem_ref text,
+  origem text not null default 'balcao',
   descricao text not null check (
     char_length(descricao) between 1 and 1000
     and descricao !~ '^[[:space:]]|[[:space:]]$'
@@ -14,43 +13,58 @@ create table public.pecas_cotacoes (
     'novo', 'em_cotacao', 'aguardando_cliente', 'aprovado',
     'em_separacao', 'entregue', 'perdido', 'cancelado'
   )),
-  responsavel_id uuid references public.usuarios (user_id) on delete set null,
   criado_por uuid references public.usuarios (user_id) on delete set null,
-  criado_em timestamptz not null default now(),
-  venda_confirmada_em timestamptz,
-  -- Preserva o autor da confirmação mesmo depois de remover o usuário.
-  venda_confirmada_por uuid,
-  tipo_preparo text check (tipo_preparo in ('separacao', 'encomenda')),
-  proxima_acao text check (
+  criado_em timestamptz not null default now()
+);
+
+-- Mantém compatibilidade com as versões locais anteriores da migration.
+alter table public.pecas_cotacoes
+  add column if not exists origem_ref text,
+  add column if not exists responsavel_id uuid references public.usuarios (user_id) on delete set null,
+  add column if not exists venda_confirmada_em timestamptz,
+  -- Autoria histórica preservada mesmo depois de remover o usuário.
+  add column if not exists venda_confirmada_por uuid,
+  add column if not exists tipo_preparo text check (tipo_preparo in ('separacao', 'encomenda')),
+  add column if not exists proxima_acao text check (
     char_length(proxima_acao) between 1 and 500
     and proxima_acao !~ '^[[:space:]]|[[:space:]]$'
   ),
-  prazo date,
-  acompanhamento_versao integer not null default 0 check (acompanhamento_versao >= 0),
-  constraint pecas_cotacoes_prazo_acao_check check (prazo is null or proxima_acao is not null),
-  motivo_encerramento text check (
+  add column if not exists prazo date,
+  add column if not exists acompanhamento_versao integer not null default 0 check (acompanhamento_versao >= 0),
+  add column if not exists motivo_encerramento text check (
     char_length(motivo_encerramento) between 1 and 500
     and motivo_encerramento !~ '^[[:space:]]|[[:space:]]$'
-  ),
-  constraint pecas_cotacoes_encerramento_status_check check (
-    (status in ('perdido', 'cancelado')) = (motivo_encerramento is not null)
-  ),
-  constraint pecas_cotacoes_confirmacao_venda_check check (
-    (venda_confirmada_em is null) = (venda_confirmada_por is null)
-  ),
-  constraint pecas_cotacoes_referencia_whatsapp_check check (
-    origem <> 'whatsapp' or (
-      origem_ref is not null
-      and char_length(origem_ref) between 1 and 512
-      and origem_ref !~ '^[[:space:]]|[[:space:]]$'
-    )
-  )
-);
+  );
 
-create index pecas_cotacoes_unidade_criado_em_idx
+alter table public.pecas_cotacoes drop constraint if exists pecas_cotacoes_origem_check;
+alter table public.pecas_cotacoes add constraint pecas_cotacoes_origem_check
+  check (origem in ('balcao', 'oficina', 'whatsapp'));
+
+do $$
+begin
+  if not exists (select 1 from pg_constraint where conrelid = 'public.pecas_cotacoes'::regclass and conname = 'pecas_cotacoes_prazo_acao_check') then
+    alter table public.pecas_cotacoes add constraint pecas_cotacoes_prazo_acao_check
+      check (prazo is null or proxima_acao is not null);
+  end if;
+  if not exists (select 1 from pg_constraint where conrelid = 'public.pecas_cotacoes'::regclass and conname = 'pecas_cotacoes_encerramento_status_check') then
+    alter table public.pecas_cotacoes add constraint pecas_cotacoes_encerramento_status_check
+      check ((status in ('perdido', 'cancelado')) = (motivo_encerramento is not null));
+  end if;
+  if not exists (select 1 from pg_constraint where conrelid = 'public.pecas_cotacoes'::regclass and conname = 'pecas_cotacoes_confirmacao_venda_check') then
+    alter table public.pecas_cotacoes add constraint pecas_cotacoes_confirmacao_venda_check
+      check ((venda_confirmada_em is null) = (venda_confirmada_por is null));
+  end if;
+  if not exists (select 1 from pg_constraint where conrelid = 'public.pecas_cotacoes'::regclass and conname = 'pecas_cotacoes_referencia_whatsapp_check') then
+    alter table public.pecas_cotacoes add constraint pecas_cotacoes_referencia_whatsapp_check
+      check (origem <> 'whatsapp' or (origem_ref is not null and char_length(origem_ref) between 1 and 512
+        and origem_ref !~ '^[[:space:]]|[[:space:]]$'));
+  end if;
+end $$;
+
+create index if not exists pecas_cotacoes_unidade_criado_em_idx
   on public.pecas_cotacoes (unidade, criado_em desc);
 
-create unique index pecas_cotacoes_referencia_whatsapp_idx
+create unique index if not exists pecas_cotacoes_referencia_whatsapp_idx
   on public.pecas_cotacoes (origem_ref)
   where origem = 'whatsapp';
 
@@ -63,7 +77,7 @@ grant update (
 )
   on table public.pecas_cotacoes to service_role;
 
-create table public.pecas_cotacoes_historico (
+create table if not exists public.pecas_cotacoes_historico (
   id uuid primary key default gen_random_uuid(),
   cotacao_id uuid not null references public.pecas_cotacoes (id) on delete restrict,
   unidade text not null references public.unidades (chave),
@@ -74,14 +88,18 @@ create table public.pecas_cotacoes_historico (
   ocorrido_em timestamptz not null default now()
 );
 
-create index pecas_cotacoes_historico_cotacao_idx
+alter table public.pecas_cotacoes_historico
+  add column if not exists responsavel_anterior_id uuid,
+  add column if not exists responsavel_novo_id uuid;
+
+create index if not exists pecas_cotacoes_historico_cotacao_idx
   on public.pecas_cotacoes_historico (cotacao_id, ocorrido_em desc);
 
 alter table public.pecas_cotacoes_historico enable row level security;
 revoke all on table public.pecas_cotacoes_historico from public, anon, authenticated, service_role;
 grant insert on table public.pecas_cotacoes_historico to service_role;
 
-create function public.pecas_assumir_cotacao(p_id uuid, p_unidades text[], p_ator uuid)
+create or replace function public.pecas_assumir_cotacao(p_id uuid, p_unidades text[], p_ator uuid)
 returns boolean
 language plpgsql
 security invoker
@@ -89,36 +107,114 @@ set search_path = ''
 as $$
 declare
   unidade_atual text;
+  status_atual text;
+  status_destino text;
+  responsavel_atual uuid;
 begin
-  update public.pecas_cotacoes
-  set status = 'em_cotacao', responsavel_id = p_ator
-  where id = p_id
-    and unidade = any (p_unidades)
-    and status = 'novo'
-    and responsavel_id is null
-    and p_ator is not null
-  returning unidade into unidade_atual;
+  select c.unidade, c.status, c.responsavel_id
+  into unidade_atual, status_atual, responsavel_atual
+  from public.pecas_cotacoes c
+  where c.id = p_id and c.unidade = any (p_unidades)
+    and c.status in ('novo', 'em_cotacao', 'aguardando_cliente', 'aprovado', 'em_separacao')
+  for update;
 
-  if found then
-    insert into public.pecas_cotacoes_historico (cotacao_id, unidade, de_status, para_status, ator_id)
-    values (p_id, unidade_atual, 'novo', 'em_cotacao', p_ator);
-    return true;
+  if not found then
+    return false;
+  end if;
+  if not exists (
+    select 1 from public.usuarios u
+    join public.unidades un on un.chave = unidade_atual and un.ativa
+    where u.user_id = p_ator and u.ativo
+      and (u.papel in ('admin', 'pecas') or (u.papel = 'gerente' and u.setor in ('pecas', 'administracao')))
+      and (u.unidade = unidade_atual or exists (
+        select 1 from public.usuario_unidades uu where uu.user_id = u.user_id and uu.unidade = unidade_atual
+      ))
+  ) then
+    return false;
+  end if;
+  if responsavel_atual is not null then
+    return responsavel_atual = p_ator;
   end if;
 
-  return exists (
-    select 1 from public.pecas_cotacoes
-    where id = p_id
-      and unidade = any (p_unidades)
-      and status = 'em_cotacao'
-      and responsavel_id = p_ator
-  );
+  status_destino := case when status_atual = 'novo' then 'em_cotacao' else status_atual end;
+  update public.pecas_cotacoes
+  set status = status_destino, responsavel_id = p_ator
+  where id = p_id;
+
+  insert into public.pecas_cotacoes_historico (
+    cotacao_id, unidade, de_status, para_status, ator_id, responsavel_anterior_id, responsavel_novo_id
+  )
+  values (p_id, unidade_atual, status_atual, status_destino, p_ator, null, p_ator);
+  return true;
 end $$;
 
 revoke all on function public.pecas_assumir_cotacao(uuid, text[], uuid)
   from public, anon, authenticated, service_role;
 grant execute on function public.pecas_assumir_cotacao(uuid, text[], uuid) to service_role;
 
-create table public.pecas_cotacao_itens (
+create or replace function public.pecas_reatribuir_cotacao(
+  p_id uuid, p_unidades text[], p_ator uuid, p_responsavel uuid
+)
+returns boolean
+language plpgsql
+security invoker
+set search_path = ''
+as $$
+declare
+  unidade_atual text;
+  status_atual text;
+  status_destino text;
+  responsavel_atual uuid;
+begin
+  select c.unidade, c.status, c.responsavel_id
+  into unidade_atual, status_atual, responsavel_atual
+  from public.pecas_cotacoes c
+  where c.id = p_id and c.unidade = any (p_unidades)
+    and c.status in ('novo', 'em_cotacao', 'aguardando_cliente', 'aprovado', 'em_separacao')
+  for update;
+
+  if not found then
+    return false;
+  end if;
+  if not exists (
+    select 1 from public.usuarios u
+    join public.unidades un on un.chave = unidade_atual and un.ativa
+    where u.user_id = p_ator and u.ativo
+      and (u.papel = 'admin' or (u.papel = 'gerente' and u.setor in ('pecas', 'administracao')))
+      and (u.unidade = unidade_atual or exists (
+        select 1 from public.usuario_unidades uu where uu.user_id = u.user_id and uu.unidade = unidade_atual
+      ))
+  ) or not exists (
+    select 1 from public.usuarios u
+    where u.user_id = p_responsavel and u.ativo
+      and (u.papel in ('admin', 'pecas') or (u.papel = 'gerente' and u.setor in ('pecas', 'administracao')))
+      and (u.unidade = unidade_atual or exists (
+        select 1 from public.usuario_unidades uu where uu.user_id = u.user_id and uu.unidade = unidade_atual
+      ))
+  ) then
+    return false;
+  end if;
+  if responsavel_atual = p_responsavel then
+    return true;
+  end if;
+
+  status_destino := case when status_atual = 'novo' then 'em_cotacao' else status_atual end;
+  update public.pecas_cotacoes
+  set status = status_destino, responsavel_id = p_responsavel
+  where id = p_id;
+
+  insert into public.pecas_cotacoes_historico (
+    cotacao_id, unidade, de_status, para_status, ator_id, responsavel_anterior_id, responsavel_novo_id
+  )
+  values (p_id, unidade_atual, status_atual, status_destino, p_ator, responsavel_atual, p_responsavel);
+  return true;
+end $$;
+
+revoke all on function public.pecas_reatribuir_cotacao(uuid, text[], uuid, uuid)
+  from public, anon, authenticated, service_role;
+grant execute on function public.pecas_reatribuir_cotacao(uuid, text[], uuid, uuid) to service_role;
+
+create table if not exists public.pecas_cotacao_itens (
   id uuid primary key default gen_random_uuid(),
   cotacao_id uuid not null references public.pecas_cotacoes (id) on delete restrict,
   descricao text not null check (
@@ -128,11 +224,13 @@ create table public.pecas_cotacao_itens (
   quantidade integer not null check (quantidade between 1 and 9999),
   preco_unitario_centavos integer not null check (preco_unitario_centavos between 0 and 99999999),
   custo_unitario_centavos integer check (custo_unitario_centavos between 0 and 99999999),
-  versao integer not null default 1 check (versao > 0),
   criado_em timestamptz not null default now()
 );
 
-create index pecas_cotacao_itens_cotacao_idx on public.pecas_cotacao_itens (cotacao_id);
+alter table public.pecas_cotacao_itens
+  add column if not exists versao integer not null default 1 check (versao > 0);
+
+create index if not exists pecas_cotacao_itens_cotacao_idx on public.pecas_cotacao_itens (cotacao_id);
 
 alter table public.pecas_cotacao_itens enable row level security;
 revoke all on table public.pecas_cotacao_itens from public, anon, authenticated, service_role;
@@ -140,7 +238,7 @@ grant select, insert on table public.pecas_cotacao_itens to service_role;
 grant update (descricao, quantidade, preco_unitario_centavos, custo_unitario_centavos, versao)
   on table public.pecas_cotacao_itens to service_role;
 
-create function public.pecas_adicionar_item(
+create or replace function public.pecas_adicionar_item(
   p_cotacao_id uuid,
   p_item_id uuid,
   p_unidades text[],
@@ -210,7 +308,7 @@ revoke all on function public.pecas_adicionar_item(uuid, uuid, text[], uuid, tex
 grant execute on function public.pecas_adicionar_item(uuid, uuid, text[], uuid, text, integer, integer, integer)
   to service_role;
 
-create function public.pecas_atualizar_item(
+create or replace function public.pecas_atualizar_item(
   p_cotacao_id uuid,
   p_item_id uuid,
   p_unidades text[],
@@ -280,7 +378,7 @@ revoke all on function public.pecas_atualizar_item(uuid, uuid, text[], uuid, int
 grant execute on function public.pecas_atualizar_item(uuid, uuid, text[], uuid, integer, text, integer, integer, integer)
   to service_role;
 
-create function public.pecas_registrar_apresentacao(p_id uuid, p_unidades text[], p_ator uuid, p_itens jsonb)
+create or replace function public.pecas_registrar_apresentacao(p_id uuid, p_unidades text[], p_ator uuid, p_itens jsonb)
 returns text
 language plpgsql
 security invoker
@@ -329,7 +427,7 @@ revoke all on function public.pecas_registrar_apresentacao(uuid, text[], uuid, j
   from public, anon, authenticated, service_role;
 grant execute on function public.pecas_registrar_apresentacao(uuid, text[], uuid, jsonb) to service_role;
 
-create function public.pecas_registrar_aprovacao(p_id uuid, p_unidades text[], p_ator uuid)
+create or replace function public.pecas_registrar_aprovacao(p_id uuid, p_unidades text[], p_ator uuid)
 returns boolean
 language plpgsql
 security invoker
@@ -367,7 +465,7 @@ revoke all on function public.pecas_registrar_aprovacao(uuid, text[], uuid)
   from public, anon, authenticated, service_role;
 grant execute on function public.pecas_registrar_aprovacao(uuid, text[], uuid) to service_role;
 
-create function public.pecas_confirmar_venda(p_id uuid, p_unidades text[], p_ator uuid)
+create or replace function public.pecas_confirmar_venda(p_id uuid, p_unidades text[], p_ator uuid)
 returns boolean
 language plpgsql
 security invoker
@@ -403,7 +501,7 @@ revoke all on function public.pecas_confirmar_venda(uuid, text[], uuid)
   from public, anon, authenticated, service_role;
 grant execute on function public.pecas_confirmar_venda(uuid, text[], uuid) to service_role;
 
-create function public.pecas_avancar_atendimento(p_id uuid, p_unidades text[], p_ator uuid, p_acao text)
+create or replace function public.pecas_avancar_atendimento(p_id uuid, p_unidades text[], p_ator uuid, p_acao text)
 returns boolean
 language plpgsql
 security invoker
@@ -458,7 +556,7 @@ revoke all on function public.pecas_avancar_atendimento(uuid, text[], uuid, text
   from public, anon, authenticated, service_role;
 grant execute on function public.pecas_avancar_atendimento(uuid, text[], uuid, text) to service_role;
 
-create function public.pecas_encerrar_cotacao(
+create or replace function public.pecas_encerrar_cotacao(
   p_id uuid, p_unidades text[], p_ator uuid, p_destino text, p_motivo text
 )
 returns boolean
@@ -510,7 +608,7 @@ revoke all on function public.pecas_encerrar_cotacao(uuid, text[], uuid, text, t
   from public, anon, authenticated, service_role;
 grant execute on function public.pecas_encerrar_cotacao(uuid, text[], uuid, text, text) to service_role;
 
-create function public.pecas_registrar_cotacao_bot(
+create or replace function public.pecas_registrar_cotacao_bot(
   p_cliente_id uuid, p_unidade text, p_referencia text, p_descricao text
 )
 returns uuid
@@ -552,7 +650,7 @@ revoke all on function public.pecas_registrar_cotacao_bot(uuid, text, text, text
   from public, anon, authenticated, service_role;
 grant execute on function public.pecas_registrar_cotacao_bot(uuid, text, text, text) to service_role;
 
-create function public.pecas_atualizar_acompanhamento(
+create or replace function public.pecas_atualizar_acompanhamento(
   p_id uuid, p_unidades text[], p_ator uuid, p_versao integer, p_proxima_acao text, p_prazo date
 )
 returns text
