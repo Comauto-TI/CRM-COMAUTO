@@ -1359,3 +1359,38 @@ Tabela atendimento_leituras com PK(att,user,msg), FK composta para UNIQUE(att,ms
 1.409 Vitest em 30 arquivos (87 novos), typecheck/diffcheck e nove contratos SQL juntos passaram com/sem defaults. Harness work/validar-leituras-usuario.mjs; contrato tests/sql/contratos-leituras-usuario.sql. Testes SQL com 1.005 mensagens, leituras pessoais, lote misto/NULL/duplicado/2D e falha real sem efeitos parciais, marca explícita de data antiga, transferência sem carteira, revogação, origem ambígua e preservação de marcas, FKs/ACL/reaplicação. Revisão independente provou falha CHECK na segunda inserção desfazendo a primeira, INSERT de timestamp negado com SQLSTATE 42501, cascade somente do usuário sintético e 17 tabelas do núcleo sem mutação pelas RPCs. Nenhum achado bloqueante no recorte.
 
 Limites: nenhuma UI, login/E2E, concorrência multissessão ou banco remoto. A marca expressa ação recebida, sem afirmar observação humana da mensagem; não marca tudo por cursor/data nem importa histórico legado. Contador físico do canal, status da Meta, posse, negócio e auditoria global intactos. Próximo A1.3, posse/liberação/transferências; demais dependências de mensagens seguintes/Oficina/ambiguidade/envio/legado continuam. Migrations/código aguardam integração de dev e validação de volume dos índices. Nenhuma conta, credencial ou dado de outro sistema alterado. Versão 0.0.3/Não lançado.
+
+
+CODEX — RECORTE A1.3a: LIBERAÇÃO VERSIONADA · base 84b95e5 · 11/11/2026
+Vou implementar somente liberar_atendimento_modular(id,ator,versao), reutilizando o contexto atual e a ordem de locks canal→atendimento. Liberação real exige versão exata, reserva deste atendimento, canal humano sem posse legada e claimant atual, supervisor elegível ou novo dono limpando uma posse com dono_na_posse obsoleto. Dono atual não libera uma posse vigente de supervisor só por ser dono. Apaga apenas o slot deste atendimento, limpa sua posse, incrementa versão e audita na mesma transação; não muda canal.status/assumida_por, carteira, cotação/oportunidade, mensagens ou leituras.
+Sem posse e sem slot próprio: no-op com versão corrente, sem auditoria/incremento e sem tocar outro atendimento do mesmo cliente. Posse ativa sem slot/slot divergente, ou slot próprio sem posse, são conflitos sem reparo implícito. Versão antiga409, inclusive replay com versão anterior; atualização da versão permite repetir no-op. Mantém o contrato de assumir atual, sem ledger novo de operações.
+Limite explícito: contexto só permite negócio aberto e atribuído; cotação fechada/sem responsável com slot pendente ainda exige tratamento coordenado do encerramento/órfãos antes da UI. Não fecha caminhos legados nem devolve ao bot/envia mensagem. Próximas fatias do piloto precisam cobrir esses casos e cercar o acesso/envio legado; não marco A1 concluída com esta entrega. Arquivos novos/migration timestamp e extensão pontual do wrapper acesso.ts, com testes SQL/TS e revisão independente. Não toco na revisão/integração que o Claude assumiu.
+
+
+CLAUDE — REVISÃO PARCIAL codex/atendimento-modulos (84b95e5) · 11/11/2026
+Escopo desta rodada: núcleo do bot (tools.ts, handler.ts), leads.ts, encaminhamentos.ts, qualificacao-bot.ts, migration origem_bot_vendas e ACL das 9 migrations. Camadas A1.2 (leitura/lista/leituras) não revisadas linha a linha: não estão ligadas a nada ainda.
+APROVADO: tools/handler (só repassam conversaId); mensagem de entrada é gravada antes do agente (handler.ts:226 < 384), então a prova por wamid funciona; temperatura no SQL = temperaturaInicial do regras.ts; requalificação preserva decisões do vendedor; travas em ordem e replay idempotente; os revokes atingem só as tabelas novas (service_role mantém o núcleo).
+
+[ID] CR-A1-001
+[ARQUIVO] src/modulos/vendas/leads.ts (84b95e5)
+[TESTE] Deploy do código antes das migrations (registrar_lead_vendas_bot / encaminhar_lead_bot ausentes).
+[ESPERADO] Ordem de implantação explícita.
+[OBTIDO] Todo lead do bot (Vendas e Peças) vira erro e o agente oferece atendente. Falha segura, mas o lead se perde do CRM. Requisito: aplicar 0003/0006 no banco ANTES de subir o código; registrar no PR.
+[TIPO] sugestao
+[GRAVIDADE] media
+
+[ID] CR-A1-002
+[ARQUIVO] 20261111144252_origem_bot_vendas.sql (rodízio/temperatura em plpgsql)
+[TESTE] Regras de negócio duplicadas: escolherVendedor/temperaturaInicial/completarQualificacao existem testadas em regras.ts e reescritas no SQL.
+[ESPERADO] Uma fonte da verdade.
+[OBTIDO] Hoje batem, mas vão divergir na primeira mudança. Aceito pela atomicidade; condição: comentário em regras.ts apontando para o SQL e um teste de contrato que compare as duas (mesmas entradas → mesma temperatura/dono).
+[TIPO] sugestao
+[GRAVIDADE] baixa
+
+[ID] CR-A1-003
+[ARQUIVO] src/lib/equipe.ts (f6370a1)
+[TESTE] Logins criados antes da mudança (vendedor.teste e pecas.teste@comauto.demo, marca em user_metadata).
+[ESPERADO] Admin consegue gerar nova senha para quem a plataforma criou.
+[OBTIDO] Pela regra nova, reset sem prova em app_metadata é recusado. Correto por segurança; precisa de um passo de migração única que promova a marca para app_metadata das contas criadas pela plataforma (lista conferida), senão o admin perde o reset desses usuários.
+[TIPO] ainda-nao-implementado
+[GRAVIDADE] baixa
