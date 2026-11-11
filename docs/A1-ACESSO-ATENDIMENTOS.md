@@ -1,6 +1,6 @@
 # A1 — Plano de acesso aos atendimentos por módulo
 
-Status: A1 em andamento. As fatias A1.1a a A1.1d, A1.2a e A1.2b têm código local isolado, descrito abaixo.
+Status: A1 em andamento. As fatias A1.1a a A1.1d e A1.2a a A1.2c têm código local isolado, descrito abaixo.
 As demais fatias continuam propostas; não houve integração de UI, teste de login, E2E
 nem aplicação de migrations em dev/produção.
 
@@ -318,6 +318,67 @@ Mensagens seguintes/roteamento, ambiguidades, Oficina/triagem, filas sem dono, l
 transferências, envio e adaptadores legados seguem pendentes antes da UI por setor.
 Código e migrations aguardam integração no dev; login real/E2E, concorrência multissessão
 e validação de volume/índices no ambiente de destino ainda não foram executados.
+
+## A1.2c — Leitura explícita por usuário
+
+Migration `20261111160139_leituras_usuario_atendimento.sql`, após A1.2b. As três RPCs
+novas não alteram o contrato de lista ou corpo já existente, nem integram UI ou envio.
+
+- `atendimento_leituras` guarda uma marca por atendimento, mensagem e usuário, com
+  horário do servidor. FK composta exige a associação exata; não bastam FKs individuais
+  para um atendimento e uma mensagem de outro vínculo. Marcas acompanham uma eventual
+  exclusão administrativa do usuário, preservando o lifecycle anterior de contas.
+  Não existe nova operação de exclusão de usuários, Auth ou dados externos.
+- RLS permanece fechado e sem políticas; navegador não pode ler ou escrever a tabela.
+  O serviço recebe SELECT e INSERT apenas nas três referências. Não pode informar
+  `lido_em`, atualizar ou apagar marcas. Helpers de autorização existentes continuam
+  como fonte comum de escopo e prova atual das mensagens.
+- `marcar_mensagens_lidas_atendimento` recebe de 1 a 100 IDs explícitos, únicos e não
+  nulos. Array inválido, vazio, multidimensional ou com repetidos é recusado. Ator vem
+  do chamador autenticado no servidor; não existe alvo de leitura ou data escolhidos
+  pelo navegador. O wrapper normaliza os UUIDs em uma cópia, sem alterar a entrada.
+- A transação revalida o domínio e mantém a ordem de locks já usada pelo detalhe.
+  Escopo atual, prova das mensagens e INSERT pertencem à mesma instrução/snapshot.
+  A validade do lote é predicado do próprio INSERT: se qualquer ID não estiver associado
+  e autorizado nesse atendimento, nada do lote é gravado e o retorno é ausência genérica,
+  inclusive quando alguns IDs já tinham marca pessoal. Não retorna IDs ou dados omitidos.
+- Replay revalida todo o lote e retorna `marcadas=0` quando nada foi acrescentado.
+  `ON CONFLICT DO NOTHING` conserva o primeiro horário. Falha do banco desfaz a operação;
+  resposta perdida pode ser repetida sem duplicar a marca. Isso não prova que uma pessoa
+  viu fisicamente a mensagem: registra a ação explícita recebida pelo servidor.
+- `obter_leitura_atendimento` retorna total autorizado, lidas, não lidas e sinal de revisão
+  daquele atendimento. `resumir_leituras_atendimentos` calcula os mesmos totais no escopo
+  atual do setor, número de atendimentos e quantos têm mensagens não lidas. Ambos contam
+  apenas associações atualmente autorizadas e marcas do próprio ator na mesma consulta.
+  Não devolvem conteúdo, referências de mensagens ou leituras de outro usuário.
+- Transferência não copia marcas do vendedor anterior; supervisão não herda a leitura
+  da equipe. Revogação tira o atendimento das consultas atuais sem apagar marcas históricas.
+  Se o mesmo usuário recuperar acesso, suas marcas anteriores continuam preservadas.
+  Origem que passar a ser ambígua sai de total/lidas/não lidas, mantendo a marca e o sinal
+  de revisão. A marca histórica não é permissão reutilizável para consultar a mensagem.
+- Não há backfill ou watermark por data. Uma mensagem associada depois, mesmo com
+  horário antigo, começa não lida para quem não a marcou. Não há operação "ler tudo até
+  o cursor", nem marca automática em GET. Somente IDs explícitos comprovados são marcados.
+- Nenhuma operação altera `conversas.nao_lidas`, status de entrega/leitura da Meta,
+  posse, negócio, auditoria global ou estado de outro setor/usuário. A tabela registra
+  autoria e primeiro horário da própria ação. Não se envia recibo de leitura ao WhatsApp.
+
+Validação local: 1.409 Vitest em 30 arquivos (87 novos), typecheck e diffcheck passaram.
+Os nove contratos SQL passaram na base completa com e sem defaults permissivos, incluindo
+1.005 mensagens, lotes inválidos/mistos e falha CHECK real sem marcas parciais, replay
+preservando a primeira data, mensagem associada com data antiga, isolamento pessoal,
+transferências/revogações, ambiguidade, FK/cascade/ACL e reaplicação populada.
+A revisão independente comprovou também falha na segunda inserção desfazendo a primeira,
+timestamp explícito negado ao serviço e preservação das 17 tabelas do núcleo observadas.
+SQL e wrapper sem bloqueantes no recorte. Migration revisada: SHA256
+`5e35495e465fb8054718147db4620c6277bd1e7978d5a56ca9836b7e093131e6`.
+
+**Após A1.2c:** seguir A1.3 em fatias, revisando posse, liberação do canal e transferências
+com versão e autorização atuais. Mensagens seguintes/roteamento, ambiguidades, Oficina,
+filas sem dono e fechamento do legado continuam pendentes. A lista e o corpo não passaram
+a marcar leitura por efeito colateral; a integração futura da interface deverá enviar
+somente IDs explícitos e revalidar cada ação. Login real/E2E, concorrência multissessão,
+aplicação das migrations e validação de volume/índices no dev continuam necessários.
 
 ## Problema e limites atuais
 
