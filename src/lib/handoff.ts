@@ -35,15 +35,16 @@ export function transicaoValida(de: EstadoConversa, acao: "transferir" | "assumi
 
 export async function transferirParaHumano(clienteId: string, motivo: string, opts: { avisarCliente?: boolean } = {}) {
   const cfg = await getConfig();
-  const { data: conv } = await db()
-    .from("conversas")
+  const { data: conv, error: erroConsulta } = await db()
+    .from("conversas_legadas")
     .select("id, status, assumida_por")
     .eq("cliente_id", clienteId)
     .maybeSingle();
+  if (erroConsulta) return { ok: false as const, motivo: "falha ao consultar a conversa" };
   if (!conv) return { ok: false as const, motivo: "conversa_inexistente" };
   if (conv.status === "humano") return { ok: true as const, jaEstava: true };
 
-  await db()
+  const { data: alteradas, error } = await db()
     .from("conversas")
     .update({
       status: "humano",
@@ -56,7 +57,10 @@ export async function transferirParaHumano(clienteId: string, motivo: string, op
       resultado: null,
       falhas_entendimento: 0,
     })
-    .eq("id", conv.id);
+    .eq("id", conv.id)
+    .eq("status", conv.status)
+    .select("id");
+  if (error || !alteradas?.length) return { ok: false as const, motivo: "falha ao atualizar a conversa" };
 
   const noHorario = dentroHorarioEnvio(new Date(), cfg.horario_envio, cfg.fuso_offset);
   if (opts.avisarCliente !== false) {
@@ -73,7 +77,9 @@ export async function transferirParaHumano(clienteId: string, motivo: string, op
 
 /** Template de alerta no WhatsApp de cada recepcionista ativa que aceitou receber. */
 export async function alertarRecepcao(conversaId: string, clienteId: string, motivo: string) {
-  const { data: cliente } = await db().from("clientes").select("nome, telefone").eq("id", clienteId).single();
+  const { data: conversa, error } = await db().from("conversas_legadas")
+    .select("id, cliente_nome, cliente_telefone").eq("id", conversaId).eq("cliente_id", clienteId).maybeSingle();
+  if (error || !conversa) return { enviados: 0, motivo: "conversa_indisponivel" };
   const { data: equipe } = await db()
     .from(await tabelaUsuarios())
     .select("nome, telefone_whatsapp")
@@ -92,8 +98,8 @@ export async function alertarRecepcao(conversaId: string, clienteId: string, mot
   let enviados = 0;
   for (const pessoa of equipe ?? []) {
     const r = await enviarTemplate(pessoa.telefone_whatsapp!, tpl.nome, tpl.idioma, [
-      { texto: cliente?.nome || "Cliente" },
-      { texto: mascararTelefone(cliente?.telefone ?? "") },
+      { texto: conversa.cliente_nome || "Cliente" },
+      { texto: mascararTelefone(conversa.cliente_telefone) },
       { texto: motivo.slice(0, 120) },
       { texto: link },
     ]);
@@ -118,19 +124,23 @@ export async function alertarRecepcao(conversaId: string, clienteId: string, mot
 }
 
 export async function assumirConversa(conversaId: string, email: string) {
+  const { data: legada, error: erroConsulta } = await db().from("conversas_legadas").select("id").eq("id", conversaId).maybeSingle();
+  if (erroConsulta || !legada) return { ok: false as const, motivo: "conversa indisponível no atendimento geral" };
   // Atualização condicional: só assume se ninguém assumiu ainda (evita duas pessoas respondendo)
-  const { data } = await db()
+  const { data, error } = await db()
     .from("conversas")
     .update({ assumida_por: email, assumida_em: new Date().toISOString(), nao_lidas: 0 })
     .eq("id", conversaId)
     .eq("status", "humano")
     .is("assumida_por", null)
     .select("id");
+  if (error) return { ok: false as const, motivo: "falha ao atualizar a conversa" };
   if (data?.length) {
     await auditar(email, "assumir", "conversa", conversaId);
     return { ok: true as const };
   }
-  const { data: atual } = await db().from("conversas").select("assumida_por, status").eq("id", conversaId).single();
+  const { data: atual, error: erroAtual } = await db().from("conversas_legadas").select("assumida_por, status").eq("id", conversaId).maybeSingle();
+  if (erroAtual || !atual) return { ok: false as const, motivo: "conversa indisponível no atendimento geral" };
   if (atual?.assumida_por === email) return { ok: true as const };
   return { ok: false as const, motivo: atual?.assumida_por ? `em atendimento com ${atual.assumida_por}` : `status ${atual?.status}` };
 }
@@ -144,12 +154,15 @@ type Quem = { email: string; papel: string };
 export type ResultadoPosse = { ok: true } | { ok: false; motivo: string };
 
 async function mudarComPosse(conversaId: string, quem: Quem, patch: Record<string, unknown>, acao: string, dados: Record<string, unknown> = {}): Promise<ResultadoPosse> {
+  const { data: legada, error: erroConsulta } = await db().from("conversas_legadas").select("id").eq("id", conversaId).maybeSingle();
+  if (erroConsulta || !legada) return { ok: false, motivo: "conversa indisponível no atendimento geral" };
   let q = db().from("conversas").update(patch).eq("id", conversaId).eq("status", "humano");
   if (!(papelValido(quem.papel) && supervisiona({ papel: quem.papel }))) q = q.or(`assumida_por.is.null,assumida_por.eq."${quem.email.replace(/"/g, "")}"`);
   const { data, error } = await q.select("id");
   if (error) return { ok: false, motivo: "falha ao atualizar a conversa" };
   if (!data?.length) {
-    const { data: atual } = await db().from("conversas").select("status, assumida_por").eq("id", conversaId).maybeSingle();
+    const { data: atual, error: erroAtual } = await db().from("conversas_legadas").select("status, assumida_por").eq("id", conversaId).maybeSingle();
+    if (erroAtual) return { ok: false, motivo: "falha ao consultar a conversa" };
     if (!atual) return { ok: false, motivo: "conversa não encontrada" };
     if (atual.status !== "humano") return { ok: false, motivo: "a conversa não está mais em atendimento humano" };
     return { ok: false, motivo: `em atendimento com ${atual.assumida_por}` };
@@ -177,7 +190,7 @@ export async function verificarSLA() {
   const cfg = await getConfig();
   const limite = new Date(Date.now() - cfg.atendimento.sla_min * 60_000).toISOString();
   const { data } = await db()
-    .from("conversas")
+    .from("conversas_legadas")
     .select("id, cliente_id, motivo_transferencia")
     .eq("status", "humano")
     .is("assumida_por", null)
@@ -185,7 +198,13 @@ export async function verificarSLA() {
     .lte("aguardando_desde", limite);
   let reenviados = 0;
   for (const c of data ?? []) {
-    await db().from("conversas").update({ alerta_reenviado_em: new Date().toISOString() }).eq("id", c.id);
+    const { data: legada, error: erroConsulta } = await db().from("conversas_legadas").select("id").eq("id", c.id).maybeSingle();
+    if (erroConsulta || !legada) continue;
+    const { data: atualizadas, error } = await db().from("conversas").update({ alerta_reenviado_em: new Date().toISOString() })
+      .eq("id", c.id).eq("status", "humano").is("assumida_por", null).is("alerta_reenviado_em", null).select("id");
+    if (error || !atualizadas?.length) continue;
+    const { data: aindaLegada, error: erroEscopo } = await db().from("conversas_legadas").select("id").eq("id", c.id).maybeSingle();
+    if (erroEscopo || !aindaLegada) continue;
     if (dentroHorarioEnvio(new Date(), cfg.horario_envio, cfg.fuso_offset)) {
       await responderLivre({ clienteId: c.cliente_id, autor: "sistema", texto: cfg.atendimento.msg_sla });
     }

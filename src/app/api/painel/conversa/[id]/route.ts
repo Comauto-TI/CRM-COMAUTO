@@ -11,18 +11,19 @@ export async function GET(_req: NextRequest, ctx: { params: Promise<{ id: string
   if (!u) return new NextResponse("unauthorized", { status: 401 });
   const { id } = await ctx.params;
 
-  const { data: conversa } = await db()
-    .from("conversas")
+  const { data: conversa, error } = await db()
+    .from("conversas_legadas")
     .select("id, status, motivo_transferencia, aguardando_desde, assumida_por, assumida_em, resultado, cliente_id")
     .eq("id", id)
     .maybeSingle();
+  if (error) return new NextResponse("unavailable", { status: 503 });
   if (!conversa) return new NextResponse("not found", { status: 404 });
 
   const cid = conversa.cliente_id;
   const [cliente, mensagens, veiculos, agendamentos, consentimentos, notas, inscricoes, respostas, optout] = await Promise.all([
     db().from("clientes").select("id, nome, telefone, email, cidade, tags, origem, ultimo_contato_em, criado_em").eq("id", cid).single(),
     db()
-      .from("mensagens")
+      .from("mensagens_legadas")
       .select("id, direcao, autor, tipo, conteudo, status, erro, criado_em")
       .eq("conversa_id", id)
       .order("criado_em", { ascending: false })
@@ -40,6 +41,11 @@ export async function GET(_req: NextRequest, ctx: { params: Promise<{ id: string
     db().from("respostas_rapidas").select("id, titulo, texto").eq("ativo", true).order("titulo"),
     db().from("optouts").select("id", { count: "exact", head: true }).eq("cliente_id", cid),
   ]);
+
+  // O canal pode ter aderido ao piloto enquanto a ficha era carregada.
+  const { data: aindaLegada, error: erroEscopo } = await db().from("conversas_legadas").select("id").eq("id", id).maybeSingle();
+  if (erroEscopo) return new NextResponse("unavailable", { status: 503 });
+  if (!aindaLegada) return new NextResponse("not found", { status: 404 });
 
   // abriu a conversa => zera não lidas
   await db().from("conversas").update({ nao_lidas: 0 }).eq("id", id);

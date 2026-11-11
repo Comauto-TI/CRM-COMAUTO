@@ -22,11 +22,16 @@ export async function assumir(conversaId: string): Promise<R> {
 /** Puxa uma conversa que está com o bot direto para o atendimento humano. */
 export async function puxarParaHumano(conversaId: string): Promise<R> {
   const u = await exigirAcesso("atendimento");
-  await db()
+  const { data: legada, error: erroConsulta } = await db().from("conversas_legadas")
+    .select("id").eq("id", conversaId).maybeSingle();
+  if (erroConsulta || !legada) return { ok: false, erro: "Conversa indisponível no atendimento geral." };
+  const { data, error } = await db()
     .from("conversas")
     .update({ status: "humano", aguardando_desde: new Date().toISOString(), assumida_por: u.email, assumida_em: new Date().toISOString(), motivo_transferencia: "assumida manualmente pela recepção" })
     .eq("id", conversaId)
-    .neq("status", "humano");
+    .neq("status", "humano")
+    .select("id");
+  if (error || !data?.length) return { ok: false, erro: "Não foi possível assumir a conversa." };
   await auditar(u.email, "puxar_humano", "conversa", conversaId);
   revalidatePath("/painel/conversas");
   return { ok: true };
@@ -37,10 +42,10 @@ export async function responder(conversaId: string, texto: string): Promise<R> {
   const limpo = texto.trim().slice(0, 4000);
   if (!limpo) return { ok: false, erro: "Mensagem vazia." };
 
-  const { data: conv } = await db().from("conversas").select("cliente_id, status, assumida_por").eq("id", conversaId).single();
-  if (!conv) return { ok: false, erro: "Conversa não encontrada." };
+  const { data: conv, error } = await db().from("conversas_legadas").select("cliente_id, status, assumida_por").eq("id", conversaId).maybeSingle();
+  if (error || !conv) return { ok: false, erro: "Conversa indisponível no atendimento geral." };
   if (conv.status !== "humano") return { ok: false, erro: "Assuma a conversa antes de responder." };
-  if (conv.assumida_por && conv.assumida_por !== u.email) return { ok: false, erro: `Em atendimento com ${conv.assumida_por}.` };
+  if (conv.assumida_por && conv.assumida_por !== u.email) return { ok: false, erro: "Em atendimento com outra pessoa." };
   if (!conv.assumida_por) {
     const a = await assumirConversa(conversaId, u.email);
     if (!a.ok) return { ok: false, erro: a.motivo };
@@ -63,9 +68,9 @@ export async function responder(conversaId: string, texto: string): Promise<R> {
 export async function enviarRetomada(conversaId: string): Promise<R> {
   const u = await exigirAcesso("atendimento");
   const cfg = await getConfig();
-  const { data: conv } = await db().from("conversas").select("cliente_id, clientes(nome)").eq("id", conversaId).single();
-  if (!conv) return { ok: false, erro: "Conversa não encontrada." };
-  const nome = ((conv as unknown as { clientes: { nome: string | null } | null }).clientes?.nome ?? "cliente").split(" ")[0];
+  const { data: conv, error } = await db().from("conversas_legadas").select("cliente_id, cliente_nome").eq("id", conversaId).maybeSingle();
+  if (error || !conv) return { ok: false, erro: "Conversa indisponível no atendimento geral." };
+  const nome = (conv.cliente_nome ?? "cliente").split(" ")[0];
   const r = await notificar({ clienteId: conv.cliente_id, uso: "retomada_atendimento", valores: [nome, cfg.empresa.nome], preferirLivre: false });
   await auditar(u.email, "enviar_retomada", "conversa", conversaId, { resultado: r.ok ? "ok" : r.motivo });
   return r.ok ? { ok: true } : { ok: false, erro: `Não enviado: ${r.motivo}` };

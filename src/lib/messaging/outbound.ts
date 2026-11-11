@@ -16,6 +16,29 @@ export type ResultadoNotificacao =
   | { ok: true; wamid: string; modo: "livre" | "template" }
   | { ok: false; motivo: string };
 
+export type ContextoAtendimento = {
+  id: string;
+  mensagemId: string;
+  conversaId: string;
+  autorizar: () => Promise<boolean>;
+};
+
+const UUID_ATENDIMENTO = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+const uuidAtendimento = (v: unknown): v is string => typeof v === "string" && v.length === 36 && UUID_ATENDIMENTO.test(v);
+
+async function possuiAtendimentoModular(clienteId: string): Promise<boolean> {
+  const { count, error } = await db().from("atendimentos_modulares")
+    .select("id", { count: "exact", head: true }).eq("cliente_id", clienteId);
+  if (error || count === null || !Number.isSafeInteger(count) || count < 0) throw new Error("verificacao_atendimento_indisponivel");
+  return count > 0;
+}
+
+async function botPodeResponder(clienteId: string): Promise<boolean> {
+  const { data, error } = await db().from("conversas").select("status").eq("cliente_id", clienteId).maybeSingle();
+  if (error || !data || !["bot", "humano", "encerrada"].includes(data.status)) throw new Error("verificacao_atendimento_indisponivel");
+  return data.status !== "humano";
+}
+
 async function carregarCliente(clienteId: string): Promise<ClienteMin | null> {
   const { data } = await db()
     .from("clientes")
@@ -67,7 +90,26 @@ export async function registrarSaida(args: {
   campanhaId?: string | null;
   agendamentoId?: string | null;
   metadata?: Record<string, unknown>;
+  contextoAtendimento?: Pick<ContextoAtendimento, "id" | "mensagemId" | "conversaId">;
 }) {
+  if (args.contextoAtendimento) {
+    const ctx = args.contextoAtendimento;
+    if (args.autor !== "atendente" || !uuidAtendimento(ctx.id) || !uuidAtendimento(ctx.mensagemId) || !uuidAtendimento(ctx.conversaId)) return false;
+    try {
+      // A reserva já contém corpo/classificação. Nunca restaura texto ou metadata
+      // que uma redação LGPD possa ter removido durante o despacho.
+      const { data, error } = await db().from("mensagens")
+        .update({ wamid: args.wamid, status: args.status, erro: args.erro ?? null })
+        .eq("id", ctx.mensagemId.toLowerCase()).eq("atendimento_id", ctx.id.toLowerCase())
+        .eq("cliente_id", args.clienteId).eq("conversa_id", ctx.conversaId.toLowerCase())
+        .eq("direcao", "saida").eq("autor", "atendente")
+        .eq("status", "bloqueada").eq("erro", "envio_em_processamento")
+        .select("id").maybeSingle();
+      return !error && typeof data?.id === "string" && data.id.toLowerCase() === ctx.mensagemId.toLowerCase();
+    } catch {
+      return false;
+    }
+  }
   const conversaId = await conversaDoCliente(args.clienteId);
   await db().from("mensagens").insert({
     conversa_id: conversaId,
@@ -98,16 +140,44 @@ export async function responderLivre(args: {
   autor: "bot" | "atendente" | "sistema";
   botoes?: BotaoResposta[];
   metadata?: Record<string, unknown>;
+  contextoAtendimento?: ContextoAtendimento;
 }): Promise<ResultadoNotificacao> {
+  const ctx = args.contextoAtendimento;
+  if (ctx && (args.autor !== "atendente" || !uuidAtendimento(args.clienteId) ||
+    !uuidAtendimento(ctx.id) || !uuidAtendimento(ctx.mensagemId) || !uuidAtendimento(ctx.conversaId) || typeof ctx.autorizar !== "function")) {
+    return { ok: false, motivo: "contexto_atendimento_invalido" };
+  }
   const cliente = await carregarCliente(args.clienteId);
   if (!cliente || cliente.anonimizado) return { ok: false, motivo: "cliente_indisponivel" };
   if (!janela24hAberta(cliente.ultimo_contato_em)) return { ok: false, motivo: "janela_24h_fechada" };
 
-  const r = args.botoes?.length
-    ? await enviarBotoes(cliente.telefone, args.texto, args.botoes)
-    : await enviarTexto(cliente.telefone, args.texto);
+  try {
+    if (args.autor === "atendente") {
+      if (await estaOptout(cliente.telefone)) return { ok: false, motivo: "optout" };
+      if (!ctx && await possuiAtendimentoModular(cliente.id)) return { ok: false, motivo: "atendimento_modular" };
+    }
+    if (args.autor === "bot" && !await botPodeResponder(cliente.id)) return { ok: false, motivo: "atendimento_humano" };
+    // Ponto de autorização do despacho. Revogações anteriores recusam; após
+    // este ponto não se promete cancelar uma requisição HTTP já em voo.
+    if (ctx && !await ctx.autorizar()) return { ok: false, motivo: "atendimento_indisponivel" };
+  } catch {
+    return { ok: false, motivo: "verificacao_indisponivel" };
+  }
 
-  await registrarSaida({
+  let r;
+  try {
+    r = args.botoes?.length
+      ? await enviarBotoes(cliente.telefone, args.texto, args.botoes)
+      : await enviarTexto(cliente.telefone, args.texto);
+  } catch (erro) {
+    if (ctx) return { ok: false, motivo: "envio_incerto" };
+    throw erro;
+  }
+  // Sem recusa explícita da Meta, a rede pode ter perdido somente a resposta.
+  // Mantém a reserva pendente; gravar "falhou" sugeriria um reenvio seguro.
+  if (ctx && !r.ok && r.codigo === undefined) return { ok: false, motivo: "envio_incerto" };
+
+  const persistiu = await registrarSaida({
     clienteId: cliente.id,
     autor: args.autor,
     tipo: args.botoes?.length ? "interactive" : "text",
@@ -116,7 +186,9 @@ export async function responderLivre(args: {
     status: r.ok ? "enviada" : "falhou",
     erro: r.ok ? null : r.erro,
     metadata: args.metadata,
+    contextoAtendimento: ctx,
   });
+  if (ctx && persistiu !== true) return { ok: false, motivo: "envio_incerto" };
   return r.ok ? { ok: true, wamid: r.wamid, modo: "livre" } : { ok: false, motivo: r.erro };
 }
 
@@ -138,6 +210,14 @@ export async function notificar(args: {
   const cfg = await getConfig();
   const cliente = await carregarCliente(args.clienteId);
   if (!cliente) return { ok: false, motivo: "cliente_inexistente" };
+
+  if (args.uso === "retomada_atendimento") {
+    try {
+      if (await possuiAtendimentoModular(cliente.id)) return { ok: false, motivo: "atendimento_modular" };
+    } catch {
+      return { ok: false, motivo: "verificacao_indisponivel" };
+    }
+  }
 
   const { data: tpl } = await db()
     .from("templates")

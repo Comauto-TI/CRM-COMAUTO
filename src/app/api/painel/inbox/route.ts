@@ -14,7 +14,7 @@ export async function GET(req: NextRequest) {
 
   const contar = (f: (x: ReturnType<typeof base>) => ReturnType<typeof base>) => f(base()).then((r) => r.count ?? 0);
   function base() {
-    return db().from("conversas").select("id", { count: "exact", head: true });
+    return db().from("conversas_legadas").select("id", { count: "exact", head: true });
   }
   const desdeFinalizados = new Date(Date.now() - 7 * 86400_000).toISOString();
   const [espera, atendimento, minhas, finalizados, bot] = await Promise.all([
@@ -26,19 +26,19 @@ export async function GET(req: NextRequest) {
   ]);
 
   let lista = db()
-    .from("conversas")
-    .select("id, status, motivo_transferencia, aguardando_desde, assumida_por, ultima_msg_em, nao_lidas, resultado, encerrada_em, clientes!inner(nome, telefone)")
+    .from("conversas_legadas")
+    .select("id, status, motivo_transferencia, aguardando_desde, assumida_por, ultima_msg_em, nao_lidas, resultado, encerrada_em, cliente_nome, cliente_telefone")
     .limit(80);
   if (aba === "espera") lista = lista.eq("status", "humano").is("assumida_por", null).order("aguardando_desde", { ascending: true });
   else if (aba === "atendimento") lista = lista.eq("status", "humano").not("assumida_por", "is", null).order("ultima_msg_em", { ascending: false });
   else if (aba === "finalizados") lista = lista.eq("status", "encerrada").order("encerrada_em", { ascending: false, nullsFirst: false });
   else lista = lista.eq("status", "bot").order("ultima_msg_em", { ascending: false, nullsFirst: false });
-  if (q) lista = lista.or(`nome.ilike.%${q}%,telefone.ilike.%${q.replace(/\D/g, "") || q}%`, { referencedTable: "clientes" });
+  if (q) lista = lista.or(`cliente_nome.ilike.%${q}%,cliente_telefone.ilike.%${q.replace(/\D/g, "") || q}%`);
 
   const { data } = await lista;
   const convs = (data ?? []) as unknown as {
     id: string; status: string; motivo_transferencia: string | null; aguardando_desde: string | null; assumida_por: string | null;
-    ultima_msg_em: string | null; nao_lidas: number; resultado: string | null; encerrada_em: string | null; clientes: { nome: string | null; telefone: string } | null;
+    ultima_msg_em: string | null; nao_lidas: number; resultado: string | null; encerrada_em: string | null; cliente_nome: string | null; cliente_telefone: string;
   }[];
 
   // última mensagem de cada conversa (prévia da lista)
@@ -46,7 +46,7 @@ export async function GET(req: NextRequest) {
   const ultimas = new Map<string, { conteudo: string | null; direcao: string; autor: string; status: string; criado_em: string }>();
   if (ids.length) {
     const { data: msgs } = await db()
-      .from("mensagens")
+      .from("mensagens_legadas")
       .select("conversa_id, conteudo, direcao, autor, status, criado_em")
       .in("conversa_id", ids)
       .order("criado_em", { ascending: false })
@@ -58,8 +58,8 @@ export async function GET(req: NextRequest) {
     const ult = ultimas.get(c.id);
     return {
       id: c.id,
-      cliente: c.clientes?.nome ?? "Cliente",
-      telefone: mascararTelefone(c.clientes?.telefone ?? ""),
+      cliente: c.cliente_nome ?? "Cliente",
+      telefone: mascararTelefone(c.cliente_telefone),
       status: c.status,
       motivo: c.motivo_transferencia,
       aguardandoDesde: c.aguardando_desde,

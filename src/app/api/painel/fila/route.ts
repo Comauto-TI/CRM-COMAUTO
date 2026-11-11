@@ -11,19 +11,19 @@ export async function GET() {
   if (!u) return new NextResponse("unauthorized", { status: 401 });
 
   const { data } = await db()
-    .from("conversas")
-    .select("id, motivo_transferencia, aguardando_desde, assumida_por, nao_lidas, clientes(nome, telefone)")
+    .from("conversas_legadas")
+    .select("id, motivo_transferencia, aguardando_desde, assumida_por, nao_lidas, cliente_nome, cliente_telefone")
     .eq("status", "humano")
     .order("aguardando_desde", { ascending: true })
     .limit(50);
 
   const itens = ((data ?? []) as unknown as {
     id: string; motivo_transferencia: string | null; aguardando_desde: string | null; assumida_por: string | null; nao_lidas: number;
-    clientes: { nome: string | null; telefone: string } | null;
+    cliente_nome: string | null; cliente_telefone: string;
   }[]).map((c) => ({
     id: c.id,
-    cliente: c.clientes?.nome ?? "Cliente",
-    telefone: mascararTelefone(c.clientes?.telefone ?? ""),
+    cliente: c.cliente_nome ?? "Cliente",
+    telefone: mascararTelefone(c.cliente_telefone),
     motivo: c.motivo_transferencia,
     aguardandoDesde: c.aguardando_desde,
     assumidaPor: c.assumida_por,
