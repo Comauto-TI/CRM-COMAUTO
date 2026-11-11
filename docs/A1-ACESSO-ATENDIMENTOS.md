@@ -1,6 +1,6 @@
 # A1 — Plano de acesso aos atendimentos por módulo
 
-Status: A1 em andamento. As fatias A1.1a, A1.1b e A1.1c têm código local isolado, descrito abaixo.
+Status: A1 em andamento. As fatias A1.1a a A1.1d têm código local isolado, descrito abaixo.
 As demais fatias continuam propostas; não houve integração de UI, teste de login, E2E
 nem aplicação de migrations em dev/produção.
 
@@ -158,9 +158,56 @@ chame ferramentas diferentes; os ledgers não representam uma escolha exclusiva 
 Não associar ambos automaticamente nem liberar o histórico por esse motivo.
 
 O código substitui o ramo local de Vendas, mas não foi integrado ao dev. Esta fatia registra
-a proveniência: ainda faltam a associação de Vendas ao atendimento, a decisão explícita em
-origens ambíguas entre setores, as mensagens seguintes, leitura/contadores, Oficina/triagem,
-lifecycle/posse, envio e fechamento dos caminhos legados. Nenhuma UI de conversa foi liberada.
+a proveniência. A associação e o bloqueio de origens ambíguas estão na A1.1d abaixo; a resolução
+da ambiguidade, mensagens seguintes, leitura/contadores, Oficina/triagem, lifecycle/posse,
+envio e fechamento dos caminhos legados continuam pendentes. Nenhuma UI de conversa foi liberada.
+
+## A1.1d — Associação de Vendas e guarda contra origem ambígua
+
+Migration `20261111150300_vinculo_vendas_atendimento.sql`, após A1.1c. A tabela de associações
+ganha setor explícito e oportunidade, com CHECK de um único domínio por linha. Os vínculos
+antigos recebem setor Peças e mantêm IDs, autoria, datas, referências e FKs. Não há movimento,
+exclusão ou reatribuição de mensagem. PK por mensagem e referência única continuam globais.
+
+- Peças mantém `vincular_mensagem_encaminhada`; Vendas usa `vincular_mensagem_vendas`.
+  Ambas delegam ao resolvedor por setor, que prova domínio, escopo atual, snapshots,
+  origem específica do negócio e mensagem externa antes de informar qualquer conflito.
+- As FKs adicionais de Vendas ligam atendimento e ledger à oportunidade, conversa,
+  cliente e unidade exatos. Fonte de outro negócio, mesmo cliente ou unidade não autoriza
+  associação. Não se infere autorização por carteira global do cliente.
+- Se uma referência aparecer no ledger de Peças/triagem e no de Vendas, ambos os caminhos
+  retornam `origem_ambigua`, sem nomear equipe, IDs ou dados de outro setor. O wrapper
+  apresenta conflito genérico e pede revisão. Não existe eleição automática do primeiro setor.
+- Se a segunda origem chegar depois de um vínculo, a linha original permanece preservada;
+  novas autorizações e replays passam a recusar a ambiguidade. Resolução explícita ainda
+  será implementada; não há sobrescrita ou anexação da mesma mensagem aos dois setores.
+- `autorizar_mensagem_atendimento` exige associação exata já gravada e revalida origem,
+  setor, responsável/supervisão e unidade. Uma referência ambígua de outro atendimento
+  retorna ausência antes de revelar conflito, evitando sondagem por IDs conhecidos.
+- A guarda retorna somente referências e setor. **Não retorna conteúdo nem emite uma
+  permissão reutilizável.** A futura leitura deve autorizar e consultar o corpo na mesma
+  transação, com a mesma política aplicada antes da paginação e das contagens.
+- Os wrappers mantêm RPCs de vínculo específicas por setor e validam a correlação dos
+  retornos. Usuário autenticado vem do chamador no servidor; setor informado no pré-filtro
+  de autorização não substitui a prova do domínio no banco. RLS/ACL seguem fechados.
+
+Validação local: typecheck, 1.090 Vitest (68 novos) e contratos SQL com/sem defaults passaram.
+A migração foi aplicada em base com Peças já vinculada, preservando todos os campos antigos.
+Ambiguidade nas duas ordens e após o vínculo, transferência sem carteira, revogações, FKs,
+rollback real da auditoria e reaplicação populada foram verificados. Os seis contratos SQL
+passaram juntos na base completa nos dois modos. SQL e wrapper tiveram
+revisão independente. Migration revisada: SHA256
+`9e3a0bf3d6c7fa871e9f694ce0678dfaffd4340970555d111cca2089bf8ca65f`.
+
+**Limites:** a guarda verifica a origem no ponto da autorização; não impede outra ferramenta
+de criar um encaminhamento depois nem resolve a ambiguidade. Novas leituras precisam
+revalidar o estado atual. Não houve prova multissessão, login/E2E, banco remoto, leitura de
+corpo, envio ou UI. Rotas legadas continuam pendentes; associação isolada não concede acesso.
+
+**Próxima parte:** A1.2, leitura paginada e contadores apenas de mensagens associadas e
+autorizadas, com DTO mínimo e autorização/consulta na mesma transação. Mensagens seguintes,
+resolução de ambiguidade, Oficina/triagem, filas sem dono, lifecycle/transferência/posse,
+envio e fechamento dos caminhos legados permanecem no plano.
 
 ## Problema e limites atuais
 
