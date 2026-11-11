@@ -6,7 +6,7 @@ Versionamento semântico a partir de **0.0.1** (decisão do Simão, 10/11/2026).
 - Toda versão mesclada ganha **tag git** `vX.Y.Z` e uma seção aqui. O que está numa branch e ainda não foi mesclado fica em "Não lançado".
 - Quem mescla na `main` (Claude ou Codex) atualiza `package.json`, este arquivo e cria a tag.
 
-## [Não lançado] — branch `claude/f1-vendas` (F1-V Vendas, sobre a F0)
+## [0.0.2] — 11/11/2026 — Vendas, chatbot→CRM, lembretes, Clientes, Métricas (PR #2)
 ### Adicionado
 - F8 (v1): aba Métricas — KPIs, funil contínuo de Vendas (desenho do Codex), previsão do mês com nível de confiança, conversão por vendedor e origem, tempo por etapa, motivos de perda e funil de eventos.
 - F2-2: vínculo do cartão com a proposta do Processo de Vendas e a avaliação do Avaliex (link ou ID), com links montados só a partir dos endereços oficiais.
@@ -19,7 +19,7 @@ Versionamento semântico a partir de **0.0.1** (decisão do Simão, 10/11/2026).
 - `/painel/vendas`: faixa do funil (90 dias) + indicadores, kanban com arrastar, carteira do vendedor + leads sem dono (assumir),
   painel lateral com qualificação, tarefas, contatos e linha do tempo.
 
-## [Não lançado] — branch `claude/f0-nucleo` (F0 Fundação)
+### F0 Fundação (PR #1)
 ### Corrigido
 - Opt-out e ficha única reconhecem o mesmo celular com e sem o 9º dígito.
 - Mensagens agendadas não ficam presas em "enviando" (F2-4-001).
