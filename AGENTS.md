@@ -13,7 +13,11 @@ administração) que compartilham a ficha única de cliente e veículo, com unid
   revisão dos PRs do Claude, apoio em Novos/Seminovos.
 - **Pastas por módulo:** `src/modulos/vendas` (Claude), `src/modulos/oficina` e `src/modulos/pecas` (Codex);
   núcleo compartilhado em `src/lib` (mudança no núcleo = PR revisado pelo Claude).
-- **Migrations por módulo:** `0002_nucleo`, `0003_vendas` (Claude) · `0004_oficina`, `0005_pecas` (Codex).
+- **Migrations por módulo:** `0002_nucleo`, `0003_vendas` (Claude) · `0004_oficina`, `0005_pecas` (Codex) ·
+  `0006_atendimento` (camada entre setores: encaminhamentos do bot, atendimentos, vínculo/leitura de mensagens;
+  escrita pelo Codex, revisada pelo Claude). **Decisão do Simão (11/11):** um arquivo por módulo, sempre
+  reaplicável (`if not exists`, `create or replace`). **Proibido** criar migration avulsa com timestamp da CLI;
+  coisa nova entra no arquivo do módulo dono. Módulo novo = próximo número, combinado no chat antes.
 - **Banco de dev** = Supabase "Ambiente de testes", que também é o banco de teste do processo-vendas-teste do Tiago:
   **não criar** tabelas `empresas`, `profiles`, `propostas`, `convites`; não apagar usuários de auth que não forem nossos.
   Chaves em `secrets/CHAVES-DESENVOLVIMENTO.txt` (fora do git) — nunca copiar valores para arquivos versionados.
