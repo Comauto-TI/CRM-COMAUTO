@@ -1,7 +1,7 @@
 import "server-only";
 import type { Usuario } from "@/lib/auth";
 import { db } from "@/lib/supabase/admin";
-import type { DadosCotacao } from "./dados-cotacao";
+import type { DadosCotacao, DadosItem } from "./dados-cotacao";
 
 type Cotacao = {
   id: string;
@@ -15,6 +15,18 @@ type Cotacao = {
   responsavel: { nome: string | null } | null;
 };
 
+type ItemCotacao = {
+  id: string;
+  descricao: string;
+  quantidade: number;
+  preco_unitario_centavos: number;
+  custo_unitario_centavos: number | null;
+};
+
+type CotacaoDetalhada = Cotacao & { responsavel_id: string | null; itens: ItemCotacao[] };
+
+const RESUMO_COTACAO = "id, unidade, origem, descricao, status, criado_em, clientes(nome), veiculos(placa), responsavel:usuarios!pecas_cotacoes_responsavel_id_fkey(nome)";
+
 function tabelaPendente(codigo: string) {
   return codigo === "PGRST205" || codigo === "42P01";
 }
@@ -22,13 +34,45 @@ function tabelaPendente(codigo: string) {
 export async function listarCotacoes(unidades: string[]) {
   const { data, error } = await db()
     .from("pecas_cotacoes")
-    .select("id, unidade, origem, descricao, status, criado_em, clientes(nome), veiculos(placa), responsavel:usuarios!pecas_cotacoes_responsavel_id_fkey(nome)")
+    .select(RESUMO_COTACAO)
     .in("unidade", unidades)
     .order("criado_em", { ascending: false })
     .limit(100);
 
   if (error) return { ok: false as const, pendente: tabelaPendente(error.code) };
   return { ok: true as const, cotacoes: (data ?? []) as unknown as Cotacao[] };
+}
+
+export async function obterCotacao(unidades: string[], id: string) {
+  const { data, error } = await db()
+    .from("pecas_cotacoes")
+    .select(`${RESUMO_COTACAO}, responsavel_id, itens:pecas_cotacao_itens(id, descricao, quantidade, preco_unitario_centavos, custo_unitario_centavos)`)
+    .in("unidade", unidades)
+    .eq("id", id)
+    .order("criado_em", { referencedTable: "itens" })
+    .order("id", { referencedTable: "itens" })
+    .maybeSingle();
+
+  if (error) return { ok: false as const, pendente: tabelaPendente(error.code) };
+  return { ok: true as const, cotacao: data as unknown as CotacaoDetalhada | null };
+}
+
+type ResultadoItem = "adicionado" | "indisponivel" | "limite" | "pendente" | "erro_item";
+
+export async function registrarItem(u: Usuario, cotacaoId: string, dados: DadosItem): Promise<ResultadoItem> {
+  const { data, error } = await db().rpc("pecas_adicionar_item", {
+    p_cotacao_id: cotacaoId,
+    p_item_id: dados.id,
+    p_unidades: u.unidades,
+    p_ator: u.id,
+    p_descricao: dados.descricao,
+    p_quantidade: dados.quantidade,
+    p_preco_unitario_centavos: dados.precoUnitarioCentavos,
+    p_custo_unitario_centavos: dados.custoUnitarioCentavos,
+  });
+  if (error) return tabelaPendente(error.code) || error.code === "PGRST202" ? "pendente" : "erro_item";
+  if (data === "adicionado" || data === "indisponivel" || data === "limite") return data;
+  return "erro_item";
 }
 
 type ResultadoCotacao = "criada" | "cliente" | "veiculo" | "unidade" | "pendente" | "erro";

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { lerDadosCotacao } from "@/modulos/pecas/dados-cotacao";
+import { lerDadosCotacao, lerDadosItem } from "@/modulos/pecas/dados-cotacao";
 
 function pedido() {
   const form = new FormData();
@@ -34,5 +34,49 @@ describe("entrada da cotação de balcão", () => {
     form.set("descricao", "Filtro");
     form.set("solicitacao", "repetir");
     expect(lerDadosCotacao(form)).toBeNull();
+  });
+});
+
+function item() {
+  const form = new FormData();
+  form.set("item", "00000000-0000-4000-8000-000000000002");
+  form.set("descricao", "  Filtro de óleo  ");
+  form.set("quantidade", "3");
+  form.set("preco", "19,07");
+  return form;
+}
+
+describe("entrada de itens da cotação", () => {
+  it("converte preços decimais em centavos e preserva custo ausente", () => {
+    expect(lerDadosItem(item())).toEqual({
+      id: "00000000-0000-4000-8000-000000000002",
+      descricao: "Filtro de óleo",
+      quantidade: 3,
+      precoUnitarioCentavos: 1907,
+      custoUnitarioCentavos: null,
+    });
+  });
+
+  it("aceita ponto decimal, custo zero e o limite de preço", () => {
+    const form = item();
+    form.set("preco", "999999.99");
+    form.set("custo", "0");
+    expect(lerDadosItem(form)).toMatchObject({ precoUnitarioCentavos: 99999999, custoUnitarioCentavos: 0 });
+  });
+
+  it.each([
+    ["item", "sem-id"],
+    ["descricao", " "],
+    ["quantidade", "0"],
+    ["quantidade", "1.5"],
+    ["quantidade", "10000"],
+    ["preco", "1,999"],
+    ["preco", "1000000"],
+    ["preco", "-1"],
+    ["custo", "1e3"],
+  ])("rejeita %s com valor %s", (campo, valor) => {
+    const form = item();
+    form.set(campo, valor);
+    expect(lerDadosItem(form)).toBeNull();
   });
 });

@@ -80,3 +80,92 @@ end $$;
 revoke all on function public.pecas_assumir_cotacao(uuid, text[], uuid)
   from public, anon, authenticated, service_role;
 grant execute on function public.pecas_assumir_cotacao(uuid, text[], uuid) to service_role;
+
+create table public.pecas_cotacao_itens (
+  id uuid primary key default gen_random_uuid(),
+  cotacao_id uuid not null references public.pecas_cotacoes (id) on delete restrict,
+  descricao text not null check (
+    char_length(descricao) between 1 and 200
+    and descricao !~ '^[[:space:]]|[[:space:]]$'
+  ),
+  quantidade integer not null check (quantidade between 1 and 9999),
+  preco_unitario_centavos integer not null check (preco_unitario_centavos between 0 and 99999999),
+  custo_unitario_centavos integer check (custo_unitario_centavos between 0 and 99999999),
+  criado_em timestamptz not null default now()
+);
+
+create index pecas_cotacao_itens_cotacao_idx on public.pecas_cotacao_itens (cotacao_id);
+
+alter table public.pecas_cotacao_itens enable row level security;
+revoke all on table public.pecas_cotacao_itens from public, anon, authenticated, service_role;
+grant select, insert on table public.pecas_cotacao_itens to service_role;
+
+create function public.pecas_adicionar_item(
+  p_cotacao_id uuid,
+  p_item_id uuid,
+  p_unidades text[],
+  p_ator uuid,
+  p_descricao text,
+  p_quantidade integer,
+  p_preco_unitario_centavos integer,
+  p_custo_unitario_centavos integer
+)
+returns text
+language plpgsql
+security invoker
+set search_path = ''
+as $$
+declare
+  item_existente public.pecas_cotacao_itens%rowtype;
+begin
+  -- Serializa a inclusão de itens e a mudança de etapa da mesma cotação.
+  perform 1
+  from public.pecas_cotacoes
+  where id = p_cotacao_id
+    and unidade = any (p_unidades)
+    and status = 'em_cotacao'
+    and responsavel_id = p_ator
+  for update;
+
+  if not found then
+    return 'indisponivel';
+  end if;
+
+  select * into item_existente
+  from public.pecas_cotacao_itens
+  where id = p_item_id;
+
+  if found then
+    if item_existente.cotacao_id = p_cotacao_id
+      and item_existente.descricao = p_descricao
+      and item_existente.quantidade = p_quantidade
+      and item_existente.preco_unitario_centavos = p_preco_unitario_centavos
+      and item_existente.custo_unitario_centavos is not distinct from p_custo_unitario_centavos then
+      return 'adicionado';
+    end if;
+    return 'indisponivel';
+  end if;
+
+  if (select count(*) from public.pecas_cotacao_itens where cotacao_id = p_cotacao_id) >= 100 then
+    return 'limite';
+  end if;
+
+  begin
+    insert into public.pecas_cotacao_itens (
+      id, cotacao_id, descricao, quantidade, preco_unitario_centavos, custo_unitario_centavos
+    )
+    values (
+      p_item_id, p_cotacao_id, p_descricao, p_quantidade, p_preco_unitario_centavos, p_custo_unitario_centavos
+    )
+    on conflict (id) do nothing;
+  exception when check_violation or not_null_violation then
+    return 'indisponivel';
+  end;
+
+  return case when found then 'adicionado' else 'indisponivel' end;
+end $$;
+
+revoke all on function public.pecas_adicionar_item(uuid, uuid, text[], uuid, text, integer, integer, integer)
+  from public, anon, authenticated, service_role;
+grant execute on function public.pecas_adicionar_item(uuid, uuid, text[], uuid, text, integer, integer, integer)
+  to service_role;

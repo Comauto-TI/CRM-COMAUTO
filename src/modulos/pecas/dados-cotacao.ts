@@ -6,9 +6,13 @@ function campo(form: FormData, nome: string): string {
   return typeof valor === "string" ? valor.trim() : "";
 }
 
+export function uuidV4Valido(id: string): boolean {
+  return typeof id === "string" && /^[a-f0-9]{8}-[a-f0-9]{4}-4[a-f0-9]{3}-[89ab][a-f0-9]{3}-[a-f0-9]{12}$/i.test(id);
+}
+
 export function lerIdCotacao(form: FormData) {
   const id = campo(form, "solicitacao");
-  return /^[a-f0-9]{8}-[a-f0-9]{4}-4[a-f0-9]{3}-[89ab][a-f0-9]{3}-[a-f0-9]{12}$/i.test(id) ? id : null;
+  return uuidV4Valido(id) ? id : null;
 }
 
 export function lerDadosCotacao(form: FormData) {
@@ -25,3 +29,26 @@ export function lerDadosCotacao(form: FormData) {
 }
 
 export type DadosCotacao = NonNullable<ReturnType<typeof lerDadosCotacao>>;
+
+function lerCentavos(valor: string): number | null {
+  if (!/^\d{1,6}(?:[,.]\d{1,2})?$/.test(valor)) return null;
+  const [reais, decimal = ""] = valor.split(/[,.]/);
+  return Number(reais) * 100 + Number(decimal.padEnd(2, "0"));
+}
+
+export function lerDadosItem(form: FormData) {
+  const id = campo(form, "item");
+  const descricao = campo(form, "descricao");
+  const quantidade = campo(form, "quantidade");
+  const precoUnitarioCentavos = lerCentavos(campo(form, "preco"));
+  const custo = campo(form, "custo");
+  const custoUnitarioCentavos = custo ? lerCentavos(custo) : null;
+
+  if (!uuidV4Valido(id) || !descricao || descricao.length > 200) return null;
+  if (!/^\d{1,4}$/.test(quantidade) || Number(quantidade) === 0) return null;
+  if (precoUnitarioCentavos === null || (custo && custoUnitarioCentavos === null)) return null;
+
+  return { id, descricao, quantidade: Number(quantidade), precoUnitarioCentavos, custoUnitarioCentavos };
+}
+
+export type DadosItem = NonNullable<ReturnType<typeof lerDadosItem>>;

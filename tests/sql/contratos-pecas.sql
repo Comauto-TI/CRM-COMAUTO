@@ -92,6 +92,86 @@ begin
   end if;
 end $$;
 
+do $$
+declare
+  cotacao_fixture constant uuid := '00000000-0000-4000-8000-000000000054';
+  cotacao_nova constant uuid := '00000000-0000-4000-8000-000000000056';
+  outra_cotacao constant uuid := '00000000-0000-4000-8000-000000000058';
+  ator_fixture constant uuid := '00000000-0000-4000-8000-000000000051';
+  outro_ator constant uuid := '00000000-0000-4000-8000-000000000055';
+  item_fixture constant uuid := '00000000-0000-4000-8000-000000000057';
+  unidades_fixture constant text[] := array['comauto'];
+  valores record;
+  descricao_invalida text;
+begin
+  if public.pecas_adicionar_item(cotacao_nova, item_fixture, unidades_fixture, ator_fixture, 'Filtro', 1, 100, 0) is distinct from 'indisponivel'
+    or public.pecas_adicionar_item(cotacao_fixture, item_fixture, array['santaluzia'], ator_fixture, 'Filtro', 1, 100, 0) is distinct from 'indisponivel'
+    or public.pecas_adicionar_item(cotacao_fixture, item_fixture, unidades_fixture, outro_ator, 'Filtro', 1, 100, 0) is distinct from 'indisponivel' then
+    raise exception 'Adicionar itens exige a etapa em cotação, a unidade e o responsável corretos.';
+  end if;
+
+  for valores in
+    select * from (values
+      (0, 100, 0),
+      (10000, 100, 0),
+      (1, -1, 0),
+      (1, 100000000, 0),
+      (1, 100, -1),
+      (1, 100, 100000000)
+    ) as casos (quantidade, preco, custo)
+  loop
+    if public.pecas_adicionar_item(
+      cotacao_fixture, item_fixture, unidades_fixture, ator_fixture, 'Filtro',
+      valores.quantidade, valores.preco, valores.custo
+    ) is distinct from 'indisponivel' then
+      raise exception 'Aceitou quantidade, preço ou custo inválido.';
+    end if;
+  end loop;
+
+  foreach descricao_invalida in array array['', E'\tFiltro', 'Filtro ', repeat('x', 201)] loop
+    if public.pecas_adicionar_item(
+      cotacao_fixture, item_fixture, unidades_fixture, ator_fixture, descricao_invalida, 1, 100, 0
+    ) is distinct from 'indisponivel' then
+      raise exception 'Aceitou descrição vazia, sem aparar ou longa demais.';
+    end if;
+  end loop;
+
+  if public.pecas_adicionar_item(cotacao_fixture, item_fixture, unidades_fixture, ator_fixture, 'Filtro', 1, 100, 0) is distinct from 'adicionado'
+    or public.pecas_adicionar_item(cotacao_fixture, item_fixture, unidades_fixture, ator_fixture, 'Filtro', 1, 100, 0) is distinct from 'adicionado'
+    or public.pecas_adicionar_item(cotacao_fixture, item_fixture, unidades_fixture, ator_fixture, 'Filtro', 1, 100, null) is distinct from 'indisponivel'
+    or public.pecas_adicionar_item(cotacao_fixture, item_fixture, unidades_fixture, ator_fixture, 'Outro filtro', 1, 100, 0) is distinct from 'indisponivel' then
+    raise exception 'A repetição exige o mesmo item e deve distinguir custo zero de custo ausente.';
+  end if;
+
+  insert into public.pecas_cotacoes (id, cliente_id, descricao, status, responsavel_id)
+  values (
+    outra_cotacao, '00000000-0000-4000-8000-000000000052',
+    'Fixture de outra cotação', 'em_cotacao', ator_fixture
+  );
+  if public.pecas_adicionar_item(outra_cotacao, item_fixture, unidades_fixture, ator_fixture, 'Filtro', 1, 100, 0) is distinct from 'indisponivel' then
+    raise exception 'O mesmo ID não pode ser usado em outra cotação.';
+  end if;
+
+  for numero_item in 2..100 loop
+    if public.pecas_adicionar_item(
+      cotacao_fixture, gen_random_uuid(), unidades_fixture, ator_fixture,
+      'Item ' || numero_item, 9999, 0, null
+    ) is distinct from 'adicionado' then
+      raise exception 'A cotação deve aceitar até 100 itens.';
+    end if;
+  end loop;
+
+  if public.pecas_adicionar_item(
+      cotacao_fixture, gen_random_uuid(), unidades_fixture, ator_fixture, 'Item 101', 1, 100, null
+    ) is distinct from 'limite'
+    or public.pecas_adicionar_item(cotacao_fixture, item_fixture, unidades_fixture, ator_fixture, 'Filtro', 1, 100, 0) is distinct from 'adicionado'
+    or (select count(*) from public.pecas_cotacao_itens where cotacao_id = cotacao_fixture) <> 100
+    or (select count(*) from public.pecas_cotacao_itens where cotacao_id = cotacao_fixture and custo_unitario_centavos is null) <> 99
+    or not exists (select 1 from public.pecas_cotacao_itens where id = item_fixture and custo_unitario_centavos = 0) then
+    raise exception 'O limite deve impedir apenas novos itens e preservar os valores persistidos.';
+  end if;
+end $$;
+
 reset role;
 
 do $$
@@ -120,6 +200,16 @@ begin
       and ator_id = '00000000-0000-4000-8000-000000000051'
   ) then
     raise exception 'Assumir e repetir deve produzir um único evento com unidade, etapa e autor corretos.';
+  end if;
+
+  if not (select relrowsecurity from pg_class where oid = 'public.pecas_cotacao_itens'::regclass)
+    or exists (select 1 from pg_policies where schemaname = 'public' and tablename = 'pecas_cotacao_itens')
+    or has_table_privilege('anon', 'public.pecas_cotacao_itens', 'SELECT, INSERT, UPDATE, DELETE, TRUNCATE, REFERENCES, TRIGGER')
+    or has_table_privilege('authenticated', 'public.pecas_cotacao_itens', 'SELECT, INSERT, UPDATE, DELETE, TRUNCATE, REFERENCES, TRIGGER')
+    or has_table_privilege('service_role', 'public.pecas_cotacao_itens', 'UPDATE, DELETE, TRUNCATE, REFERENCES, TRIGGER')
+    or has_function_privilege('anon', 'public.pecas_adicionar_item(uuid,uuid,text[],uuid,text,integer,integer,integer)', 'EXECUTE')
+    or has_function_privilege('authenticated', 'public.pecas_adicionar_item(uuid,uuid,text[],uuid,text,integer,integer,integer)', 'EXECUTE') then
+    raise exception 'Os itens e a RPC devem manter RLS fechada e os grants mínimos do servidor.';
   end if;
 
   delete from public.veiculos where id = '00000000-0000-4000-8000-000000000053';
