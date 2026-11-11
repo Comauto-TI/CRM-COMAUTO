@@ -68,6 +68,16 @@ export function lerDadosEdicaoItem(form: FormData) {
 
 export type DadosEdicaoItem = NonNullable<ReturnType<typeof lerDadosEdicaoItem>>;
 
+export function lerDadosEncerramento(form: FormData) {
+  const destino = campo(form, "destino");
+  const motivo = campo(form, "motivo");
+  if (destino !== "perdido" && destino !== "cancelado") return null;
+  if (!motivo || motivo.length > 500) return null;
+  return { destino, motivo };
+}
+
+export type DadosEncerramento = NonNullable<ReturnType<typeof lerDadosEncerramento>>;
+
 export type TipoPreparo = "separacao" | "encomenda";
 export type AcaoAtendimento = TipoPreparo | "entrega";
 

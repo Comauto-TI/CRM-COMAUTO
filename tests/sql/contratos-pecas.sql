@@ -31,6 +31,8 @@ alter table public.pecas_cotacoes_historico add constraint fixture_rejeita_aprov
   check (cotacao_id <> '00000000-0000-4000-8000-000000000058' or para_status <> 'aprovado');
 alter table public.pecas_cotacoes_historico add constraint fixture_rejeita_entrega
   check (cotacao_id <> '00000000-0000-4000-8000-000000000063' or para_status <> 'entregue');
+alter table public.pecas_cotacoes_historico add constraint fixture_rejeita_encerramento
+  check (cotacao_id <> '00000000-0000-4000-8000-000000000065' or para_status <> 'cancelado');
 
 set local role service_role;
 
@@ -563,6 +565,104 @@ begin
   end if;
 end $$;
 
+do $$
+declare
+  cotacao_entregue constant uuid := '00000000-0000-4000-8000-000000000054';
+  cotacao_aguardando constant uuid := '00000000-0000-4000-8000-000000000058';
+  cotacao_sem_venda constant uuid := '00000000-0000-4000-8000-000000000059';
+  cotacao_em_preparo constant uuid := '00000000-0000-4000-8000-000000000063';
+  cotacao_em_cotacao constant uuid := '00000000-0000-4000-8000-000000000064';
+  cotacao_vendida constant uuid := '00000000-0000-4000-8000-000000000065';
+  cliente_fixture constant uuid := '00000000-0000-4000-8000-000000000052';
+  ator_fixture constant uuid := '00000000-0000-4000-8000-000000000051';
+  outro_ator constant uuid := '00000000-0000-4000-8000-000000000055';
+  unidades_fixture constant text[] := array['comauto'];
+  motivo_perda constant text := repeat('m', 500);
+  motivo_cancelamento constant text := 'Cliente solicitou cancelamento';
+  motivo_invalido text;
+  instante_venda timestamptz;
+  restricao text;
+begin
+  insert into public.pecas_cotacoes (id, cliente_id, descricao, status, responsavel_id, venda_confirmada_em, venda_confirmada_por)
+  values
+    (cotacao_em_cotacao, cliente_fixture, 'Fixture de perda', 'em_cotacao', ator_fixture, null, null),
+    (cotacao_vendida, cliente_fixture, 'Fixture de venda aprovada', 'aprovado', ator_fixture, now(), ator_fixture);
+
+  foreach motivo_invalido in array array[null, '', ' ', E'\tMotivo', 'Motivo ', repeat('x', 501)] loop
+    if public.pecas_encerrar_cotacao(cotacao_em_cotacao, unidades_fixture, ator_fixture, 'perdido', motivo_invalido) is distinct from false then
+      raise exception 'O motivo exige de 1 a 500 caracteres aparados.';
+    end if;
+  end loop;
+  if public.pecas_encerrar_cotacao(cotacao_em_cotacao, unidades_fixture, ator_fixture, 'entregue', motivo_perda) is distinct from false
+    or public.pecas_encerrar_cotacao(cotacao_em_cotacao, array['santaluzia'], ator_fixture, 'perdido', motivo_perda) is distinct from false
+    or public.pecas_encerrar_cotacao(cotacao_em_cotacao, unidades_fixture, outro_ator, 'perdido', motivo_perda) is distinct from false then
+    raise exception 'O encerramento exige destino válido, unidade e responsável corretos.';
+  end if;
+  if public.pecas_encerrar_cotacao(cotacao_entregue, unidades_fixture, ator_fixture, 'perdido', motivo_perda) is distinct from false
+    or public.pecas_encerrar_cotacao(cotacao_entregue, unidades_fixture, ator_fixture, 'cancelado', motivo_cancelamento) is distinct from false
+    or public.pecas_encerrar_cotacao(cotacao_vendida, unidades_fixture, ator_fixture, 'perdido', motivo_perda) is distinct from false
+    or public.pecas_encerrar_cotacao(cotacao_em_preparo, unidades_fixture, ator_fixture, 'perdido', motivo_perda) is distinct from false then
+    raise exception 'A perda exige venda pendente e a entrega encerra o fluxo.';
+  end if;
+
+  begin
+    update public.pecas_cotacoes set status = 'perdido' where id = cotacao_em_cotacao;
+    raise exception 'Uma cotação perdida exige motivo persistido.';
+  exception when check_violation then null;
+  end;
+  begin
+    update public.pecas_cotacoes set motivo_encerramento = motivo_perda where id = cotacao_em_cotacao;
+    raise exception 'O motivo persistido exige uma etapa de encerramento.';
+  exception when check_violation then null;
+  end;
+
+  if public.pecas_encerrar_cotacao(cotacao_em_cotacao, unidades_fixture, ator_fixture, 'perdido', motivo_perda) is distinct from true
+    or public.pecas_encerrar_cotacao(cotacao_em_cotacao, unidades_fixture, ator_fixture, 'perdido', motivo_perda) is distinct from true
+    or public.pecas_encerrar_cotacao(cotacao_sem_venda, unidades_fixture, ator_fixture, 'perdido', motivo_perda) is distinct from true
+    or public.pecas_encerrar_cotacao(cotacao_aguardando, unidades_fixture, ator_fixture, 'cancelado', motivo_cancelamento) is distinct from true then
+    raise exception 'O responsável deve conseguir encerrar as cotações elegíveis.';
+  end if;
+  if public.pecas_encerrar_cotacao(cotacao_em_cotacao, unidades_fixture, ator_fixture, 'perdido', 'Outro motivo') is distinct from false
+    or public.pecas_encerrar_cotacao(cotacao_em_cotacao, unidades_fixture, ator_fixture, 'cancelado', motivo_cancelamento) is distinct from false
+    or public.pecas_encerrar_cotacao(cotacao_em_cotacao, unidades_fixture, outro_ator, 'perdido', motivo_perda) is distinct from false
+    or public.pecas_encerrar_cotacao(cotacao_em_cotacao, array['santaluzia'], ator_fixture, 'perdido', motivo_perda) is distinct from false then
+    raise exception 'O reenvio exige o destino, o motivo e o escopo originais.';
+  end if;
+  if not exists (select 1 from public.pecas_cotacoes where id = cotacao_em_cotacao and status = 'perdido' and motivo_encerramento = motivo_perda)
+    or not exists (select 1 from public.pecas_cotacoes where id = cotacao_aguardando and status = 'cancelado' and motivo_encerramento = motivo_cancelamento) then
+    raise exception 'A etapa e o motivo precisam permanecer no cartão.';
+  end if;
+
+  select venda_confirmada_em into instante_venda from public.pecas_cotacoes where id = cotacao_em_preparo;
+  if public.pecas_encerrar_cotacao(cotacao_em_preparo, unidades_fixture, ator_fixture, 'cancelado', motivo_cancelamento) is distinct from true
+    or public.pecas_encerrar_cotacao(cotacao_em_preparo, unidades_fixture, ator_fixture, 'cancelado', motivo_cancelamento) is distinct from true
+    or public.pecas_avancar_atendimento(cotacao_em_preparo, unidades_fixture, ator_fixture, 'entrega') is distinct from false then
+    raise exception 'O cancelamento encerra o preparo e aceita reenvio idêntico.';
+  end if;
+  if not exists (
+    select 1 from public.pecas_cotacoes
+    where id = cotacao_em_preparo and status = 'cancelado' and motivo_encerramento = motivo_cancelamento
+      and venda_confirmada_em = instante_venda and venda_confirmada_por = ator_fixture and tipo_preparo = 'encomenda'
+  ) then
+    raise exception 'O cancelamento deve preservar data e autor da venda e o tipo de preparo.';
+  end if;
+
+  begin
+    perform public.pecas_encerrar_cotacao(cotacao_vendida, unidades_fixture, ator_fixture, 'cancelado', motivo_cancelamento);
+    raise exception 'O evento de cancelamento deveria ter falhado.';
+  exception when check_violation then
+    get stacked diagnostics restricao = constraint_name;
+    if restricao is distinct from 'fixture_rejeita_encerramento' then raise; end if;
+  end;
+  if not exists (
+    select 1 from public.pecas_cotacoes
+    where id = cotacao_vendida and status = 'aprovado' and motivo_encerramento is null
+      and venda_confirmada_em is not null and venda_confirmada_por = ator_fixture
+  ) then
+    raise exception 'Falha no histórico deve reverter a etapa e o motivo.';
+  end if;
+end $$;
+
 reset role;
 
 do $$
@@ -580,6 +680,7 @@ begin
     or not has_column_privilege('service_role', 'public.pecas_cotacoes', 'venda_confirmada_em', 'UPDATE')
     or not has_column_privilege('service_role', 'public.pecas_cotacoes', 'venda_confirmada_por', 'UPDATE')
     or not has_column_privilege('service_role', 'public.pecas_cotacoes', 'tipo_preparo', 'UPDATE')
+    or not has_column_privilege('service_role', 'public.pecas_cotacoes', 'motivo_encerramento', 'UPDATE')
     or has_column_privilege('service_role', 'public.pecas_cotacoes', 'descricao', 'UPDATE')
     or has_table_privilege('service_role', 'public.pecas_cotacoes_historico', 'SELECT, UPDATE, DELETE')
     or has_function_privilege('anon', 'public.pecas_assumir_cotacao(uuid,text[],uuid)', 'EXECUTE')
@@ -592,12 +693,14 @@ begin
     or has_function_privilege('authenticated', 'public.pecas_confirmar_venda(uuid,text[],uuid)', 'EXECUTE')
     or has_function_privilege('anon', 'public.pecas_avancar_atendimento(uuid,text[],uuid,text)', 'EXECUTE')
     or has_function_privilege('authenticated', 'public.pecas_avancar_atendimento(uuid,text[],uuid,text)', 'EXECUTE')
+    or has_function_privilege('anon', 'public.pecas_encerrar_cotacao(uuid,text[],uuid,text,text)', 'EXECUTE')
+    or has_function_privilege('authenticated', 'public.pecas_encerrar_cotacao(uuid,text[],uuid,text,text)', 'EXECUTE')
     or has_function_privilege('anon', 'public.pecas_registrar_cotacao_bot(uuid,text,text,text)', 'EXECUTE')
     or has_function_privilege('authenticated', 'public.pecas_registrar_cotacao_bot(uuid,text,text,text)', 'EXECUTE') then
     raise exception 'A cotação e seu histórico devem manter RLS fechada e os grants mínimos do servidor.';
   end if;
 
-  if (select count(*) from public.pecas_cotacoes_historico) <> 7 or not exists (
+  if (select count(*) from public.pecas_cotacoes_historico) <> 11 or not exists (
     select 1 from public.pecas_cotacoes_historico
     where cotacao_id = '00000000-0000-4000-8000-000000000054'
       and unidade = 'comauto' and de_status = 'novo' and para_status = 'em_cotacao'
@@ -635,6 +738,20 @@ begin
     ) cotacoes_com_historico
   ) <> 2 then
     raise exception 'Cada cotação deve guardar um evento de preparo e um de entrega.';
+  end if;
+  if (
+    select count(distinct h.cotacao_id) from public.pecas_cotacoes_historico h
+    join (values
+      ('00000000-0000-4000-8000-000000000058'::uuid, 'aguardando_cliente', 'cancelado'),
+      ('00000000-0000-4000-8000-000000000059'::uuid, 'aprovado', 'perdido'),
+      ('00000000-0000-4000-8000-000000000063'::uuid, 'em_separacao', 'cancelado'),
+      ('00000000-0000-4000-8000-000000000064'::uuid, 'em_cotacao', 'perdido')
+    ) esperado (cotacao_id, de_status, para_status)
+      on esperado.cotacao_id = h.cotacao_id and esperado.de_status = h.de_status and esperado.para_status = h.para_status
+    where h.unidade = 'comauto' and h.ator_id = '00000000-0000-4000-8000-000000000051'
+      and h.ocorrido_em between transaction_timestamp() and clock_timestamp()
+  ) <> 4 then
+    raise exception 'Cada encerramento deve guardar a transição, unidade, autor e horário corretos.';
   end if;
 
   if not (select relrowsecurity from pg_class where oid = 'public.pecas_cotacao_itens'::regclass)

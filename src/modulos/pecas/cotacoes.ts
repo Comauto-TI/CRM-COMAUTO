@@ -1,7 +1,7 @@
 import "server-only";
 import type { Usuario } from "@/lib/auth";
 import { db } from "@/lib/supabase/admin";
-import type { AcaoAtendimento, DadosCotacao, DadosEdicaoItem, DadosItem, TipoPreparo } from "./dados-cotacao";
+import type { AcaoAtendimento, DadosCotacao, DadosEdicaoItem, DadosEncerramento, DadosItem, TipoPreparo } from "./dados-cotacao";
 
 type Cotacao = {
   id: string;
@@ -28,6 +28,7 @@ type ItemCotacao = {
 type CotacaoDetalhada = Cotacao & {
   responsavel_id: string | null;
   venda_confirmada_em: string | null;
+  motivo_encerramento: string | null;
   itens: ItemCotacao[];
 };
 
@@ -52,7 +53,7 @@ export async function listarCotacoes(unidades: string[]) {
 export async function obterCotacao(unidades: string[], id: string) {
   const { data, error } = await db()
     .from("pecas_cotacoes")
-    .select(`${RESUMO_COTACAO}, responsavel_id, venda_confirmada_em, itens:pecas_cotacao_itens(id, versao, descricao, quantidade, preco_unitario_centavos, custo_unitario_centavos)`)
+    .select(`${RESUMO_COTACAO}, responsavel_id, venda_confirmada_em, motivo_encerramento, itens:pecas_cotacao_itens(id, versao, descricao, quantidade, preco_unitario_centavos, custo_unitario_centavos)`)
     .in("unidade", unidades)
     .eq("id", id)
     .order("criado_em", { referencedTable: "itens" })
@@ -190,6 +191,21 @@ export async function avancarAtendimento(u: Usuario, id: string, acao: AcaoAtend
   if (error) return tabelaPendente(error.code) || error.code === "PGRST202" ? "pendente" : "erro_atendimento";
   if (data !== true) return "indisponivel";
   return acao === "entrega" ? "entrega_registrada" : "preparo_registrado";
+}
+
+type ResultadoEncerramento = "perda_registrada" | "cancelamento_registrado" | "indisponivel" | "pendente" | "erro_encerramento";
+
+export async function encerrarCotacao(u: Usuario, id: string, dados: DadosEncerramento): Promise<ResultadoEncerramento> {
+  const { data, error } = await db().rpc("pecas_encerrar_cotacao", {
+    p_id: id,
+    p_unidades: u.unidades,
+    p_ator: u.id,
+    p_destino: dados.destino,
+    p_motivo: dados.motivo,
+  });
+  if (error) return tabelaPendente(error.code) || error.code === "PGRST202" ? "pendente" : "erro_encerramento";
+  if (data !== true) return "indisponivel";
+  return dados.destino === "perdido" ? "perda_registrada" : "cancelamento_registrado";
 }
 
 export async function registrarCotacao(u: Usuario, dados: DadosCotacao): Promise<ResultadoCotacao> {

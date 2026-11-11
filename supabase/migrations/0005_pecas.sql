@@ -21,6 +21,13 @@ create table public.pecas_cotacoes (
   -- Preserva o autor da confirmação mesmo depois de remover o usuário.
   venda_confirmada_por uuid,
   tipo_preparo text check (tipo_preparo in ('separacao', 'encomenda')),
+  motivo_encerramento text check (
+    char_length(motivo_encerramento) between 1 and 500
+    and motivo_encerramento !~ '^[[:space:]]|[[:space:]]$'
+  ),
+  constraint pecas_cotacoes_encerramento_status_check check (
+    (status in ('perdido', 'cancelado')) = (motivo_encerramento is not null)
+  ),
   constraint pecas_cotacoes_confirmacao_venda_check check (
     (venda_confirmada_em is null) = (venda_confirmada_por is null)
   ),
@@ -43,7 +50,7 @@ create unique index pecas_cotacoes_referencia_whatsapp_idx
 alter table public.pecas_cotacoes enable row level security;
 revoke all on table public.pecas_cotacoes from public, anon, authenticated, service_role;
 grant select, insert on table public.pecas_cotacoes to service_role;
-grant update (status, responsavel_id, venda_confirmada_em, venda_confirmada_por, tipo_preparo)
+grant update (status, responsavel_id, venda_confirmada_em, venda_confirmada_por, tipo_preparo, motivo_encerramento)
   on table public.pecas_cotacoes to service_role;
 
 create table public.pecas_cotacoes_historico (
@@ -440,6 +447,58 @@ end $$;
 revoke all on function public.pecas_avancar_atendimento(uuid, text[], uuid, text)
   from public, anon, authenticated, service_role;
 grant execute on function public.pecas_avancar_atendimento(uuid, text[], uuid, text) to service_role;
+
+create function public.pecas_encerrar_cotacao(
+  p_id uuid, p_unidades text[], p_ator uuid, p_destino text, p_motivo text
+)
+returns boolean
+language plpgsql
+security invoker
+set search_path = ''
+as $$
+declare
+  unidade_atual text;
+  status_atual text;
+  motivo_atual text;
+begin
+  if p_destino is null or p_destino not in ('perdido', 'cancelado')
+    or p_motivo is null or char_length(p_motivo) not between 1 and 500
+    or p_motivo ~ '^[[:space:]]|[[:space:]]$' then
+    return false;
+  end if;
+
+  select c.unidade, c.status, c.motivo_encerramento into unidade_atual, status_atual, motivo_atual
+  from public.pecas_cotacoes c
+  where c.id = p_id
+    and c.unidade = any (p_unidades)
+    and c.responsavel_id = p_ator
+    and (
+      c.status = p_destino
+      or (c.status in ('em_cotacao', 'aguardando_cliente', 'aprovado')
+        and (p_destino = 'cancelado' or c.venda_confirmada_em is null))
+      or (c.status = 'em_separacao' and p_destino = 'cancelado')
+    )
+  for update;
+
+  if not found then
+    return false;
+  end if;
+  if status_atual = p_destino then
+    return motivo_atual = p_motivo;
+  end if;
+
+  update public.pecas_cotacoes
+  set status = p_destino, motivo_encerramento = p_motivo
+  where id = p_id;
+
+  insert into public.pecas_cotacoes_historico (cotacao_id, unidade, de_status, para_status, ator_id)
+  values (p_id, unidade_atual, status_atual, p_destino, p_ator);
+  return true;
+end $$;
+
+revoke all on function public.pecas_encerrar_cotacao(uuid, text[], uuid, text, text)
+  from public, anon, authenticated, service_role;
+grant execute on function public.pecas_encerrar_cotacao(uuid, text[], uuid, text, text) to service_role;
 
 create function public.pecas_registrar_cotacao_bot(
   p_cliente_id uuid, p_unidade text, p_referencia text, p_descricao text

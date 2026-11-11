@@ -2,8 +2,8 @@
 
 import { redirect } from "next/navigation";
 import { exigirAcesso } from "@/lib/auth";
-import { atualizarItem, avancarAtendimento, iniciarCotacao, marcarApresentada, marcarAprovada, marcarVendaConfirmada, registrarCotacao, registrarItem } from "@/modulos/pecas/cotacoes";
-import { lerDadosCotacao, lerDadosEdicaoItem, lerDadosItem, lerIdCotacao, uuidV4Valido } from "@/modulos/pecas/dados-cotacao";
+import { atualizarItem, avancarAtendimento, encerrarCotacao, iniciarCotacao, marcarApresentada, marcarAprovada, marcarVendaConfirmada, registrarCotacao, registrarItem } from "@/modulos/pecas/cotacoes";
+import { lerDadosCotacao, lerDadosEdicaoItem, lerDadosEncerramento, lerDadosItem, lerIdCotacao, uuidV4Valido } from "@/modulos/pecas/dados-cotacao";
 
 export async function criarCotacao(form: FormData) {
   const u = await exigirAcesso("pecas");
@@ -71,5 +71,13 @@ export async function registrarAtendimento(id: string, form: FormData) {
     redirect(`/painel/pecas/${id}?msg=indisponivel`);
   }
   const resultado = await avancarAtendimento(u, id, acao);
+  redirect(`/painel/pecas/${id}?msg=${resultado}`);
+}
+
+export async function registrarEncerramento(id: string, form: FormData) {
+  const u = await exigirAcesso("pecas");
+  if (!uuidV4Valido(id)) redirect("/painel/pecas?msg=indisponivel");
+  const dados = lerDadosEncerramento(form);
+  const resultado = dados ? await encerrarCotacao(u, id, dados) : "motivo_invalido";
   redirect(`/painel/pecas/${id}?msg=${resultado}`);
 }

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { centavosParaCampo, lerDadosCotacao, lerDadosEdicaoItem, lerDadosItem, totalizarCotacao } from "@/modulos/pecas/dados-cotacao";
+import { centavosParaCampo, lerDadosCotacao, lerDadosEdicaoItem, lerDadosEncerramento, lerDadosItem, totalizarCotacao } from "@/modulos/pecas/dados-cotacao";
 
 function pedido() {
   const form = new FormData();
@@ -26,6 +26,26 @@ describe("total e margem da venda", () => {
   it("mantém o total e omite a margem quando falta o custo de um item", () => {
     const itensComCustoParcial = [itens[0], { ...itens[1], custo_unitario_centavos: null }];
     expect(totalizarCotacao(itensComCustoParcial, true)).toEqual({ totalCentavos: 6221, margemCentavos: null });
+  });
+});
+
+describe("encerramento da cotação", () => {
+  it.each(["perdido", "cancelado"])("aceita %s com motivo aparado", (destino) => {
+    const form = new FormData();
+    form.set("destino", destino);
+    form.set("motivo", "  Cliente desistiu  ");
+    expect(lerDadosEncerramento(form)).toEqual({ destino, motivo: "Cliente desistiu" });
+  });
+
+  it.each([
+    ["perdido", " \n "],
+    ["cancelado", "x".repeat(501)],
+    ["entregue", "Pedido entregue"],
+  ])("rejeita destino ou motivo inválido para %s", (destino, motivo) => {
+    const form = new FormData();
+    form.set("destino", destino);
+    form.set("motivo", motivo);
+    expect(lerDadosEncerramento(form)).toBeNull();
   });
 });
 
