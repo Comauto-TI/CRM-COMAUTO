@@ -2,8 +2,10 @@
 
 import { useEffect, useMemo, useRef } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import type { CotacaoQuadroPecas } from "@/modulos/pecas/quadro";
 import QuadroKanban, { type CartaoQuadro, type ColunaQuadro, type ResultadoMover } from "../_components/quadro/QuadroKanban";
+import ConversaPecas from "./ConversaPecas";
 import { moverCotacaoQuadro } from "./quadro-actions";
 
 const ABERTAS: ColunaQuadro[] = [
@@ -27,6 +29,7 @@ const PERDA = {
 };
 
 export default function QuadroPecas({ cotacoes, selecionado }: { cotacoes: CotacaoQuadroPecas[]; selecionado?: string }) {
+  const router = useRouter();
   const arrastando = useRef<string | null>(null);
   const painel = useRef<HTMLElement | null>(null);
   const porId = useMemo(() => new Map(cotacoes.map((c) => [c.id, c])), [cotacoes]);
@@ -89,11 +92,8 @@ export default function QuadroPecas({ cotacoes, selecionado }: { cotacoes: Cotac
               <p className="mudo">Consulte os detalhes da cotação para acompanhar os registros do encerramento.</p>
             </div>
           ) : (
-            <div style={{ padding: 16 }}>
-              <h2>{selecionada.clienteNome ?? "Cliente cadastrado"}</h2>
-              <p>{selecionada.descricao}</p>
-              <p className="mudo">Responsável · {selecionada.responsavelNome ?? "A definir"}</p>
-              <p className="mudo">Abra os detalhes para editar a cotação e registrar o acompanhamento.</p>
+            <div style={{ display: "flex", height: "min(72vh, 760px)", minHeight: 400 }}>
+              <ConversaPecas cotacaoId={selecionada.id} onMudou={() => router.refresh()} onVoltar={() => router.push("/painel/pecas", { scroll: true })} />
             </div>
           )}
         </aside>

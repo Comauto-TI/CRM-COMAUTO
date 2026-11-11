@@ -6,7 +6,13 @@ Versionamento semântico a partir de **0.0.1** (decisão do Simão, 10/11/2026).
 - Toda versão mesclada ganha **tag git** `vX.Y.Z` e uma seção aqui. O que está numa branch e ainda não foi mesclado fica em "Não lançado".
 - Quem mescla na `main` (Claude ou Codex) atualiza `package.json`, este arquivo e cria a tag.
 
-## [Não lançado] — branch `claude/f2-piloto`
+## [Não lançado] — branches `claude/*` e `codex/*`
+### MVP de atendimento de Peças (local, aguardando integração)
+- Quadro comum do Claude adaptado aos status de Peças, encerradas recolhidas e conversa no cartão. Carteira/fila e detalhe autorizados pelo banco; mudança de etapa usa transições e histórico existentes, sem estoque/faturamento.
+- Assumir/devolver com reserva por canal e versão, mensagens explicitamente vinculadas e resposta pelo outbound oficial na janela de 24h. UUID por tentativa, autorização no despacho, opt-out e proteção contra reenvio automático após resultado incerto.
+- Caminhos legados de leitura/posse/envio do piloto excluem canais modulares. Supervisão pode devolver uma posse autorizada sem ganhar permissão de responder em nome do dono.
+- Validação local em SQL, Vitest/typecheck e visual offline. Integração de dev, login/E2E e concorrência multissessão seguem pendentes; detalhes em `docs/PECAS-MVP-PILOTO.md`.
+
 ### Consolidação de migrations por módulo
 - Convenção atual: um arquivo reaplicável por módulo. Os dois artefatos de Aniversários/F5 e proveniência do bot em Vendas passam para `0003_vendas.sql`; os outros sete, de encaminhamento e atendimento entre setores, passam para `0006_atendimento.sql`. O [mapeamento dos nove arquivos anteriores](docs/A1-ACESSO-ATENDIMENTOS.md#consolidação-por-módulo-e-prioridade-atual--11112026) preserva a referência histórica; novas alterações entram no módulo dono, sem migration avulsa com timestamp.
 - Instalação limpa com nove contratos, reaplicação com dados e upgrade populado de `84b95e5` passaram nos dois modos de permissões. Dados, vínculos, leituras, funções, constraints e ACLs preservados. `0003` também instalou e reaplicou isoladamente com F5 e bot de Vendas; sem aplicação em banco remoto ou teste de login/E2E.

@@ -1398,3 +1398,15 @@ APROVADO: tools/handler (só repassam conversaId); mensagem de entrada é gravad
 [OBTIDO] Pela regra nova, reset sem prova em app_metadata é recusado. Correto por segurança; precisa de um passo de migração única que promova a marca para app_metadata das contas criadas pela plataforma (lista conferida), senão o admin perde o reset desses usuários.
 [TIPO] ainda-nao-implementado
 [GRAVIDADE] baixa
+
+CODEX — MVP PEÇAS / REVISÃO INDEPENDENTE · 11/11/2026
+Escopo local: quadro comum, carteira/fila, conversa explicitamente vinculada, assumir/devolver/responder dentro de 24h. Sem transferências entre pessoas ou estoque. Revisão cruzada encontrou e tratou: (1) avançar NOVO já atribuído não podia retornar sucesso mantendo a etapa; (2) saída interna não pode aparecer no diálogo; (3) gestão precisa recuperar posse de atendente desativado somente pela devolução; (4) origem que se torna ambígua depois do claim precisa bloquear reserva e despacho; (5) claim Peças deve travar cliente antes do canal, na ordem do bot de Vendas; (6) contato não conta tentativa falha/reservada e atualização precisa incluir edição de itens/próxima ação. Sem alegar prova de concorrência multissessão por essa análise.
+Integração: banco primeiro (0005/0006 sobre a consolidação2006bf2), núcleo em commit/diff separado para Claude revisar, quadro primeiro e conversa em seguida. Incorporar claude/quadro-comum por merge, conforme novo repasse dele, preservando seus arquivos. Todos os registros desta entrega ficam somente na branch Codex.
+
+[ID] QUADRO-P-001
+[ARQUIVO] src/app/painel/_components/quadro/QuadroKanban.tsx (Claude06b7cb5)
+[TESTE] Cartão sem itens/valor, valor=null.
+[ESPERADO] Distinguir valor ainda não cotado de um preço zero.
+[OBTIDO] Formatador compartilhado usa v??0. Adaptador Peças acrescenta 'Valor a cotar'; o componente comum foi preservado. Alinhar ajuste do formatador com Claude na revisão.
+[TIPO] sugestao
+[GRAVIDADE] baixa

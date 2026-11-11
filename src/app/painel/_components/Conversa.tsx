@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState, useTransition } from "react";
 import { assumir, puxarParaHumano, responder, enviarRetomada, devolver, encerrar, adicionarNota, adicionarTag } from "../conversas/actions";
+import DialogoMensagens from "./DialogoMensagens";
 
 type Msg = { id: string; direcao: string; autor: string; tipo: string; conteudo: string | null; status: string; erro: string | null; criado_em: string };
 type Dados = {
@@ -19,16 +20,7 @@ type Dados = {
   respostasRapidas: { id: string; titulo: string; texto: string }[];
 };
 
-const hora = (d: string) => new Date(d).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
 const dataCurta = (d: string) => new Date(d).toLocaleString("pt-BR", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" });
-function rotuloDia(d: string) {
-  const dia = new Date(d);
-  const hoje = new Date();
-  const ontem = new Date(Date.now() - 86400_000);
-  if (dia.toDateString() === hoje.toDateString()) return "Hoje";
-  if (dia.toDateString() === ontem.toDateString()) return "Ontem";
-  return dia.toLocaleDateString("pt-BR", { weekday: "long", day: "2-digit", month: "2-digit" });
-}
 const STATUS_TAG: Record<string, string> = { confirmado: "ok", pendente: "aviso", cancelado: "erro", compareceu: "info", nao_compareceu: "erro" };
 
 export function corAvatar(nome: string) {
@@ -40,12 +32,6 @@ export function corAvatar(nome: string) {
 export function iniciais(nome: string) {
   const p = nome.trim().split(/\s+/);
   return ((p[0]?.[0] ?? "?") + (p.length > 1 ? p[p.length - 1][0] : "")).toUpperCase();
-}
-
-function Ticks({ status }: { status: string }) {
-  if (status === "falhou" || status === "bloqueada") return <span className="ticks erro" title={status}>!</span>;
-  if (status === "enviada") return <span className="ticks" title="enviada">✓</span>;
-  return <span className={`ticks ${status === "lida" ? "lida" : ""}`} title={status}>✓✓</span>;
 }
 
 /** Conversa estilo WhatsApp (chat + ficha do lead). Usada na caixa de entrada do Atendimento. */
@@ -98,8 +84,6 @@ export default function Conversa({ id, onMudou, onVoltar }: { id: string; onMudo
   const nome = dados?.cliente?.nome ?? "Cliente";
   const enviar = () => texto.trim() && c && acao(() => responder(c.id, texto), () => setTexto(""));
 
-  let diaAnterior = "";
-
   return (
     <div className={`wa-conversa ${fichaAberta ? "com-ficha" : ""}`}>
       <section className="wa-chat">
@@ -145,27 +129,10 @@ export default function Conversa({ id, onMudou, onVoltar }: { id: string; onMudo
 
         <div className="wa-msgs">
           {!dados && [55, 40, 62, 35].map((w, i) => <div key={i} className={`esqueleto bolha-esq ${i % 2 ? "dir" : ""}`} style={{ width: `${w}%` }} />)}
-          {dados?.mensagens.map((m) => {
-            const dia = rotuloDia(m.criado_em);
-            const separador = dia !== diaAnterior;
-            diaAnterior = dia;
-            const saida = m.direcao === "saida";
-            return (
-              <div key={m.id} className="wa-linha-wrap">
-                {separador && <div className="wa-dia"><span>{dia}</span></div>}
-                <div className={`wa-linha ${saida ? "saida" : "entrada"}`}>
-                  <div className={`wa-bolha ${saida ? "saida" : "entrada"} ${m.autor === "atendente" ? "atendente" : ""} ${m.autor === "sistema" ? "sistema" : ""} ${m.status === "bloqueada" || m.status === "falhou" ? "falha" : ""}`}>
-                    {saida && <span className="wa-autor">{m.autor === "atendente" ? "Recepção" : m.autor === "bot" ? "Assistente" : "Sistema"}</span>}
-                    <span className="wa-texto">{m.conteudo}</span>
-                    <span className="wa-meta">
-                      {m.erro && <em title={m.erro}>{m.status} · </em>}
-                      {hora(m.criado_em)} {saida && <Ticks status={m.status} />}
-                    </span>
-                  </div>
-                </div>
-              </div>
-            );
-          })}
+          {dados && <DialogoMensagens mensagens={dados.mensagens.map((m) => ({
+            id: m.id, direcao: m.direcao, autor: m.autor, tipo: m.tipo, conteudo: m.conteudo,
+            status: m.status, criadoEm: m.criado_em, erro: m.erro,
+          }))} />}
           <div ref={fimRef} />
         </div>
 

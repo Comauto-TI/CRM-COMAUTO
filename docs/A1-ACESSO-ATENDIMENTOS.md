@@ -1,8 +1,8 @@
 # A1 — Plano de acesso aos atendimentos por módulo
 
 Status: A1 em andamento. As fatias A1.1a a A1.1d e A1.2a a A1.2c têm código local isolado, descrito abaixo.
-As demais fatias continuam propostas; não houve integração de UI, teste de login, E2E
-nem aplicação de migrations em dev/produção.
+O MVP local de Peças integra quadro e conversa no recorte de `docs/PECAS-MVP-PILOTO.md`.
+Demais fatias continuam propostas; não houve teste de login, E2E nem aplicação destas migrations em dev/produção.
 
 Levantamento inicial: branch `codex/atendimento-modulos`, base `f6370a1`.
 Nenhum acesso a Auth/banco remoto é necessário para preparar e testar o contrato localmente.
