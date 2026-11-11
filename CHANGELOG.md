@@ -6,7 +6,9 @@ Versionamento semântico a partir de **0.0.1** (decisão do Simão, 10/11/2026).
 - Toda versão mesclada ganha **tag git** `vX.Y.Z` e uma seção aqui. O que está numa branch e ainda não foi mesclado fica em "Não lançado".
 - Quem mescla na `main` (Claude ou Codex) atualiza `package.json`, este arquivo e cria a tag.
 
-## [Não lançado] — branches `claude/*` e `codex/*`
+## [Não lançado]
+
+## [0.0.4] — 11/11/2026 — Piloto, telas por setor e MVP de Peças (PR #6; revisado pelo Codex)
 ### MVP de atendimento de Peças (local, aguardando integração)
 - CR-PEC-002: cotação já atribuída antes da primeira conversa oferece a ação de assumir. A leitura retorna diálogo vazio autorizado e não cria dados; o canal só nasce no claim atômico. Correção local posterior à integração de CR-PEC-001, aguardando reaplicação de `0006` pelo Claude.
 - CR-PEC-001: negócios modulares encerrados deixam de bloquear o retorno à recepção. Negócio aberto ou reserva vigente ainda bloqueia os caminhos gerais; histórico associado permanece isolado. Pedido humano em canal setorial notifica responsável ou apoio da unidade e registra auditoria, com falha explícita e sem alterar a posse.
