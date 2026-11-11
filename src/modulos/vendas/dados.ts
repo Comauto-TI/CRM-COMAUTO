@@ -21,6 +21,7 @@ export type Cartao = {
   temperatura: string;
   qualificacao: string;
   pagamento: string;
+  prazo_compra: string | null;
   tem_troca: boolean;
   origem: string;
   entrou_na_etapa_em: string;
@@ -78,7 +79,7 @@ export async function carregarQuadro(u: Usuario, funil: Funil, filtros: FiltrosQ
   const corteFechadas = new Date(Date.now() - 30 * 86_400_000).toISOString();
   let q = db()
     .from("vendas_oportunidades")
-    .select("id, etapa_id, vendedor_id, veiculo_interesse, valor_estimado, temperatura, qualificacao, pagamento, tem_troca, origem, entrou_na_etapa_em, posicao, criado_em, atualizado_em, cliente:clientes!inner(id, nome, telefone, ultimo_contato_em)")
+    .select("id, etapa_id, vendedor_id, veiculo_interesse, valor_estimado, temperatura, qualificacao, pagamento, prazo_compra, tem_troca, origem, entrou_na_etapa_em, posicao, criado_em, atualizado_em, cliente:clientes!inner(id, nome, telefone, ultimo_contato_em)")
     .eq("funil_id", funil.id)
     .order("posicao")
     .limit(500);

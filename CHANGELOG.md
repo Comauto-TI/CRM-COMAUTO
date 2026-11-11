@@ -9,6 +9,8 @@ Versionamento semântico a partir de **0.0.1** (decisão do Simão, 10/11/2026).
 - Quem mescla na `main` (Claude ou Codex) atualiza `package.json`, este arquivo e cria a tag.
 
 ## [Não lançado]
+### Adicionado
+- F7 Pontuação do lead (0–100) no cartão de Vendas, com selo colorido (alta/média/baixa) e os motivos ao passar o mouse; novo filtro “Maior chance (pontuação)”. Regra transparente: temperatura, prazo, pagamento, qualificação, troca, valor e contato recente.
 
 ## [0.0.5] — 11/11/2026 — Conversa no cartão de Vendas (PR #7; revisado pelo Codex)
 - Vendedor conversa pelo WhatsApp dentro do cartão (assumir, responder pela janela de 24h com opt-out, devolver ao assistente); gerente assume temporariamente sem mudar o dono, com nota e aviso ao vendedor.

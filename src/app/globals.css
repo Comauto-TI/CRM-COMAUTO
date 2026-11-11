@@ -1201,3 +1201,9 @@ a { color: var(--vw-azul); }
 .meu-dia h3.texto-erro { display: block; margin-top: 0; }
 .meu-dia ul { list-style: none; margin: 0 0 4px; padding: 0; display: grid; gap: 6px; }
 .meu-dia li { line-height: 1.35; }
+
+/* F7 — pontuação do lead no cartão (passe o mouse para ver os motivos) */
+.selo-pontuacao { display: inline-block; margin-left: 6px; padding: 0 6px; border-radius: 999px; font-size: 11px; font-weight: 700; line-height: 18px; vertical-align: middle; font-variant-numeric: tabular-nums; }
+.selo-alta { background: #dcfce7; color: #166534; }
+.selo-media { background: #fef3c7; color: #92400e; }
+.selo-baixa { background: #f1f5f9; color: #475569; }

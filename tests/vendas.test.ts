@@ -201,3 +201,29 @@ describe("podeReceberLead (F1-V-T001)", () => {
     expect(podeReceberLead({ ...base, extras: ["motomecanica"] }, "motomecanica")).toBe(true);
   });
 });
+
+import { pontuarLead } from "@/modulos/vendas/regras";
+describe("pontuarLead (F7)", () => {
+  const agora = new Date("2026-11-11T12:00:00Z");
+  const base = { temperatura: "morno", prazo: "indefinido", pagamento: "indefinido", qualificacao: "a_verificar", temTroca: false, valor: null, ultimoContatoEm: null };
+  it("lead quente, imediato, à vista, qualificado e recém-contatado é alta (teto 100)", () => {
+    const p = pontuarLead({ temperatura: "quente", prazo: "imediato", pagamento: "a_vista", qualificacao: "qualificado", temTroca: true, valor: 90000, ultimoContatoEm: "2026-11-11T08:00:00Z" }, agora);
+    expect(p.nota).toBe(100);
+    expect(p.faixa).toBe("alta");
+  });
+  it("lead morno sem dados é baixa e mostra os motivos", () => {
+    const p = pontuarLead(base, agora);
+    expect(p.nota).toBe(18);
+    expect(p.faixa).toBe("baixa");
+    expect(p.motivos.length).toBeGreaterThan(0);
+  });
+  it("sem contato há mais de 14 dias perde pontos; desqualificado é zero", () => {
+    const fresco = pontuarLead({ ...base, ultimoContatoEm: "2026-11-10T12:00:00Z" }, agora).nota;
+    const velho = pontuarLead({ ...base, ultimoContatoEm: "2026-10-01T12:00:00Z" }, agora).nota;
+    expect(fresco - velho).toBe(20);
+    expect(pontuarLead({ ...base, qualificacao: "desqualificado", temperatura: "quente" }, agora).nota).toBe(0);
+  });
+  it("faixa média entre 35 e 59", () => {
+    expect(pontuarLead({ ...base, temperatura: "quente", prazo: "ate_90_dias" }, agora).faixa).toBe("media");
+  });
+});
