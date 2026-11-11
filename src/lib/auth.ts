@@ -1,4 +1,5 @@
 import "server-only";
+import { cache } from "react";
 import { redirect } from "next/navigation";
 import { authClient } from "@/lib/supabase/server";
 import { db } from "@/lib/supabase/admin";
@@ -16,8 +17,11 @@ export type Usuario = {
   unidades: string[]; // todas as unidades que pode ver (principal + extras)
 };
 
-/** Autorização REAL do painel: sessão válida (verificada no Supabase) + usuário ativo na tabela de usuários. */
-export async function usuarioAtual(): Promise<Usuario | null> {
+/**
+ * Autorização REAL do painel: sessão válida (verificada no Supabase) + usuário ativo na tabela de usuários.
+ * cache(): layout e página da MESMA requisição compartilham uma só verificação (antes eram duas idas ao Supabase).
+ */
+export const usuarioAtual = cache(async function usuarioAtual(): Promise<Usuario | null> {
   const supa = await authClient();
   const { data } = await supa.auth.getUser();
   if (!data.user) return null;
@@ -40,7 +44,7 @@ export async function usuarioAtual(): Promise<Usuario | null> {
     unidade,
     unidades,
   };
-}
+});
 
 /** Use no topo de TODA página e server action do painel. Sem área = só exige login. */
 export async function exigirAcesso(area?: Area): Promise<Usuario> {

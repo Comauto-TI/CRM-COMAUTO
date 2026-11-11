@@ -20,8 +20,11 @@ export async function proxy(request: NextRequest) {
     },
   });
 
-  const { data } = await supabase.auth.getUser();
-  if (!data.user && request.nextUrl.pathname.startsWith("/painel")) {
+  // Desempenho: getClaims valida o JWT localmente quando o projeto usa chaves assimétricas (sem ida ao Supabase);
+  // com chave antiga (HS256) ele mesmo cai para a consulta ao servidor. Continua renovando a sessão.
+  // A autorização de verdade segue no servidor (exigirAcesso → getUser + tabela usuarios).
+  const { data } = await supabase.auth.getClaims();
+  if (!data?.claims && request.nextUrl.pathname.startsWith("/painel")) {
     const url = request.nextUrl.clone();
     url.pathname = "/login";
     url.search = "";

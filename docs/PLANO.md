@@ -7,6 +7,9 @@ Felder Systems · iniciado em 10/11/2026 · responsável: Simão
 **Etapas atuais:** ver roadmap técnico. **Etapas futuras:** ver "Fora do escopo / v2".
 
 ## 2. Definição de pronto (escopo travado)
+
+**Escopo de Peças confirmado pelo Simão em 11/11/2026:** CRM comercial para conversas com leads, qualificação, promoções/anúncios autorizados, cotação e acompanhamento da venda. Estoque, disponibilidade física, reserva, separação operacional e faturamento pertencem aos sistemas oficiais da empresa. Quantidades e preços na cotação descrevem a negociação. O CRM registra o atendimento e a conversão.
+
 **Está incluído (v1):**
 - Conversa com IA para agendar, remarcar, cancelar, consultar e confirmar evento; recusa de código, receitas, cupons e chaves.
 - Consentimentos separados, opt-out, janela de 24h, templates, horário comercial, anti-spam, LGPD (exportar/anonimizar).

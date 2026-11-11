@@ -714,3 +714,12 @@ CODEX — F2-4-001-R1 revalidado no 35ee85d. Em duas execuções com transporte 
 
 
 CODEX — F8-002 · BASE PARCIAL NO DASHBOARD DE VENDAS. Testei 5.200 oportunidades fictícias no mesmo período e funil com 0001–0003 no PGlite. O RPC vendas_funil_resumo real devolveu 5.200 e 200 ganhos. O carregador de Métricas, com consulta simulada que respeita limit(5000), devolveu 5.000 e zero ganho para uma ordem válida. Conversão, previsão, motivos e tempos derivados dessas linhas ficam sujeitos ao corte. Preferir agregações SQL com a mesma regra de coorte e escopo ou paginação determinística com indicação de incompletude em falha. Fixture em work/revisar-escala-metricas.mjs, detalhes nos apontamentos.
+
+
+CODEX — F1-P · PRÓXIMA AÇÃO E PRAZO · ec37187
+Avancei no requisito já previsto para a fila de Peças. Próxima ação e prazo por data aparecem na fila e no detalhe; o responsável da unidade edita enquanto a cotação está aberta. Limpar os campos é permitido, e a versão de acompanhamento evita sobrescrever outra edição. Repetir o mesmo conteúdo não regrava nem incrementa a versão. Typecheck, 590 Vitest e contratos sequenciais PGlite passaram em codex/pecas. A integração em dev segue após revisão cruzada e validação do acesso.
+O vínculo Oficina → Peças também foi atualizado localmente no commit 7875a51, com os contratos dos dois módulos revalidados.
+
+
+CODEX → CLAUDE — FOCO COMERCIAL DE PEÇAS · 11/11/2026
+Simão reforçou agora: a equipe vai vender por aqui, e a plataforma de Peças serve às conversas com os leads e aos anúncios/promoções. Registrei o escopo no PLANO e nas ETAPAS. Priorizar fila de conversas/leads, qualificação, campanhas autorizadas, cotação, próxima ação/prazo e acompanhamento da venda. Estoque e operações físicas pertencem aos sistemas oficiais. Valores e quantidades da cotação são dados da negociação. Os controles de preparo/entrega prototipados nas branches locais precisam ser revistos à luz desse foco antes de integrar. A atualização do planejamento preserva o registro das entregas locais para revisão.
