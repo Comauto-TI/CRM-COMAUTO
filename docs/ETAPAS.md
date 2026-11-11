@@ -319,3 +319,18 @@ Rebase somente após congelar arquivos dos subagentes, preservando hashes e trab
 
 **Prioridade posterior do Simão via Claude:** antes de continuar Oficina, QA somente leitura de todas as telas/perfis na produção local v0.0.5. WIP Oficina congelado: SQL A210A0A9 passou contratos locais em dois modos/reapply/upgrade; revisão independente não executada. Adaptador 22D64066 e testes 0680C26B escritos, ainda não executados. Nenhuma integração remota. Preservar essa distinção ao retomar.
 
+
+
+## QA prioritária das telas — v0.0.5 · 11/11/2026
+
+Rodada real readonly consolidada em docs/QA-TELAS-PERFIS-v005.md: 7 perfis autenticados, 47 casos passaram,
+nenhuma falha de produto comprovada nos casos executados após recheck do seletor; 2 pendências: login de
+Vendedor aguarda senha válida documentada e conversa de Peças sem cartão autorizado. Admin e gerentes
+abriram conversas autorizadas vazias, sem testar envios/histórico. Visão pessoal de Métricas do vendedor
+continua pendente. URLs negadas/menu/início e telas permitidas cobertos no roteiro, sem CRUD/WhatsApp.
+Oficina está congelada no WIP 0004 A210A0A9 (contratos locais passaram; revisão independente pendente),
+adaptador 22D64066/testes0680C26B ainda não executados. Branch rebaseada no pin main v0.0.5 16b873b.
+
+Fila atual do Simão via Claude: QA por perfil → Oficina somente agenda existente + fila/triagem essencial
+(0004 separado → telas) → E2E do bot com simulador e relatório funciona/quebra/depende de chave. Recursos
+novos e vínculo Revisão F2-3 congelados; publicar na Vercel fica por último. Sem alterar Auth/dados externos.
