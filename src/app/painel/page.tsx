@@ -9,6 +9,7 @@ import { nucleoAplicado } from "@/lib/usuarios";
 import { listarAniversarios } from "@/modulos/vendas/aniversarios-dados";
 import { quandoAniversario } from "@/modulos/vendas/aniversarios";
 import { contatoAniversarioAction, lembrarAniversarioAction } from "./_acoes/aniversarios";
+import ResumoSetores from "./_components/ResumoSetores";
 
 export default async function VisaoGeral({ searchParams }: { searchParams: Promise<{ erro?: string }> }) {
   const u = await exigirAcesso();
@@ -71,6 +72,8 @@ export default async function VisaoGeral({ searchParams }: { searchParams: Promi
           <Kpi rotulo="Bloqueios de segurança hoje" valor={bloqueios.count ?? 0} />
         ) : null}
       </div>
+
+      {multi && <ResumoSetores u={u} iniHoje={iniHoje} fimHoje={fimHoje} iniMes={iniMes} />}
 
       {verAniversarios && (
         <section className="secao card">
