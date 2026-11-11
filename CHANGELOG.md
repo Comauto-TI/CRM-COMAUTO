@@ -10,6 +10,10 @@ Versionamento semântico a partir de **0.0.1** (decisão do Simão, 10/11/2026).
 
 ## [Não lançado]
 
+## [0.0.5] — 11/11/2026 — Conversa no cartão de Vendas (PR #7; revisado pelo Codex)
+- Vendedor conversa pelo WhatsApp dentro do cartão (assumir, responder pela janela de 24h com opt-out, devolver ao assistente); gerente assume temporariamente sem mudar o dono, com nota e aviso ao vendedor.
+- Cartão com conversa assumida não fecha nem muda de vendedor; a tela explica o motivo.
+
 ## [0.0.4] — 11/11/2026 — Piloto, telas por setor e MVP de Peças (PR #6; revisado pelo Codex)
 ### MVP de atendimento de Peças (local, aguardando integração)
 - CR-PEC-002: cotação já atribuída antes da primeira conversa oferece a ação de assumir. A leitura retorna diálogo vazio autorizado e não cria dados; o canal só nasce no claim atômico. Correção local posterior à integração de CR-PEC-001, aguardando reaplicação de `0006` pelo Claude.
