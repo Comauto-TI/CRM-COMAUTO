@@ -3,7 +3,7 @@ import { exigirAcesso } from "@/lib/auth";
 import { formatarBRL, formatarDataHora } from "@/lib/time";
 import { getConfig } from "@/lib/config";
 import { nucleoAplicado } from "@/lib/usuarios";
-import { vendasDisponivel } from "@/modulos/vendas/dados";
+import { vendasDisponivel, vendedoresDaUnidade } from "@/modulos/vendas/dados";
 import { carregarMetricasVendas, listarEventos, carregarFunilEvento, PERIODOS, type Periodo } from "@/modulos/metricas/dados";
 import {
   conversaoPorGrupo, motivosDePerda, tempoPorEtapa, chancePorEtapa, previsaoDoMes, funilEvento, confiancaPelaBase, type Confianca,
@@ -11,7 +11,8 @@ import {
 import { Cabecalho, Kpi, Vazio } from "../_components/ui";
 import FunilConversao from "./FunilConversao";
 
-type SP = { funil?: string; periodo?: string; evento?: string };
+type SP = { funil?: string; periodo?: string; evento?: string; vendedor?: string };
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 const ORIGEM: Record<string, string> = { whatsapp: "WhatsApp", qr: "QR Code", evento: "Evento", campanha: "Campanha", painel: "Cadastro manual", importacao: "Importação" };
 const CONFIANCA: Record<Confianca, [string, string]> = {
@@ -44,7 +45,14 @@ export default async function Metricas({ searchParams }: { searchParams: Promise
   }
 
   const periodo: Periodo = sp.periodo && sp.periodo in PERIODOS ? (sp.periodo as Periodo) : "90";
-  const [m, eventos] = await Promise.all([carregarMetricasVendas(u, sp.funil, periodo), listarEventos(u)]);
+  // métricas por pessoa: vendedor vê SÓ as próprias; gerente/admin/financeiro veem o setor e podem escolher um vendedor
+  const soMeu = u.papel === "vendedor";
+  const vendedorId = soMeu ? u.id : sp.vendedor && UUID.test(sp.vendedor) ? sp.vendedor : null;
+  const [m, eventos, equipe] = await Promise.all([
+    carregarMetricasVendas(u, sp.funil, periodo, vendedorId),
+    soMeu ? Promise.resolve([]) : listarEventos(u),
+    soMeu ? Promise.resolve([]) : vendedoresDaUnidade(u.unidade),
+  ]);
   if (!m) return (<><Cabecalho titulo="Métricas" /><Vazio>Nenhum funil de vendas configurado para a unidade.</Vazio></>);
   const eventoId = sp.evento ?? eventos[0]?.id;
   const ev = eventoId ? await carregarFunilEvento(u, eventoId) : null;
@@ -69,7 +77,7 @@ export default async function Metricas({ searchParams }: { searchParams: Promise
   const [corConf, textoConf] = CONFIANCA[prev.confianca];
 
   const qs = (extra: Record<string, string | undefined>) => {
-    const n = new URLSearchParams({ funil: m.funil.chave, periodo, ...(eventoId ? { evento: eventoId } : {}) });
+    const n = new URLSearchParams({ funil: m.funil.chave, periodo, ...(eventoId ? { evento: eventoId } : {}), ...(!soMeu && vendedorId ? { vendedor: vendedorId } : {}) });
     for (const [k, v] of Object.entries(extra)) { if (v) n.set(k, v); else n.delete(k); }
     return `/painel/metricas?${n}`;
   };
@@ -77,13 +85,22 @@ export default async function Metricas({ searchParams }: { searchParams: Promise
 
   return (
     <>
-      <Cabecalho titulo="Métricas" sub={`Vendas e eventos · ${u.unidades.length > 1 ? "suas unidades" : "unidade " + u.unidade} · dados do sistema, sem estimativa onde não há base`}>
+      <Cabecalho
+        titulo={soMeu ? "Minhas métricas" : "Métricas de vendas"}
+        sub={soMeu ? "Só as suas oportunidades · dados do sistema, sem estimativa onde não há base"
+          : `${vendedorId ? `Vendedor: ${m.nomesVendedores[vendedorId] ?? "selecionado"}` : "Setor inteiro"} · ${u.unidades.length > 1 ? "suas unidades" : "unidade " + u.unidade} · dados do sistema, sem estimativa onde não há base`}>
         <nav className="abas-funil" aria-label="Funis">
           {m.funis.map((f) => <Link key={f.id} href={qs({ funil: f.chave })} className={f.id === m.funil.id ? "ativo" : ""}>{f.nome}</Link>)}
         </nav>
         <form className="linha-form">
           <input type="hidden" name="funil" value={m.funil.chave} />
           {eventoId && <input type="hidden" name="evento" value={eventoId} />}
+          {!soMeu && (
+            <select name="vendedor" defaultValue={vendedorId ?? ""} aria-label="Vendedor">
+              <option value="">Todos os vendedores</option>
+              {equipe.map((v) => <option key={v.user_id} value={v.user_id}>{v.nome}</option>)}
+            </select>
+          )}
           <select name="periodo" defaultValue={periodo} aria-label="Período">
             {Object.entries(PERIODOS).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
           </select>
@@ -116,7 +133,7 @@ export default async function Metricas({ searchParams }: { searchParams: Promise
       </div>
 
       <div className="grade g2 secao">
-        <section className="card">
+        {!vendedorId && <section className="card">
           <h2>Conversão por vendedor</h2>
           {!porVendedor.length ? <Vazio>Sem oportunidades no período.</Vazio> : (
             <div className="tabela-wrap">
@@ -129,7 +146,7 @@ export default async function Metricas({ searchParams }: { searchParams: Promise
               </table>
             </div>
           )}
-        </section>
+        </section>}
         <section className="card">
           <h2>Conversão por origem</h2>
           {!porOrigem.length ? <Vazio>Sem oportunidades no período.</Vazio> : (
@@ -154,7 +171,7 @@ export default async function Metricas({ searchParams }: { searchParams: Promise
         </section>
       </div>
 
-      <section className="secao">
+      {!soMeu && <section className="secao">
         <div className="mt-evento-cabecalho">
           <h2>Funil de eventos</h2>
           {eventos.length > 0 && (
@@ -186,7 +203,7 @@ export default async function Metricas({ searchParams }: { searchParams: Promise
             </section>
           </div>
         )}
-      </section>
+      </section>}
     </>
   );
 }

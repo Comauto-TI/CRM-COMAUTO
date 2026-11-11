@@ -22,6 +22,13 @@ Versionamento semântico a partir de **0.0.1** (decisão do Simão, 10/11/2026).
 - A1.1a, base local de atendimentos por oportunidade/cotação atribuída: contexto de acesso derivado no banco, abertura idempotente e posse com versão, reserva única por canal modular e auditoria atômica. Wrappers apenas no servidor, sem liberar interface, envio ou rotas legadas. Definições em `0006_atendimento.sql`; demais partes de A1 seguem pendentes.
 - Plano técnico A1 por fatias para autorizar atendimentos por setor, vínculo de negócio, unidade e posse antes de compartilhar a interface WhatsApp; implementação e testes de login seguem pendentes.
 - Matriz de testes por perfil, com rodadas de subagentes, logins/sessões isolados e cobertura das telas e acessos proibidos.
+- Importar clientes por planilha CSV (Bravus ou qualquer sistema): mapeamento de colunas sugerido, prévia com erros/avisos/duplicados, confere a base por telefone (com/sem o 9) e CPF, nunca sobrescreve (só completa campos vazios), carteira opcional; não cria consentimento de WhatsApp (LGPD). Gerente de Vendas e admin.
+- Visão geral por setor: cartão de Vendas, Peças e Oficina conforme o perfil (admin vê todos; vendedor/peças só o que é deles + sem dono).
+- Métricas por pessoa: vendedor vê “Minhas métricas”; gerente filtra por vendedor.
+- Menu separado por setor (Vendas, Oficina, Peças, Marketing, Administração), sem barra de rolagem visível.
+- "Meu dia" na Visão geral (vendedor e gerente de Vendas): tarefas atrasadas e de hoje, leads novos sem primeiro contato há mais de 2 h e cartões parados além do prazo da etapa, com link direto para o cartão.
+- Ao arrastar para Ganho, o quadro pede o valor da venda (opcional, já preenchido com a estimativa) — métricas e previsão ficam com valor real.
+- Quadro Kanban comum a todos os setores (`_components/quadro`), Vendas migrado; base para o quadro de Peças.
 - F5 Aniversários: semáforo 🟡 próximo / 🟢 hoje / 🔴 passou sem contato na Visão geral (carteira do vendedor; gerente vê todas); "Contato feito" e lembrete insistente em pop-up até registrar o contato.
 - Ficha do cliente: editar nome, e-mail, cidade, CPF/CNPJ (validado, mascarado, sem duplicar ficha) e data de nascimento.
 - Transferir lead (botão de setas no cartão e no painel): dono ou gerente passa para outro vendedor com motivo; registra na linha do tempo, avisa o novo vendedor e pode mover a carteira do cliente.

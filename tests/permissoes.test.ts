@@ -90,3 +90,42 @@ describe("permissões por área (F0-3)", () => {
     expect(setorValido("rh")).toBe(false);
   });
 });
+
+describe("métricas de vendas por setor", () => {
+  it("gerente de Vendas e da administração veem; gerente de Peças/Oficina não", () => {
+    expect(podeAcessar({ papel: "gerente", setor: "vendas" }, "metricas")).toBe(true);
+    expect(podeAcessar({ papel: "gerente", setor: "administracao" }, "metricas")).toBe(true);
+    expect(podeAcessar({ papel: "gerente", setor: "pecas" }, "metricas")).toBe(false);
+    expect(podeAcessar({ papel: "gerente", setor: "oficina" }, "metricas")).toBe(false);
+    expect(podeAcessar({ papel: "financeiro", setor: "administracao" }, "metricas")).toBe(true);
+  });
+});
+
+describe("agenda é da Oficina", () => {
+  it("gerente de Oficina/administração vê; gerente de Vendas/Peças não; recepção e consultor veem", () => {
+    expect(podeAcessar({ papel: "gerente", setor: "oficina" }, "agenda")).toBe(true);
+    expect(podeAcessar({ papel: "gerente", setor: "administracao" }, "agenda")).toBe(true);
+    expect(podeAcessar({ papel: "gerente", setor: "vendas" }, "agenda")).toBe(false);
+    expect(podeAcessar({ papel: "gerente", setor: "pecas" }, "agenda")).toBe(false);
+    expect(podeAcessar({ papel: "recepcao", setor: "oficina" }, "agenda")).toBe(true);
+    expect(podeAcessar({ papel: "consultor_tecnico", setor: "oficina" }, "agenda")).toBe(true);
+  });
+});
+
+describe("métricas por pessoa", () => {
+  it("vendedor acessa Métricas (a página recorta só as oportunidades dele)", () => {
+    expect(podeAcessar({ papel: "vendedor", setor: "vendas" }, "metricas")).toBe(true);
+    expect(podeAcessar({ papel: "pecas", setor: "pecas" }, "metricas")).toBe(false);
+    expect(podeAcessar({ papel: "recepcao", setor: "oficina" }, "metricas")).toBe(false);
+  });
+});
+
+describe("importação de clientes", () => {
+  it("só gerente de Vendas/administração e admin importam", () => {
+    expect(podeAcessar({ papel: "admin", setor: "administracao" }, "importacao")).toBe(true);
+    expect(podeAcessar({ papel: "gerente", setor: "vendas" }, "importacao")).toBe(true);
+    expect(podeAcessar({ papel: "gerente", setor: "pecas" }, "importacao")).toBe(false);
+    expect(podeAcessar({ papel: "vendedor", setor: "vendas" }, "importacao")).toBe(false);
+    expect(podeAcessar({ papel: "recepcao", setor: "oficina" }, "importacao")).toBe(false);
+  });
+});

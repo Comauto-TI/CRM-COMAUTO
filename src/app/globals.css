@@ -981,7 +981,8 @@ a { color: var(--vw-azul); }
 @media (max-width: 640px) { .vendas-kpis { grid-template-rows: none; } }
 
 /* ===== Menu lateral em grupos (pedido do Simão) ===== */
-.nav { gap: 2px; overflow-y: auto; min-height: 0; padding-right: 2px; }
+.nav { gap: 2px; overflow-y: auto; min-height: 0; padding-right: 2px; scrollbar-width: none; -ms-overflow-style: none; } /* rola sem mostrar a barra (Simão: "feia dms") */
+.nav::-webkit-scrollbar { display: none; }
 .nav-grupo { margin-top: 6px; }
 .nav-grupo-titulo {
   width: 100%; display: flex; align-items: center; gap: 8px; padding: 7px 12px 5px;
@@ -1164,3 +1165,30 @@ a { color: var(--vw-azul); }
 .aniv-acoes { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
 .toast.insistente { border: 1.5px solid #2fb67c; }
 .toast-acoes { display: flex; gap: 8px; margin-top: 8px; }
+
+/* Visão geral por setor (F6): um cartão por setor que a pessoa acessa */
+.setores-titulo { margin: 0 0 10px; font-size: 15px; color: var(--vw-marinho); }
+.setor-cartao { display: grid; gap: 12px; text-decoration: none; color: inherit; }
+.setor-cartao:hover { border-color: var(--vw-azul, #1d4ed8); }
+.setor-cabeca { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
+.setor-cabeca strong { color: var(--vw-marinho); font-size: 15px; }
+.setor-numeros { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
+.setor-numeros li { display: grid; gap: 2px; min-width: 0; }
+.setor-numeros strong { font-size: 22px; font-variant-numeric: tabular-nums; color: var(--vw-marinho); }
+.setor-numeros strong.texto-aviso { color: var(--aviso, #b45309); }
+.setor-numeros span { font-size: 12px; line-height: 1.25; }
+
+/* Importação de clientes (F3) */
+.importador .card h2 { margin-top: 0; }
+.importar-mapa { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 12px; margin: 12px 0 16px; }
+.importar-mapa label, .importar-opcoes label { display: grid; gap: 4px; }
+.importar-mapa label > span, .importar-opcoes label > span { font-weight: 600; font-size: 13px; }
+.importar-opcoes { display: grid; gap: 12px; margin-top: 16px; max-width: 520px; }
+.linha-check { display: flex; align-items: center; gap: 8px; margin: 6px 0; }
+
+/* "Meu dia" do vendedor */
+.meu-dia-grade { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 16px; }
+.meu-dia h3 { font-size: 13.5px; margin: 0 0 6px; }
+.meu-dia h3.texto-erro { display: block; margin-top: 0; }
+.meu-dia ul { list-style: none; margin: 0 0 4px; padding: 0; display: grid; gap: 6px; }
+.meu-dia li { line-height: 1.35; }

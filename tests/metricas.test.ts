@@ -53,3 +53,22 @@ describe("F8 — funil de eventos", () => {
     expect(funilEvento({ chamados: new Set(), confirmados: new Set(), presentes: new Set(), vendidos: new Set() }).every((e) => e.pct === 0)).toBe(true);
   });
 });
+
+import { resumoDaCoorte } from "@/modulos/metricas/calculos";
+describe("resumoDaCoorte (métricas por pessoa)", () => {
+  const etapas = [
+    { id: "e1", nome: "Novo", ordem: 1, tipo: "aberta" as const },
+    { id: "e2", nome: "Negociação", ordem: 2, tipo: "aberta" as const },
+    { id: "g", nome: "Ganho", ordem: 3, tipo: "ganho" as const },
+    { id: "p", nome: "Perdido", ordem: 4, tipo: "perdido" as const },
+  ];
+  const op = (id: string, desfecho: "aberta" | "ganho" | "perdido", maior_ordem: number) =>
+    ({ id, vendedor_id: "v", origem: "whatsapp", desfecho, valor: null, criado_em: "2026-11-01", fechado_em: null, motivo_perda: null, maior_ordem });
+  it("etapa aberta conta quem alcançou; ganho/perdido contam o desfecho", () => {
+    const r = resumoDaCoorte([op("a", "aberta", 1), op("b", "aberta", 2), op("c", "ganho", 3), op("d", "perdido", 1)], etapas);
+    expect(r.map((x) => x.alcancaram)).toEqual([4, 2, 1, 1]);
+  });
+  it("sem oportunidades = zeros", () => {
+    expect(resumoDaCoorte([], etapas).every((x) => x.alcancaram === 0)).toBe(true);
+  });
+});

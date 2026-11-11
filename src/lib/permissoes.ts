@@ -47,7 +47,7 @@ export const AREAS = {
   inicio: TODOS,
   notificacoes: TODOS,
   lembretes: TODOS, // "Meus lembretes": cada um vê só os próprios (filtro por usuário no servidor)
-  metricas: ["gerente", "financeiro"], // F8 — aba Métricas (página a cargo do Codex)
+  metricas: ["gerente", "vendedor", "financeiro"], // vendedor vê SÓ as próprias (recorte no servidor); gerente o setor
   busca: ["gerente", "vendedor", "consultor_tecnico", "pecas", ...RECEPCAO],
   clientes: ["gerente", "vendedor", "consultor_tecnico", "pecas", ...RECEPCAO],
   atendimento: ["gerente", "vendedor", "consultor_tecnico", ...RECEPCAO],
@@ -63,10 +63,12 @@ export const AREAS = {
   vendas: ["gerente", "vendedor"],
   oficina: ["gerente", "consultor_tecnico", ...RECEPCAO],
   pecas: ["gerente", "pecas"],
+  importacao: ["gerente"], // F3: importar clientes por planilha (gerente de Vendas + admin)
 } satisfies Record<string, Papel[]>;
 export type Area = keyof typeof AREAS;
 
-const SETOR_DA_AREA: Partial<Record<Area, Setor>> = { vendas: "vendas", oficina: "oficina", pecas: "pecas" };
+// métricas de hoje são as de Vendas (funil/eventos); gerente de outro setor não vê. Métricas por setor vêm depois (A4).
+const SETOR_DA_AREA: Partial<Record<Area, Setor>> = { vendas: "vendas", metricas: "vendas", oficina: "oficina", agenda: "oficina", importacao: "vendas", pecas: "pecas" };
 
 export type QuemAcessa = { papel: Papel; setor: Setor };
 
