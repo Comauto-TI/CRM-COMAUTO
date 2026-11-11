@@ -2,6 +2,7 @@
  * Setor Vendas — regras puras (sem I/O). Testadas em tests/vendas.test.ts.
  */
 import { podeAcessar, type Papel, type Setor } from "@/lib/permissoes";
+import { ordenarQuadro, type Ordenacao } from "@/lib/quadro";
 
 export const PAGAMENTOS = { a_vista: "À vista", financiamento: "Financiamento", consorcio: "Consórcio", indefinido: "A definir" } as const;
 export const PRAZOS = { imediato: "Imediato", ate_30_dias: "Até 30 dias", ate_90_dias: "Até 90 dias", sem_prazo: "Sem prazo", indefinido: "A definir" } as const;
@@ -45,50 +46,16 @@ export function podeAssumir(u: QuemVende, op: { vendedor_id: string | null }): b
   return op.vendedor_id === null && (u.papel === "vendedor" || veTodasOportunidades(u));
 }
 
-/** Dias parado na etapa (inteiro, nunca negativo). */
-export function diasNaEtapa(entrouEm: string | Date, agora: Date = new Date()): number {
-  const t = new Date(entrouEm).getTime();
-  if (Number.isNaN(t)) return 0;
-  return Math.max(0, Math.floor((agora.getTime() - t) / 86_400_000));
-}
+// Quadro comum a todos os setores (src/lib/quadro.ts): reexportado para quem já importa daqui.
+export { diasNaEtapa, tempoAtras, semaforoEtapa, posicaoEntre, ORDENACOES, type Ordenacao } from "@/lib/quadro";
 
-/** "agora", "45 min atrás", "9 h atrás", "17 d atrás" (estilo do quadro de referência). */
-export function tempoAtras(iso: string | null | undefined, agora: Date = new Date()): string {
-  if (!iso) return "—";
-  const t = new Date(iso).getTime();
-  if (Number.isNaN(t)) return "—";
-  const min = Math.max(0, Math.floor((agora.getTime() - t) / 60_000));
-  if (min < 1) return "agora";
-  if (min < 60) return `${min} min atrás`;
-  const h = Math.floor(min / 60);
-  if (h < 24) return `${h} h atrás`;
-  return `${Math.floor(h / 24)} d atrás`;
-}
-
-export const ORDENACOES = { posicao: "Ordem do quadro", recentes: "Mais recentes", valor: "Maior valor", parado: "Parado há mais tempo", contato: "Sem contato há mais tempo" } as const;
-export type Ordenacao = keyof typeof ORDENACOES;
-
-/** Ordena os cartões de uma coluna conforme o filtro "Ordenar por". */
+/** Ordena os cartões de Vendas conforme o filtro "Ordenar por" (mesma regra do quadro comum). */
 export function ordenarCartoes<T extends { posicao: number; criado_em: string; valor_estimado: number | null; entrou_na_etapa_em: string; ultimo_contato_em: string | null }>(
   cartoes: T[], ordem: Ordenacao,
 ): T[] {
-  const t = (s: string | null) => (s ? new Date(s).getTime() : 0);
-  const copia = [...cartoes];
-  switch (ordem) {
-    case "recentes": return copia.sort((a, b) => t(b.criado_em) - t(a.criado_em));
-    case "valor": return copia.sort((a, b) => (b.valor_estimado ?? 0) - (a.valor_estimado ?? 0));
-    case "parado": return copia.sort((a, b) => t(a.entrou_na_etapa_em) - t(b.entrou_na_etapa_em));
-    case "contato": return copia.sort((a, b) => t(a.ultimo_contato_em) - t(b.ultimo_contato_em));
-    default: return copia.sort((a, b) => a.posicao - b.posicao);
-  }
-}
-
-/** Semáforo do cartão: verde dentro do prazo, âmbar a partir de 70% do SLA, vermelho estourado. Sem SLA = neutro. */
-export function semaforoEtapa(dias: number, slaDias: number | null): "ok" | "aviso" | "critico" | "neutro" {
-  if (!slaDias) return "neutro";
-  if (dias > slaDias) return "critico";
-  if (dias >= Math.ceil(slaDias * 0.7)) return "aviso";
-  return "ok";
+  return ordenarQuadro(cartoes, ordem, (c) => ({
+    posicao: c.posicao, criadoEm: c.criado_em, valor: c.valor_estimado, entrouEm: c.entrou_na_etapa_em, ultimoContatoEm: c.ultimo_contato_em,
+  }));
 }
 
 export type EtapaResumo = { etapa_id: string; nome: string; ordem: number; tipo: "aberta" | "ganho" | "perdido"; abertas: number; alcancaram: number };
@@ -137,13 +104,6 @@ export function valorParaCampo(v: number | string | null | undefined): string {
   return Number.isFinite(n) ? n.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : "";
 }
 
-/** Posição de um cartão solto entre dois vizinhos (ordem fracionária, sem renumerar a coluna). */
-export function posicaoEntre(anterior: number | null, proximo: number | null): number {
-  if (anterior === null && proximo === null) return 1000;
-  if (anterior === null) return proximo! - 1000;
-  if (proximo === null) return anterior + 1000;
-  return (anterior + proximo) / 2;
-}
 
 // ---------------------------------------------------------------------------
 // F2-1 — Chatbot → CRM: roteamento do lead qualificado pelo assistente
