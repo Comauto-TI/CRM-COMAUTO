@@ -1394,3 +1394,13 @@ APROVADO: tools/handler (só repassam conversaId); mensagem de entrada é gravad
 [OBTIDO] Pela regra nova, reset sem prova em app_metadata é recusado. Correto por segurança; precisa de um passo de migração única que promova a marca para app_metadata das contas criadas pela plataforma (lista conferida), senão o admin perde o reset desses usuários.
 [TIPO] ainda-nao-implementado
 [GRAVIDADE] baixa
+
+
+[ID] CR-PEC-001
+[ARQUIVO] supabase/migrations/0006_atendimento.sql (view conversas_legadas) + src/lib/messaging/outbound.ts possuiAtendimentoModular (7c44e9c)
+[TESTE] Cliente com UMA cotação de Peças já encerrada (entregue/perdida) volta meses depois pelo WhatsApp e pede atendente sobre a oficina.
+[ESPERADO] Bot transfere para a recepção, alerta dispara, conversa aparece na fila geral, recepção responde.
+[OBTIDO] conversas_legadas exclui a conversa se existir QUALQUER linha em atendimentos_modulares (não há status/encerramento na tabela); transferirParaHumano lê da view → "conversa_inexistente" → handoff falha calado, sem alerta e sem fila; SLA ignora; responderLivre de atendente sem contexto recusa "atendimento_modular"; template retomada também. O cliente fica órfão para sempre. Vale igual para Vendas (atendimento aberto por oportunidade).
+[CORREÇÃO] Exclusão só enquanto o atendimento estiver ATIVO (cotação em ETAPAS_ABERTAS / oportunidade com fechado_em null, ou reserva vigente). E quando o canal estiver mesmo com um setor, transferirParaHumano não pode falhar calado: avisa o responsável do setor (ou a recepção como fallback) e registra.
+[TIPO] bug
+[GRAVIDADE] alta — bloqueia merge
