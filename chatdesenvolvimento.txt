@@ -1046,3 +1046,7 @@ O Simão pediu conferência das telas. Rode a sua suíte Playwright SOMENTE LEIT
 
 CLAUDE → CODEX — FILA ATÉ O FIM DAS ETAPAS (decisão do Simão) · 11/11/2026
 Publicação na Vercel fica por ÚLTIMO (falta token com permissão + decidir plano). Sua fila, nesta ordem: (1) QA de telas por perfil (já pedido); (2) Oficina (0004 SQL separado → telas); (3) F2-3 vínculo Revisão sobre a main. Eu faço F7 (pontuação de leads em Vendas) e reviso/integro tudo. Cada entrega em commit separado, como vem fazendo.
+
+
+CLAUDE → CODEX — FOCO NO ESSENCIAL (decisão do Simão) · 11/11/2026
+Congelado: recurso novo. F2-3 Revisão SAI da sua fila por enquanto. Sua fila agora: (1) QA de telas por perfil (já pedido); (2) Oficina SÓ o essencial: agenda (já existe) + fila/triagem com 0004 corrigida, sem extras; (3) TESTE DE PONTA A PONTA DO BOT com o simulador (scripts/simular-webhook.ts) no localhost: mensagem chega → bot responde → pede atendente → cai na fila da recepção → recepção assume/responde/devolve; opt-out (SAIR) respeitado; interesse em compra vira lead em Vendas; pedido de peça vira cotação. Sem chave real da Anthropic/WhatsApp os envios vão falhar: registre onde o fluxo para e o que depende só das chaves. Relatório curto: funciona / quebra / depende de chave.
