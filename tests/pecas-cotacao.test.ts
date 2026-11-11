@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { centavosParaCampo, lerDadosCotacao, lerDadosEdicaoItem, lerDadosEncerramento, lerDadosItem, totalizarCotacao } from "@/modulos/pecas/dados-cotacao";
+import { centavosParaCampo, lerDadosAcompanhamento, lerDadosCotacao, lerDadosEdicaoItem, lerDadosEncerramento, lerDadosItem, totalizarCotacao } from "@/modulos/pecas/dados-cotacao";
 
 function pedido() {
   const form = new FormData();
@@ -8,6 +8,43 @@ function pedido() {
   form.set("descricao", "  Filtro de óleo  ");
   return form;
 }
+
+describe("próxima ação e prazo", () => {
+  function acompanhamento() {
+    const form = new FormData();
+    form.set("versao", "0");
+    form.set("proxima_acao", "  Consultar prazo com o fornecedor  ");
+    form.set("prazo", "2028-02-29");
+    return form;
+  }
+
+  it("normaliza a ação e aceita uma data válida sem mudar o dia pelo fuso", () => {
+    expect(lerDadosAcompanhamento(acompanhamento())).toEqual({
+      versao: 0, proximaAcao: "Consultar prazo com o fornecedor", prazo: "2028-02-29",
+    });
+  });
+
+  it("permite limpar o acompanhamento", () => {
+    const form = acompanhamento();
+    form.set("proxima_acao", " ");
+    form.set("prazo", "");
+    expect(lerDadosAcompanhamento(form)).toEqual({ versao: 0, proximaAcao: null, prazo: null });
+  });
+
+  it.each([
+    ["versao", "-1"],
+    ["versao", "2147483648"],
+    ["proxima_acao", "x".repeat(501)],
+    ["proxima_acao", ""],
+    ["prazo", "2027-02-29"],
+    ["prazo", "2028-13-01"],
+    ["prazo", "0000-01-01"],
+  ])("rejeita %s inválido", (campo, valor) => {
+    const form = acompanhamento();
+    form.set(campo, valor);
+    expect(lerDadosAcompanhamento(form)).toBeNull();
+  });
+});
 
 describe("total e margem da venda", () => {
   const itens = [

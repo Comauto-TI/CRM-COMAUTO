@@ -78,6 +78,27 @@ export function lerDadosEncerramento(form: FormData) {
 
 export type DadosEncerramento = NonNullable<ReturnType<typeof lerDadosEncerramento>>;
 
+export function lerDadosAcompanhamento(form: FormData) {
+  const entradaVersao = campo(form, "versao");
+  const proximaAcao = campo(form, "proxima_acao");
+  const prazo = campo(form, "prazo");
+  if (!/^(0|[1-9]\d{0,9})$/.test(entradaVersao)) return null;
+  const versao = Number(entradaVersao);
+  if (versao > 2147483647 || proximaAcao.length > 500 || (prazo && !proximaAcao)) return null;
+  if (prazo) {
+    if (!/^(?!0000)\d{4}-\d{2}-\d{2}$/.test(prazo)) return null;
+    const data = new Date(`${prazo}T00:00:00Z`);
+    if (!Number.isFinite(data.getTime()) || data.toISOString().slice(0, 10) !== prazo) return null;
+  }
+  return { versao, proximaAcao: proximaAcao || null, prazo: prazo || null };
+}
+
+export type DadosAcompanhamento = NonNullable<ReturnType<typeof lerDadosAcompanhamento>>;
+
+export function formatarPrazo(prazo: string): string {
+  return prazo.split("-").reverse().join("/");
+}
+
 export type TipoPreparo = "separacao" | "encomenda";
 export type AcaoAtendimento = TipoPreparo | "entrega";
 

@@ -42,6 +42,7 @@ Versionamento semântico a partir de **0.0.1** (decisão do Simão, 10/11/2026).
 - Peças (`codex/pecas`): confirmação de venda separada da aprovação, com total e margem bruta quando todos os itens têm custo.
 - Peças (`codex/pecas`): registro de separação ou encomenda após confirmar a venda, seguido de entrega com histórico das etapas.
 - Peças (`codex/pecas`): encerramento por perda ou cancelamento com motivo obrigatório e histórico, preservando os registros da venda cancelada.
+- Peças (`codex/pecas`): próxima ação e prazo na fila, com edição pelo responsável e verificação de versão para preservar alterações recentes.
 ### Corrigido (revisão do Codex)
 - Agenda respeita a unidade no banco (FK composta) e no servidor; pg_trgm independe do search_path.
 - Exportação integral do cliente só com permissão LGPD; início mostra só o que o perfil pode ver.

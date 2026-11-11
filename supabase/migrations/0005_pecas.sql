@@ -21,6 +21,13 @@ create table public.pecas_cotacoes (
   -- Preserva o autor da confirmação mesmo depois de remover o usuário.
   venda_confirmada_por uuid,
   tipo_preparo text check (tipo_preparo in ('separacao', 'encomenda')),
+  proxima_acao text check (
+    char_length(proxima_acao) between 1 and 500
+    and proxima_acao !~ '^[[:space:]]|[[:space:]]$'
+  ),
+  prazo date,
+  acompanhamento_versao integer not null default 0 check (acompanhamento_versao >= 0),
+  constraint pecas_cotacoes_prazo_acao_check check (prazo is null or proxima_acao is not null),
   motivo_encerramento text check (
     char_length(motivo_encerramento) between 1 and 500
     and motivo_encerramento !~ '^[[:space:]]|[[:space:]]$'
@@ -50,7 +57,10 @@ create unique index pecas_cotacoes_referencia_whatsapp_idx
 alter table public.pecas_cotacoes enable row level security;
 revoke all on table public.pecas_cotacoes from public, anon, authenticated, service_role;
 grant select, insert on table public.pecas_cotacoes to service_role;
-grant update (status, responsavel_id, venda_confirmada_em, venda_confirmada_por, tipo_preparo, motivo_encerramento)
+grant update (
+  status, responsavel_id, venda_confirmada_em, venda_confirmada_por, tipo_preparo, motivo_encerramento,
+  proxima_acao, prazo, acompanhamento_versao
+)
   on table public.pecas_cotacoes to service_role;
 
 create table public.pecas_cotacoes_historico (
@@ -541,3 +551,53 @@ end $$;
 revoke all on function public.pecas_registrar_cotacao_bot(uuid, text, text, text)
   from public, anon, authenticated, service_role;
 grant execute on function public.pecas_registrar_cotacao_bot(uuid, text, text, text) to service_role;
+
+create function public.pecas_atualizar_acompanhamento(
+  p_id uuid, p_unidades text[], p_ator uuid, p_versao integer, p_proxima_acao text, p_prazo date
+)
+returns text
+language plpgsql
+security invoker
+set search_path = ''
+as $$
+declare
+  acao_atual text;
+  prazo_atual date;
+  versao_atual integer;
+begin
+  select c.proxima_acao, c.prazo, c.acompanhamento_versao
+  into acao_atual, prazo_atual, versao_atual
+  from public.pecas_cotacoes c
+  where c.id = p_id
+    and c.unidade = any (p_unidades)
+    and c.responsavel_id = p_ator
+    and c.status not in ('entregue', 'perdido', 'cancelado')
+  for update;
+
+  if not found or p_versao is null or p_versao < 0 then
+    return 'indisponivel';
+  end if;
+  if acao_atual is not distinct from p_proxima_acao
+    and prazo_atual is not distinct from p_prazo then
+    return 'atualizado';
+  end if;
+  if versao_atual <> p_versao then
+    return 'desatualizado';
+  end if;
+
+  begin
+    update public.pecas_cotacoes
+    set proxima_acao = p_proxima_acao,
+        prazo = p_prazo,
+        acompanhamento_versao = acompanhamento_versao + 1
+    where id = p_id;
+  exception when check_violation or not_null_violation or numeric_value_out_of_range then
+    return 'indisponivel';
+  end;
+  return 'atualizado';
+end $$;
+
+revoke all on function public.pecas_atualizar_acompanhamento(uuid, text[], uuid, integer, text, date)
+  from public, anon, authenticated, service_role;
+grant execute on function public.pecas_atualizar_acompanhamento(uuid, text[], uuid, integer, text, date)
+  to service_role;

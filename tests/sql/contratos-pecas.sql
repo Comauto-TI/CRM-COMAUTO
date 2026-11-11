@@ -663,6 +663,82 @@ begin
   end if;
 end $$;
 
+do $$
+declare
+  cotacao_fixture constant uuid := '00000000-0000-4000-8000-000000000065';
+  ator_fixture constant uuid := '00000000-0000-4000-8000-000000000051';
+  outro_ator constant uuid := '00000000-0000-4000-8000-000000000055';
+  unidades_fixture constant text[] := array['comauto'];
+  acao_fixture constant text := 'Confirmar prazo com fornecedor';
+  dados_anteriores jsonb;
+  acao_invalida text;
+begin
+  select to_jsonb(c) - 'proxima_acao' - 'prazo' - 'acompanhamento_versao'
+  into dados_anteriores from public.pecas_cotacoes c where c.id = cotacao_fixture;
+
+  if not exists (
+    select 1 from public.pecas_cotacoes
+    where id = cotacao_fixture and proxima_acao is null and prazo is null and acompanhamento_versao = 0
+  ) then
+    raise exception 'O acompanhamento deve começar vazio na versão zero.';
+  end if;
+  if public.pecas_atualizar_acompanhamento(cotacao_fixture, array['santaluzia'], ator_fixture, 0, acao_fixture, date '2040-01-15') is distinct from 'indisponivel'
+    or public.pecas_atualizar_acompanhamento(cotacao_fixture, unidades_fixture, outro_ator, 0, acao_fixture, date '2040-01-15') is distinct from 'indisponivel'
+    or public.pecas_atualizar_acompanhamento(cotacao_fixture, unidades_fixture, ator_fixture, -1, null, null) is distinct from 'indisponivel'
+    or public.pecas_atualizar_acompanhamento(cotacao_fixture, unidades_fixture, ator_fixture, null, null, null) is distinct from 'indisponivel' then
+    raise exception 'O acompanhamento exige unidade, responsável e versão válidos.';
+  end if;
+  if public.pecas_atualizar_acompanhamento('00000000-0000-4000-8000-000000000054', unidades_fixture, ator_fixture, 0, null, null) is distinct from 'indisponivel'
+    or public.pecas_atualizar_acompanhamento('00000000-0000-4000-8000-000000000064', unidades_fixture, ator_fixture, 0, null, null) is distinct from 'indisponivel'
+    or public.pecas_atualizar_acompanhamento('00000000-0000-4000-8000-000000000063', unidades_fixture, ator_fixture, 0, null, null) is distinct from 'indisponivel' then
+    raise exception 'Entregue, perdido e cancelado encerram a edição do acompanhamento.';
+  end if;
+
+  if public.pecas_atualizar_acompanhamento(cotacao_fixture, unidades_fixture, ator_fixture, 0, acao_fixture, date '2040-01-15') is distinct from 'atualizado'
+    or public.pecas_atualizar_acompanhamento(cotacao_fixture, unidades_fixture, ator_fixture, 0, acao_fixture, date '2040-01-15') is distinct from 'atualizado'
+    or public.pecas_atualizar_acompanhamento(cotacao_fixture, unidades_fixture, ator_fixture, 1, acao_fixture, date '2040-01-15') is distinct from 'atualizado'
+    or public.pecas_atualizar_acompanhamento(cotacao_fixture, unidades_fixture, ator_fixture, 0, 'Outra próxima ação', date '2040-01-15') is distinct from 'desatualizado'
+    or public.pecas_atualizar_acompanhamento(cotacao_fixture, unidades_fixture, ator_fixture, 0, acao_fixture, date '2040-01-20') is distinct from 'desatualizado' then
+    raise exception 'A versão deve proteger os dois campos e permitir reenvio idêntico.';
+  end if;
+
+  if public.pecas_atualizar_acompanhamento(cotacao_fixture, unidades_fixture, ator_fixture, 1, null, date '2040-01-15') is distinct from 'indisponivel' then
+    raise exception 'Uma data de prazo exige uma próxima ação.';
+  end if;
+  foreach acao_invalida in array array['', ' ', E'\tAção', 'Ação ', repeat('x', 501)] loop
+    if public.pecas_atualizar_acompanhamento(cotacao_fixture, unidades_fixture, ator_fixture, 1, acao_invalida, null) is distinct from 'indisponivel' then
+      raise exception 'A próxima ação exige de 1 a 500 caracteres aparados.';
+    end if;
+  end loop;
+  if not exists (
+    select 1 from public.pecas_cotacoes
+    where id = cotacao_fixture and proxima_acao = acao_fixture and prazo = date '2040-01-15' and acompanhamento_versao = 1
+  ) then
+    raise exception 'Conflitos e entradas inválidas devem preservar o acompanhamento.';
+  end if;
+
+  if public.pecas_atualizar_acompanhamento(cotacao_fixture, unidades_fixture, ator_fixture, 1, repeat('a', 500), null) is distinct from 'atualizado' then
+    raise exception 'A próxima ação aceita 500 caracteres e prazo opcional.';
+  end if;
+  if not exists (
+    select 1 from public.pecas_cotacoes
+    where id = cotacao_fixture and proxima_acao = repeat('a', 500) and prazo is null and acompanhamento_versao = 2
+  ) then
+    raise exception 'Alterar a próxima ação e retirar o prazo deve avançar uma versão.';
+  end if;
+  if public.pecas_atualizar_acompanhamento(cotacao_fixture, unidades_fixture, ator_fixture, 2, null, null) is distinct from 'atualizado'
+    or public.pecas_atualizar_acompanhamento(cotacao_fixture, unidades_fixture, ator_fixture, 2, null, null) is distinct from 'atualizado' then
+    raise exception 'Limpar os dois campos deve aceitar reenvio.';
+  end if;
+  if not exists (
+    select 1 from public.pecas_cotacoes
+    where id = cotacao_fixture and proxima_acao is null and prazo is null and acompanhamento_versao = 3
+  ) or (select to_jsonb(c) - 'proxima_acao' - 'prazo' - 'acompanhamento_versao'
+    from public.pecas_cotacoes c where c.id = cotacao_fixture) is distinct from dados_anteriores then
+    raise exception 'O acompanhamento deve preservar a etapa e os dados da venda.';
+  end if;
+end $$;
+
 reset role;
 
 do $$
@@ -681,6 +757,9 @@ begin
     or not has_column_privilege('service_role', 'public.pecas_cotacoes', 'venda_confirmada_por', 'UPDATE')
     or not has_column_privilege('service_role', 'public.pecas_cotacoes', 'tipo_preparo', 'UPDATE')
     or not has_column_privilege('service_role', 'public.pecas_cotacoes', 'motivo_encerramento', 'UPDATE')
+    or not has_column_privilege('service_role', 'public.pecas_cotacoes', 'proxima_acao', 'UPDATE')
+    or not has_column_privilege('service_role', 'public.pecas_cotacoes', 'prazo', 'UPDATE')
+    or not has_column_privilege('service_role', 'public.pecas_cotacoes', 'acompanhamento_versao', 'UPDATE')
     or has_column_privilege('service_role', 'public.pecas_cotacoes', 'descricao', 'UPDATE')
     or has_table_privilege('service_role', 'public.pecas_cotacoes_historico', 'SELECT, UPDATE, DELETE')
     or has_function_privilege('anon', 'public.pecas_assumir_cotacao(uuid,text[],uuid)', 'EXECUTE')
@@ -696,7 +775,9 @@ begin
     or has_function_privilege('anon', 'public.pecas_encerrar_cotacao(uuid,text[],uuid,text,text)', 'EXECUTE')
     or has_function_privilege('authenticated', 'public.pecas_encerrar_cotacao(uuid,text[],uuid,text,text)', 'EXECUTE')
     or has_function_privilege('anon', 'public.pecas_registrar_cotacao_bot(uuid,text,text,text)', 'EXECUTE')
-    or has_function_privilege('authenticated', 'public.pecas_registrar_cotacao_bot(uuid,text,text,text)', 'EXECUTE') then
+    or has_function_privilege('authenticated', 'public.pecas_registrar_cotacao_bot(uuid,text,text,text)', 'EXECUTE')
+    or has_function_privilege('anon', 'public.pecas_atualizar_acompanhamento(uuid,text[],uuid,integer,text,date)', 'EXECUTE')
+    or has_function_privilege('authenticated', 'public.pecas_atualizar_acompanhamento(uuid,text[],uuid,integer,text,date)', 'EXECUTE') then
     raise exception 'A cotação e seu histórico devem manter RLS fechada e os grants mínimos do servidor.';
   end if;
 

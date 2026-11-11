@@ -4,9 +4,9 @@ import { notFound } from "next/navigation";
 import { exigirAcesso } from "@/lib/auth";
 import { formatarBRL } from "@/lib/time";
 import { obterCotacao } from "@/modulos/pecas/cotacoes";
-import { centavosParaCampo, etapaCotacao, totalizarCotacao, uuidV4Valido } from "@/modulos/pecas/dados-cotacao";
+import { centavosParaCampo, etapaCotacao, formatarPrazo, totalizarCotacao, uuidV4Valido } from "@/modulos/pecas/dados-cotacao";
 import { Cabecalho, Status, Vazio } from "../../_components/ui";
-import { adicionarItemCotacao, confirmarVenda, editarItemCotacao, registrarApresentacao, registrarAprovacao, registrarAtendimento, registrarEncerramento } from "../actions";
+import { adicionarItemCotacao, confirmarVenda, editarItemCotacao, registrarApresentacao, registrarAprovacao, registrarAtendimento, registrarEncerramento, salvarAcompanhamento } from "../actions";
 
 const ETAPAS_ENCERRAVEIS = ["em_cotacao", "aguardando_cliente", "aprovado", "em_separacao"];
 
@@ -35,6 +35,10 @@ const MENSAGENS: Record<string, string> = {
   limite: "A cotação já tem 100 itens.",
   pendente: "Os itens de Peças ainda precisam ser habilitados neste ambiente.",
   erro_item: "Não foi possível incluir o item. Tente novamente.",
+  acompanhamento_salvo: "Próxima ação e prazo salvos.",
+  acompanhamento_desatualizado: "Outra edição alterou a próxima ação ou o prazo. Confira os dados atuais antes de salvar.",
+  acompanhamento_invalido: "Confira a próxima ação e a data do prazo.",
+  erro_acompanhamento: "Não foi possível salvar a próxima ação. Tente novamente.",
 };
 
 export default async function DetalheCotacaoPage({ params, searchParams }: {
@@ -87,6 +91,26 @@ export default async function DetalheCotacaoPage({ params, searchParams }: {
           <span className="mudo">Responsável · {cotacao.responsavel?.nome ?? "A definir"}</span>
         </div>
         {cotacao.motivo_encerramento && <p><strong>Motivo do encerramento</strong> · {cotacao.motivo_encerramento}</p>}
+      </section>
+      <section id="acompanhamento" className="card secao">
+        <h2>Próxima ação e prazo</h2>
+        {podeEncerrar ? (
+          <form
+            key={cotacao.acompanhamento_versao}
+            action={salvarAcompanhamento.bind(null, cotacao.id)}
+            className="linha-form"
+          >
+            <input type="hidden" name="versao" value={cotacao.acompanhamento_versao} />
+            <label>Próxima ação <textarea name="proxima_acao" defaultValue={cotacao.proxima_acao ?? ""} maxLength={500} rows={2} /></label>
+            <label>Prazo opcional <input name="prazo" type="date" defaultValue={cotacao.prazo ?? ""} /></label>
+            <button className="btn" type="submit">Salvar acompanhamento</button>
+          </form>
+        ) : (
+          <>
+            <p>{cotacao.proxima_acao ?? "A definir"}</p>
+            {cotacao.prazo && <p className="mudo">Prazo · <time dateTime={cotacao.prazo}>{formatarPrazo(cotacao.prazo)}</time></p>}
+          </>
+        )}
       </section>
       {podeEditarItens && (
         <section id="item-cotacao" className="card secao">

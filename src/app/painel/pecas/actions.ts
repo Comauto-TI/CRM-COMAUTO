@@ -2,8 +2,8 @@
 
 import { redirect } from "next/navigation";
 import { exigirAcesso } from "@/lib/auth";
-import { atualizarItem, avancarAtendimento, encerrarCotacao, iniciarCotacao, marcarApresentada, marcarAprovada, marcarVendaConfirmada, registrarCotacao, registrarItem } from "@/modulos/pecas/cotacoes";
-import { lerDadosCotacao, lerDadosEdicaoItem, lerDadosEncerramento, lerDadosItem, lerIdCotacao, uuidV4Valido } from "@/modulos/pecas/dados-cotacao";
+import { atualizarAcompanhamento, atualizarItem, avancarAtendimento, encerrarCotacao, iniciarCotacao, marcarApresentada, marcarAprovada, marcarVendaConfirmada, registrarCotacao, registrarItem } from "@/modulos/pecas/cotacoes";
+import { lerDadosAcompanhamento, lerDadosCotacao, lerDadosEdicaoItem, lerDadosEncerramento, lerDadosItem, lerIdCotacao, uuidV4Valido } from "@/modulos/pecas/dados-cotacao";
 
 export async function criarCotacao(form: FormData) {
   const u = await exigirAcesso("pecas");
@@ -80,4 +80,12 @@ export async function registrarEncerramento(id: string, form: FormData) {
   const dados = lerDadosEncerramento(form);
   const resultado = dados ? await encerrarCotacao(u, id, dados) : "motivo_invalido";
   redirect(`/painel/pecas/${id}?msg=${resultado}`);
+}
+
+export async function salvarAcompanhamento(id: string, form: FormData) {
+  const u = await exigirAcesso("pecas");
+  if (!uuidV4Valido(id)) redirect("/painel/pecas?msg=indisponivel");
+  const dados = lerDadosAcompanhamento(form);
+  const resultado = dados ? await atualizarAcompanhamento(u, id, dados) : "acompanhamento_invalido";
+  redirect(`/painel/pecas/${id}?msg=${resultado}#acompanhamento`);
 }

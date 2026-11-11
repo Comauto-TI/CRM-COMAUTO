@@ -2,7 +2,7 @@ import { randomUUID } from "node:crypto";
 import Link from "next/link";
 import { exigirAcesso } from "@/lib/auth";
 import { listarCotacoes } from "@/modulos/pecas/cotacoes";
-import { etapaCotacao } from "@/modulos/pecas/dados-cotacao";
+import { etapaCotacao, formatarPrazo } from "@/modulos/pecas/dados-cotacao";
 import { Cabecalho, Status, Vazio } from "../_components/ui";
 import { assumirCotacao, criarCotacao } from "./actions";
 
@@ -52,7 +52,7 @@ export default async function PecasPage({ searchParams }: { searchParams: Promis
           {fila.cotacoes.length === 0 ? <Vazio>Nenhuma cotação registrada.</Vazio> : (
             <div className="card tabela-wrap">
               <table>
-                <thead><tr><th>Cliente</th><th>Placa</th><th>Solicitação</th><th>Unidade</th><th>Origem</th><th>Etapa</th><th>Responsável</th><th>Ações</th></tr></thead>
+                <thead><tr><th>Cliente</th><th>Placa</th><th>Solicitação</th><th>Unidade</th><th>Origem</th><th>Etapa</th><th>Responsável</th><th>Próxima ação</th><th>Ações</th></tr></thead>
                 <tbody>
                   {fila.cotacoes.map((c) => (
                     <tr key={c.id}>
@@ -63,6 +63,10 @@ export default async function PecasPage({ searchParams }: { searchParams: Promis
                       <td>{ORIGENS[c.origem]}</td>
                       <td><Status valor={etapaCotacao(c.status, c.tipo_preparo)} /></td>
                       <td>{c.responsavel?.nome ?? "—"}</td>
+                      <td>
+                        {c.proxima_acao ?? "A definir"}
+                        {c.prazo && <div className="mudo">Prazo · <time dateTime={c.prazo}>{formatarPrazo(c.prazo)}</time></div>}
+                      </td>
                       <td>
                         <div className="acoes">
                           <Link className="btn" href={`/painel/pecas/${c.id}`} prefetch={false}>Ver cotação</Link>
