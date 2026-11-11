@@ -858,6 +858,14 @@ a { color: var(--vw-azul); }
 .painel-lateral h2 { margin: 4px 0 2px; }
 .painel-lateral h3 { font-size: 14px; margin: 0 0 8px; }
 .painel-lateral fieldset { border: 0; padding: 0; margin: 0; display: grid; gap: 10px; }
+.vendas-conversa { min-width: 0; margin: 18px 0; }
+.vendas-conversa .wa-conversa { height: 520px; max-height: 70dvh; min-height: 340px; border: 1px solid var(--borda); border-radius: 12px; overflow: hidden; }
+.vendas-conversa .wa-topo { padding: 10px; }
+.vendas-conversa .wa-topo-info { flex-basis: 140px; }
+.vendas-conversa .wa-topo-acoes { width: 100%; justify-content: flex-end; flex-wrap: wrap; }
+.vendas-conversa .wa-topo-acoes:empty { display: none; }
+.vendas-conversa .wa-bolha { max-width: 88%; }
+
 .ficha { display: grid; grid-template-columns: auto 1fr; gap: 4px 12px; margin: 12px 0; font-size: 13px; }
 .ficha dt { color: var(--texto-2); } .ficha dd { margin: 0; font-weight: 600; }
 .largo-total { width: 100%; }
@@ -877,6 +885,7 @@ a { color: var(--vw-azul); }
 @media (max-width: 1100px) {
   .vendas.com-painel { grid-template-columns: 1fr; }
   .painel-lateral { position: static; max-height: none; }
+  .vendas .painel-lateral { position: relative; }
   .vendas-topo { grid-template-columns: 1fr; }
 }
 .kanban-cartao, .kanban-cartao *, .kanban-cartao:hover, .kanban-cartao:hover * { text-decoration: none !important; }

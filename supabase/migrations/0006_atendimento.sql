@@ -1663,3 +1663,364 @@ revoke all on function public.pecas_cotacoes_visiveis(uuid),public.pecas_quadro(
   public.pecas_mover_quadro(uuid,uuid,text,numeric,text,jsonb,text) from public,anon,authenticated,service_role;
 grant execute on function public.pecas_cotacoes_visiveis(uuid),public.pecas_quadro(uuid),
   public.pecas_mover_quadro(uuid,uuid,text,numeric,text,jsonb,text) to service_role;
+
+
+-- MVP Vendas: conversa da oportunidade, sem transferir sua carteira ao supervisor.
+-- A escolha inicial fica congelada inclusive quando não havia ledger na abertura.
+alter table public.atendimentos_modulares add column if not exists referencia_inicial text;
+alter table public.atendimentos_modulares add column if not exists origem_inicial_fixada boolean not null default false;
+grant select(referencia_inicial,origem_inicial_fixada) on public.atendimentos_modulares to service_role;
+grant update(referencia_inicial,origem_inicial_fixada) on public.atendimentos_modulares to service_role;
+
+create or replace function public.vendas_proteger_posse_aberta()
+returns trigger language plpgsql security invoker set search_path = '' as $$
+begin
+  if (new.vendedor_id is distinct from old.vendedor_id or new.unidade is distinct from old.unidade
+    or new.cliente_id is distinct from old.cliente_id or new.funil_id is distinct from old.funil_id
+    or new.fechado_em is distinct from old.fechado_em
+    or (new.etapa_id is distinct from old.etapa_id and exists(
+      select 1 from public.vendas_etapas e where e.id=new.etapa_id and (e.tipo<>'aberta' or not e.ativo))))
+    and exists(select 1 from public.atendimentos_modulares a join public.atendimento_canais s on s.atendimento_id=a.id
+      where a.oportunidade_id=old.id) then
+    raise exception 'Devolva o atendimento antes de encerrar ou reatribuir.' using errcode='55000';
+  end if;
+  return new;
+end $$;
+drop trigger if exists vendas_posse_aberta on public.vendas_oportunidades;
+create trigger vendas_posse_aberta before update of vendedor_id,unidade,cliente_id,funil_id,fechado_em,etapa_id
+  on public.vendas_oportunidades for each row execute function public.vendas_proteger_posse_aberta();
+
+create or replace function public.vendas_proteger_etapa_funil_em_posse()
+returns trigger language plpgsql security invoker set search_path = '' as $$
+begin
+  if tg_table_name='vendas_funis' then
+    if old.ativo and not new.ativo and exists(select 1 from public.vendas_oportunidades o
+      join public.atendimentos_modulares a on a.oportunidade_id=o.id
+      join public.atendimento_canais s on s.atendimento_id=a.id where o.funil_id=old.id) then
+      raise exception 'Devolva os atendimentos antes de desativar o funil.' using errcode='55000';
+    end if;
+  else
+    if (new.tipo is distinct from old.tipo and new.tipo<>'aberta' or old.ativo and not new.ativo
+      or new.funil_id is distinct from old.funil_id) and exists(select 1 from public.vendas_oportunidades o
+        join public.atendimentos_modulares a on a.oportunidade_id=o.id
+        join public.atendimento_canais s on s.atendimento_id=a.id where o.etapa_id=old.id) then
+      raise exception 'Devolva os atendimentos antes de encerrar a etapa.' using errcode='55000';
+    end if;
+  end if;
+  return new;
+end $$;
+drop trigger if exists vendas_funil_em_posse on public.vendas_funis;
+create trigger vendas_funil_em_posse before update of ativo on public.vendas_funis
+  for each row execute function public.vendas_proteger_etapa_funil_em_posse();
+drop trigger if exists vendas_etapa_em_posse on public.vendas_etapas;
+create trigger vendas_etapa_em_posse before update of tipo,ativo,funil_id on public.vendas_etapas
+  for each row execute function public.vendas_proteger_etapa_funil_em_posse();
+
+-- Sobrecarga de supervisão só serve à devolução; responder continua exigindo posse pessoal.
+create or replace function public.vendas_contexto_posse(p_oportunidade uuid,p_ator uuid,p_versao integer,p_supervisao boolean)
+returns jsonb language plpgsql security invoker set search_path = '' as $$
+declare ctx record; a public.atendimentos_modulares%rowtype; c record;
+begin
+  select * into ctx from public.contexto_atendimento_modular('vendas',p_oportunidade,p_ator);
+  if not found then return pg_catalog.jsonb_build_object('ok',false,'codigo','nao_encontrado'); end if;
+  perform 1 from public.vendas_oportunidades o join public.vendas_etapas e on e.id=o.etapa_id and e.funil_id=o.funil_id
+    where o.id=p_oportunidade and e.ativo and e.tipo='aberta' for share of e;
+  if not found then return pg_catalog.jsonb_build_object('ok',false,'codigo','nao_encontrado'); end if;
+  select status,assumida_por into c from public.conversas where id=ctx.conversa_id for update;
+  select * into a from public.atendimentos_modulares where oportunidade_id=p_oportunidade for update;
+  if not found or a.setor<>'vendas' or a.cliente_id<>ctx.cliente_id or a.conversa_id<>ctx.conversa_id or a.unidade<>ctx.unidade then
+    return pg_catalog.jsonb_build_object('ok',false,'codigo','nao_encontrado');
+  end if;
+  if p_versao is null or a.versao<>p_versao or a.assumido_por is null
+    or (a.assumido_por is distinct from p_ator and not (p_supervisao is true and exists(
+      select 1 from public.usuarios u where u.user_id=p_ator and u.ativo and u.papel in ('admin','gerente'))))
+    or a.dono_na_posse is distinct from ctx.responsavel_id or c.status<>'humano' or c.assumida_por is not null
+    or not exists(select 1 from public.atendimento_canais s where s.conversa_id=a.conversa_id and s.atendimento_id=a.id) then
+    return pg_catalog.jsonb_build_object('ok',false,'codigo','conflito');
+  end if;
+  return pg_catalog.jsonb_build_object('ok',true,'id',a.id,'oportunidadeId',p_oportunidade,'versao',a.versao,
+    'clienteId',a.cliente_id,'conversaId',a.conversa_id);
+end $$;
+
+create or replace function public.vendas_contexto_posse(p_oportunidade uuid,p_ator uuid,p_versao integer)
+returns jsonb language plpgsql security invoker set search_path = '' as $$
+declare ctx jsonb; a record; prova jsonb;
+begin
+  ctx:=public.vendas_contexto_posse(p_oportunidade,p_ator,p_versao,false);
+  if ctx->>'ok'<>'true' then return ctx; end if;
+  select referencia_inicial,origem_inicial_fixada,unidade into a from public.atendimentos_modulares where id=(ctx->>'id')::uuid;
+  if not a.origem_inicial_fixada then return pg_catalog.jsonb_build_object('ok',false,'codigo','conflito'); end if;
+  if a.referencia_inicial is not null then
+    if exists(select 1 from public.mensagens m where m.wamid=a.referencia_inicial
+      and m.atendimento_id is not null and m.atendimento_id<>(ctx->>'id')::uuid) then
+      return pg_catalog.jsonb_build_object('ok',false,'codigo','origem_ambigua');
+    end if;
+    prova:=public.autorizar_mensagem_atendimento((ctx->>'id')::uuid,a.referencia_inicial,p_ator,'vendas');
+    if prova->>'ok'<>'true' then return prova; end if;
+  end if;
+  if exists(select 1 from public.mensagens m where m.atendimento_id=(ctx->>'id')::uuid and m.entrada_cliente_externa and (
+    exists(select 1 from public.encaminhamentos_bot e where e.referencia=m.wamid)
+    or exists(select 1 from public.vendas_encaminhamentos_bot e where e.referencia=m.wamid and
+      (e.oportunidade_id is distinct from p_oportunidade or e.cliente_id<>m.cliente_id
+        or e.conversa_id<>m.conversa_id or e.unidade<>a.unidade)))) then
+    return pg_catalog.jsonb_build_object('ok',false,'codigo','origem_ambigua');
+  end if;
+  return ctx;
+end $$;
+
+create or replace function public.vendas_assumir_atendimento(p_oportunidade uuid,p_ator uuid,p_versao integer)
+returns jsonb language plpgsql security invoker set search_path = '' as $$
+declare pessoa record; op public.vendas_oportunidades%rowtype; canal record; a public.atendimentos_modulares%rowtype;
+  r jsonb; referencia text; primeira boolean; mudou boolean; anterior integer;
+begin
+  if p_oportunidade is null or p_ator is null or p_versao is null or p_versao not between 0 and 2147483646 then
+    return pg_catalog.jsonb_build_object('ok',false,'codigo','invalido');
+  end if;
+  begin
+    select user_id,nome,papel,setor,unidade into pessoa from public.usuarios where user_id=p_ator and ativo for share;
+    if not found or not (pessoa.papel in ('admin','vendedor') or (pessoa.papel='gerente' and pessoa.setor in ('vendas','administracao'))) then raise sqlstate 'P1004'; end if;
+    select o.* into op from public.vendas_oportunidades o join public.unidades u on u.chave=o.unidade and u.ativa
+      where o.id=p_oportunidade and o.fechado_em is null for update of o;
+    if not found or op.vendedor_id is null or (pessoa.papel not in ('admin','gerente') and op.vendedor_id<>p_ator)
+      or (pessoa.papel<>'admin' and pessoa.unidade<>op.unidade and not exists(
+        select 1 from public.usuario_unidades x where x.user_id=p_ator and x.unidade=op.unidade)) then raise sqlstate 'P1004'; end if;
+    perform 1 from public.vendas_funis f where f.id=op.funil_id and f.ativo for share;
+    if not found then raise sqlstate 'P1004'; end if;
+    perform 1 from public.vendas_etapas e where e.id=op.etapa_id and e.funil_id=op.funil_id and e.ativo and e.tipo='aberta' for share;
+    if not found then raise sqlstate 'P1004'; end if;
+    perform 1 from public.clientes cl where cl.id=op.cliente_id and not cl.anonimizado for share;
+    if not found then raise sqlstate 'P1004'; end if;
+    insert into public.conversas(cliente_id) values(op.cliente_id) on conflict(cliente_id) do nothing;
+    select id,status,assumida_por into canal from public.conversas where cliente_id=op.cliente_id for update;
+    select * into a from public.atendimentos_modulares where oportunidade_id=p_oportunidade for update;
+    primeira:=not found;
+    if not primeira and (a.setor<>'vendas' or a.cliente_id<>op.cliente_id or a.conversa_id<>canal.id or a.unidade<>op.unidade) then raise sqlstate 'P1004'; end if;
+    if (not primeira and a.versao<>p_versao) or (primeira and p_versao<>0) then raise sqlstate 'P1009'; end if;
+    if canal.assumida_por is not null or exists(select 1 from public.atendimento_canais s
+      where s.conversa_id=canal.id and (a.id is null or s.atendimento_id<>a.id))
+      or (a.assumido_por is not null and a.assumido_por<>p_ator) then raise sqlstate 'P1009'; end if;
+    r:=public.abrir_atendimento_modular('vendas',p_oportunidade,p_ator);
+    if r->>'ok'<>'true' then raise sqlstate 'P1009'; end if;
+    select * into a from public.atendimentos_modulares where id=(r->>'id')::uuid;
+    anterior:=a.versao;
+    if not a.origem_inicial_fixada then
+      -- Ledger não tem id: referencia é a PK estável usada para desempatar criado_em.
+      select e.referencia into referencia from public.vendas_encaminhamentos_bot e
+        join public.mensagens m on m.id=e.mensagem_id and m.conversa_id=e.conversa_id and m.cliente_id=e.cliente_id
+          and m.wamid=e.referencia and m.entrada_cliente_externa
+        where e.oportunidade_id=op.id and e.cliente_id=op.cliente_id and e.conversa_id=canal.id
+          and e.unidade=op.unidade and e.funil_id=op.funil_id
+        order by e.criado_em desc,e.referencia desc limit 1;
+      -- Origem de marketing não é prova de mensagem. Sem ledger, abre vazio;
+      -- ledger contraditório nunca é tratado como cadastro manual.
+      if referencia is null and exists(select 1 from public.vendas_encaminhamentos_bot e where e.oportunidade_id=op.id) then raise sqlstate 'P1004'; end if;
+      if referencia is not null then
+        if exists(select 1 from public.mensagens m where m.wamid=referencia
+          and m.atendimento_id is not null and m.atendimento_id<>a.id) then raise sqlstate 'P1010'; end if;
+        r:=public.vincular_mensagem_vendas(a.id,referencia,p_ator);
+        if r->>'codigo'='origem_ambigua' then raise sqlstate 'P1010'; end if;
+        if r->>'ok'<>'true' then raise sqlstate 'P1009'; end if;
+      end if;
+      update public.atendimentos_modulares set referencia_inicial=referencia,origem_inicial_fixada=true where id=a.id;
+    elsif a.referencia_inicial is not null then
+      r:=public.autorizar_mensagem_atendimento(a.id,a.referencia_inicial,p_ator,'vendas');
+      if r->>'codigo'='origem_ambigua' then raise sqlstate 'P1010'; end if;
+      if r->>'ok'<>'true' then raise sqlstate 'P1009'; end if;
+    end if;
+    update public.conversas set status='humano' where id=canal.id and status<>'humano';
+    r:=public.assumir_atendimento_modular(a.id,p_ator,p_versao);
+    if r->>'ok'<>'true' then raise sqlstate 'P1009'; end if;
+    r:=public.vendas_contexto_posse(op.id,p_ator,(r->>'versao')::integer);
+    if r->>'codigo'='origem_ambigua' then raise sqlstate 'P1010'; end if;
+    if r->>'ok'<>'true' then raise sqlstate 'P1009'; end if;
+    mudou:=(r->>'versao')::integer<>anterior;
+    if mudou then
+      insert into public.vendas_atividades(oportunidade_id,tipo,descricao,ator)
+        values(op.id,'nota',left('Conversa assumida por '||pessoa.nome||'.',2000),p_ator::text);
+      if op.vendedor_id<>p_ator then
+        insert into public.notificacoes(usuario_id,unidade,tipo,titulo,corpo,link)
+          values(op.vendedor_id,op.unidade,'atendimento','Conversa assumida pela gestão',
+            left('Conversa assumida por '||pessoa.nome||'. O responsável da oportunidade foi preservado.',500),'/painel/vendas?op='||op.id::text);
+      end if;
+    end if;
+    return pg_catalog.jsonb_build_object('ok',true,'id',a.id,'oportunidadeId',p_oportunidade,'versao',(r->>'versao')::integer,'estado','minha');
+  exception when sqlstate 'P1004' then return pg_catalog.jsonb_build_object('ok',false,'codigo','nao_encontrado');
+    when sqlstate 'P1009' then return pg_catalog.jsonb_build_object('ok',false,'codigo','conflito');
+    when sqlstate 'P1010' then return pg_catalog.jsonb_build_object('ok',false,'codigo','origem_ambigua');
+  end;
+end $$;
+
+create or replace function public.vendas_devolver_atendimento(p_oportunidade uuid,p_ator uuid,p_versao integer)
+returns jsonb language plpgsql security invoker set search_path = '' as $$
+declare ctx jsonb; removido uuid; nova integer;
+begin
+  ctx:=public.vendas_contexto_posse(p_oportunidade,p_ator,p_versao,true);
+  if ctx->>'ok'<>'true' then return ctx; end if;
+  if p_versao>=2147483646 then return pg_catalog.jsonb_build_object('ok',false,'codigo','conflito'); end if;
+  delete from public.atendimento_canais where conversa_id=(ctx->>'conversaId')::uuid and atendimento_id=(ctx->>'id')::uuid returning atendimento_id into removido;
+  if not found then raise exception 'Reserva mudou.' using errcode='40001'; end if;
+  update public.atendimentos_modulares set assumido_por=null,dono_na_posse=null,versao=versao+1 where id=removido returning versao into nova;
+  update public.conversas set status='bot',assumida_por=null,aguardando_desde=null,falhas_entendimento=0 where id=(ctx->>'conversaId')::uuid;
+  insert into public.audit_log(ator,acao,entidade,entidade_id,dados)
+    values(p_ator::text,'vendas_devolver','atendimento',removido::text,pg_catalog.jsonb_build_object('versao',nova));
+  return pg_catalog.jsonb_build_object('ok',true,'id',removido,'oportunidadeId',p_oportunidade,'versao',nova,'estado','livre');
+end $$;
+
+
+create or replace function public.vendas_dialogo(p_oportunidade uuid, p_ator uuid)
+returns jsonb language plpgsql security invoker set search_path = '' as $$
+declare ctx record; a public.atendimentos_modulares%rowtype; pessoa record; op record; cliente record;
+  estado text := 'livre'; resultado jsonb; reservado uuid; canal record;
+begin
+  select user_id,papel,setor,unidade into pessoa from public.usuarios where user_id = p_ator and ativo for share;
+  if not found or not (pessoa.papel in ('admin','vendedor') or (pessoa.papel = 'gerente' and pessoa.setor in ('vendas','administracao'))) then
+    return pg_catalog.jsonb_build_object('ok',false,'codigo','nao_encontrado');
+  end if;
+  select c.vendedor_id,c.unidade,c.cliente_id into op from public.vendas_oportunidades c join public.unidades u on u.chave = c.unidade and u.ativa
+    where c.id = p_oportunidade and c.fechado_em is null and exists(select 1 from public.vendas_funis f where f.id=c.funil_id and f.ativo) and exists(select 1 from public.vendas_etapas e where e.id=c.etapa_id and e.funil_id=c.funil_id and e.ativo and e.tipo='aberta') for share of c;
+  if not found or (pessoa.papel <> 'admin' and pessoa.unidade <> op.unidade and not exists(
+    select 1 from public.usuario_unidades x where x.user_id = p_ator and x.unidade = op.unidade)) then
+    return pg_catalog.jsonb_build_object('ok',false,'codigo','nao_encontrado');
+  end if;
+  if op.vendedor_id is null then return pg_catalog.jsonb_build_object('ok',false,'codigo','sem_responsavel'); end if;
+  if op.vendedor_id <> p_ator and pessoa.papel not in ('admin','gerente') then
+    return pg_catalog.jsonb_build_object('ok',false,'codigo','nao_encontrado');
+  end if;
+  select nome,ultimo_contato_em into cliente from public.clientes where id=op.cliente_id and not anonimizado for share;
+  if not found then return pg_catalog.jsonb_build_object('ok',false,'codigo','nao_encontrado'); end if;
+  if not exists(select 1 from public.conversas c where c.cliente_id=op.cliente_id) then
+    -- Oportunidade pode ter sido atribuída antes do primeiro contato. GET não cria canal;
+    -- a ação de assumir fará isso atomicamente e revalidará a versão/posse atuais.
+    return pg_catalog.jsonb_build_object('ok',true,'id',null,'oportunidadeId',p_oportunidade,'versao',0,
+      'clienteNome',coalesce(cliente.nome,'Cliente'),'estado','livre',
+      'podeAssumir',true,'podeDevolver',false,
+      'janelaAberta',coalesce(cliente.ultimo_contato_em>now()-interval '24 hours',false),
+      'mensagens','[]'::jsonb,'revisaoPendente',false);
+  end if;
+  select * into ctx from public.contexto_atendimento_modular('vendas',p_oportunidade,p_ator);
+  if not found then return pg_catalog.jsonb_build_object('ok',false,'codigo','nao_encontrado'); end if;
+  select nome,ultimo_contato_em into cliente from public.clientes where id = ctx.cliente_id;
+  select * into a from public.atendimentos_modulares where oportunidade_id = p_oportunidade;
+  if found and (a.cliente_id <> ctx.cliente_id or a.conversa_id <> ctx.conversa_id or a.unidade <> ctx.unidade) then
+    return pg_catalog.jsonb_build_object('ok',false,'codigo','nao_encontrado');
+  end if;
+  select status,assumida_por into canal from public.conversas where id = ctx.conversa_id;
+  select atendimento_id into reservado from public.atendimento_canais where conversa_id = ctx.conversa_id;
+  if canal.assumida_por is not null or (reservado is not null and reservado is distinct from a.id) or a.assumido_por is not null then estado := 'outra'; end if;
+  if a.assumido_por = p_ator and a.dono_na_posse = ctx.responsavel_id and reservado = a.id and canal.status = 'humano' and canal.assumida_por is null then estado := 'minha'; end if;
+  with escopo as materialized (
+    select s.id from public.atendimentos_legiveis(p_ator,'vendas') s where s.id = a.id
+  ), candidatas as materialized (
+    select m.id,m.conteudo,m.direcao,m.autor,m.tipo,m.status,m.criado_em,m.erro,
+      case when m.atendimento_id = e.id then
+        ((m.direcao = 'saida' and m.autor = 'atendente' and coalesce(m.metadata->'interno','false'::jsonb) = 'false'::jsonb) or
+          (m.entrada_cliente_externa and not exists(select 1 from public.encaminhamentos_bot v where v.referencia=m.wamid)
+            and not exists(select 1 from public.vendas_encaminhamentos_bot v where v.referencia=m.wamid and
+              (v.oportunidade_id is distinct from p_oportunidade or v.cliente_id<>ctx.cliente_id
+               or v.conversa_id<>ctx.conversa_id or v.unidade<>ctx.unidade))))
+      else m.atendimento_id is null and exists(select 1 from public.associacoes_mensagens_atendimento(e.id,'vendas') v where v.mensagem_id = m.id and v.autorizada) end as permitida
+    from escopo e join public.mensagens m on m.conversa_id = ctx.conversa_id and m.cliente_id = ctx.cliente_id
+    where m.atendimento_id = e.id or exists(select 1 from public.atendimento_mensagens v where v.atendimento_id = e.id and v.mensagem_id = m.id and v.setor='vendas' and v.referencia=a.referencia_inicial and a.origem_inicial_fixada)
+  ), recentes as (
+    select * from candidatas where permitida order by criado_em desc,id desc limit 100
+  )
+  select pg_catalog.jsonb_build_object('ok',true,'id',a.id,'oportunidadeId',p_oportunidade,'versao',coalesce(a.versao,0),
+    'clienteNome',coalesce(cliente.nome,'Cliente'),'estado',estado,
+    'podeAssumir',estado='livre',
+    'podeDevolver',coalesce(estado = 'minha' or (pessoa.papel in ('admin','gerente') and a.assumido_por is not null
+      and a.dono_na_posse = ctx.responsavel_id and reservado = a.id and canal.status = 'humano' and canal.assumida_por is null),false),
+    'janelaAberta',coalesce(cliente.ultimo_contato_em > now() - interval '24 hours',false),
+    'mensagens',coalesce((select pg_catalog.jsonb_agg(pg_catalog.jsonb_build_object('id',m.id,'conteudo',m.conteudo,
+      'direcao',m.direcao,'autor',m.autor,'tipo',m.tipo,'status',m.status,'criadoEm',m.criado_em,
+      'pendente',coalesce(m.erro = 'envio_em_processamento',false)) order by m.criado_em,m.id) from recentes m),'[]'::jsonb),
+    'revisaoPendente',exists(select 1 from candidatas where not permitida)
+  ) into resultado;
+  return resultado;
+end $$;
+
+create or replace function public.vendas_reservar_resposta(p_oportunidade uuid,p_ator uuid,p_versao integer,p_mensagem uuid,p_texto text)
+returns jsonb language plpgsql security invoker set search_path = '' as $$
+declare ctx jsonb; m record;
+begin
+  if p_mensagem is null or p_texto is null or char_length(p_texto) not between 1 and 4000 or btrim(p_texto) = '' then
+    return pg_catalog.jsonb_build_object('ok',false,'codigo','invalido');
+  end if;
+  ctx := public.vendas_contexto_posse(p_oportunidade,p_ator,p_versao);
+  if ctx->>'ok' <> 'true' then return ctx; end if;
+  select id,atendimento_id,cliente_id,conversa_id,autor,direcao,conteudo,metadata,status into m
+    from public.mensagens where id = p_mensagem for update;
+  if found then
+    if m.atendimento_id is distinct from (ctx->>'id')::uuid or m.cliente_id is distinct from (ctx->>'clienteId')::uuid
+      or m.conversa_id is distinct from (ctx->>'conversaId')::uuid or m.autor <> 'atendente' or m.direcao <> 'saida'
+      or m.conteudo is distinct from p_texto or m.metadata->>'ator_id' is distinct from p_ator::text
+      or coalesce(m.metadata->'interno','false'::jsonb) <> 'false'::jsonb then
+      return pg_catalog.jsonb_build_object('ok',false,'codigo','conflito');
+    end if;
+    if m.status in ('enviada','entregue','lida') then return ctx || pg_catalog.jsonb_build_object('mensagemId',p_mensagem,'despachar',false); end if;
+    if m.metadata->>'estagio' is distinct from 'reservado' then
+      return pg_catalog.jsonb_build_object('ok',false,'codigo','envio_incerto');
+    end if;
+  else
+    insert into public.mensagens(id,conversa_id,cliente_id,atendimento_id,direcao,autor,tipo,conteudo,status,erro,metadata)
+      values(p_mensagem,(ctx->>'conversaId')::uuid,(ctx->>'clienteId')::uuid,(ctx->>'id')::uuid,'saida','atendente','text',p_texto,
+        'bloqueada','envio_em_processamento',pg_catalog.jsonb_build_object('ator_id',p_ator,'estagio','reservado'));
+  end if;
+  return ctx || pg_catalog.jsonb_build_object('mensagemId',p_mensagem,'despachar',true);
+end $$;
+
+create or replace function public.vendas_autorizar_resposta(p_oportunidade uuid,p_ator uuid,p_versao integer,p_mensagem uuid)
+returns jsonb language plpgsql security invoker set search_path = '' as $$
+declare ctx jsonb;
+begin
+  ctx := public.vendas_contexto_posse(p_oportunidade,p_ator,p_versao);
+  if ctx->>'ok' <> 'true' then return ctx; end if;
+  update public.mensagens set metadata = metadata || pg_catalog.jsonb_build_object('estagio','despachando')
+    where id = p_mensagem and atendimento_id = (ctx->>'id')::uuid and cliente_id = (ctx->>'clienteId')::uuid
+      and conversa_id = (ctx->>'conversaId')::uuid and autor = 'atendente' and direcao = 'saida'
+      and status = 'bloqueada' and metadata->>'ator_id' = p_ator::text and metadata->>'estagio' = 'reservado'
+      and coalesce(metadata->'interno','false'::jsonb) = 'false'::jsonb;
+  if not found then return pg_catalog.jsonb_build_object('ok',false,'codigo','conflito'); end if;
+  return ctx || pg_catalog.jsonb_build_object('mensagemId',p_mensagem);
+end $$;
+
+-- Mantém o trigger único de Peças; amplia apenas o contexto validado da entrada.
+create or replace function public.pecas_vincular_entrada_ativa()
+returns trigger language plpgsql security invoker set search_path = '' as $$
+declare alvo public.atendimentos_modulares%rowtype; ctx record;
+begin
+  if new.direcao = 'entrada' and new.autor = 'cliente'
+    and coalesce(new.metadata->'interno', 'false'::jsonb) = 'false'::jsonb then
+    new.atendimento_id := null;
+    select a.* into alvo from public.atendimento_canais s join public.atendimentos_modulares a on a.id = s.atendimento_id
+      where s.conversa_id = new.conversa_id and a.cliente_id = new.cliente_id and a.setor in ('pecas','vendas');
+    if not found or alvo.assumido_por is null then return new; end if;
+    select * into ctx from public.contexto_atendimento_modular(alvo.setor,coalesce(alvo.oportunidade_id,alvo.cotacao_id),alvo.assumido_por);
+    if not found or ctx.responsavel_id is distinct from alvo.dono_na_posse then return new; end if;
+    perform 1 from public.conversas c where c.id = new.conversa_id and c.cliente_id = new.cliente_id
+      and c.status = 'humano' and c.assumida_por is null for update;
+    if not found then return new; end if;
+    perform 1 from public.atendimentos_modulares a join public.atendimento_canais s on s.atendimento_id = a.id
+      where a.id = alvo.id and s.conversa_id = new.conversa_id and a.assumido_por = alvo.assumido_por
+        and a.dono_na_posse = ctx.responsavel_id and a.versao = alvo.versao;
+    if found then new.atendimento_id := alvo.id; end if;
+  end if;
+  return new;
+end $$;
+revoke all on function public.vendas_proteger_posse_aberta() from public,anon,authenticated,service_role;
+grant execute on function public.vendas_proteger_posse_aberta() to service_role;
+revoke all on function public.vendas_proteger_etapa_funil_em_posse() from public,anon,authenticated,service_role;
+grant execute on function public.vendas_proteger_etapa_funil_em_posse() to service_role;
+revoke all on function public.vendas_contexto_posse(uuid,uuid,integer) from public,anon,authenticated,service_role;
+grant execute on function public.vendas_contexto_posse(uuid,uuid,integer) to service_role;
+revoke all on function public.vendas_contexto_posse(uuid,uuid,integer,boolean) from public,anon,authenticated,service_role;
+grant execute on function public.vendas_contexto_posse(uuid,uuid,integer,boolean) to service_role;
+revoke all on function public.vendas_assumir_atendimento(uuid,uuid,integer) from public,anon,authenticated,service_role;
+grant execute on function public.vendas_assumir_atendimento(uuid,uuid,integer) to service_role;
+revoke all on function public.vendas_devolver_atendimento(uuid,uuid,integer) from public,anon,authenticated,service_role;
+grant execute on function public.vendas_devolver_atendimento(uuid,uuid,integer) to service_role;
+revoke all on function public.vendas_dialogo(uuid,uuid) from public,anon,authenticated,service_role;
+grant execute on function public.vendas_dialogo(uuid,uuid) to service_role;
+revoke all on function public.vendas_reservar_resposta(uuid,uuid,integer,uuid,text) from public,anon,authenticated,service_role;
+grant execute on function public.vendas_reservar_resposta(uuid,uuid,integer,uuid,text) to service_role;
+revoke all on function public.vendas_autorizar_resposta(uuid,uuid,integer,uuid) from public,anon,authenticated,service_role;
+grant execute on function public.vendas_autorizar_resposta(uuid,uuid,integer,uuid) to service_role;

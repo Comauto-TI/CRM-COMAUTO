@@ -1,8 +1,7 @@
-# Conversa no cartão de Vendas — proposta para o Claude
+# Conversa no cartão de Vendas — recorte aprovado
 
 Pedido registrado no commit de integração `9adcfd43e69250d4b3dad5287cde33d96da8e49b`, em 11/11/2026.
-Este documento prepara a implementação autorizada; não declara o contrato aprovado nem uma tela entregue.
-As revisões formais dos PRs #4 e #5 vêm primeiro.
+A decisão de posse foi confirmada pelo Claude no repasse de 11/11/2026. A implementação local está em validação; ainda não aplicada ao dev nem validada por login de Vendas. A revisão dos PRs permanece registrada separadamente.
 
 ## Recorte
 
@@ -11,21 +10,23 @@ Reutilizar o quadro comum, a apresentação WhatsApp e o outbound já existentes
 atividades, tarefas e vínculos atuais da oportunidade acessíveis no painel. Sem campanhas, templates novos,
 transferências avançadas ou histórico global do cliente nesta entrega.
 
-## Contrato proposto
+## Contrato
 
 - Vendedor opera a própria oportunidade; gerente/admin opera apenas no setor e nas unidades autorizadas.
   A função do domínio `podeMexer` já admite supervisão; a posse da conversa continua explícita e versionada.
-- **Ponto a confirmar com o Claude:** supervisão assume temporariamente a conversa de oportunidade alheia,
-  preservando `vendedor_id`, ou precisa reatribuir antes? Peças hoje exige a própria cotação para assumir;
-  a supervisão pode devolver uma posse elegível, mas não responde pela posse de outra pessoa.
+- **Decisão do Claude:** gerente de Vendas/admin pode assumir temporariamente oportunidade alheia,
+  preservando `vendedor_id`. A operação registra nota “Conversa assumida por X” na timeline e avisa o
+  vendedor na mesma transação. Não rouba uma posse vigente. Devolver libera o canal ao bot e conserva
+  o responsável; reatribuição permanente continua exclusivamente pelo domínio `vendas_transferir`.
 - Fila sem vendedor exige atribuição atômica pelo domínio antes da abertura do atendimento. Um GET não
   atribui, cria canal nem marca leitura. Sem conversa ainda criada, o DTO precisa permitir assumir sem
   inventar histórico. O cadastro de oportunidade e os filtros existentes devem continuar funcionando.
 - Canal físico único por cliente: reserva ativa de Peças/legado/outro atendimento impede segundo claimant.
   Assumir/devolver usa versão atual, ator ativo, unidade/setor e snapshot do responsável na transação.
 - Usar a proveniência de `vendas_encaminhamentos_bot` com referência de mensagem/conversa reais;
-  `origem_ref` pode ser código de marketing e não identifica uma mensagem. Definir qual encaminhamento
-  inicia o atendimento, sem anexar silenciosamente todo o conjunto de ledgers históricos da oportunidade.
+  `origem_ref` pode ser código de marketing e não identifica uma mensagem. A primeira abertura fixa somente o ledger mais recente comprovado da oportunidade (criado_em/referencia),
+  sem anexar o conjunto histórico. A referência fica congelada inclusive para abertura manual sem ledger;
+  replay não importa mensagens antigas ou novos ledgers. Marketing não substitui essa prova.
 - Somente a mensagem inicial comprovada e entradas recebidas durante a posse válida entram no diálogo.
   Mensagens internas, outras oportunidades, outros setores e histórico legado sem vínculo ficam fora.
   Nova origem ambígua bloqueia leitura daquele item e reserva/despacho; devolver permanece possível.
