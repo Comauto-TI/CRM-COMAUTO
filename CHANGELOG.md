@@ -21,6 +21,7 @@ Versionamento semântico a partir de **0.0.1** (decisão do Simão, 10/11/2026).
 - Troca de vendedor só pela transferência (registrada e avisada); saiu o campo solto do formulário de qualificação.
 - Painel sem animações contínuas nem desfoque.
 ### Corrigido
+- Aniversários: notas internas e mensagens com falha não contam como contato; datas respeitam o fuso configurado, a carteira é lida em páginas e lembretes pendentes não expiram depois de sete dias. Registro de contato, nota, auditoria e conclusão são atômicos; o pop-up só remove após sucesso e informa falhas. Administrador pode atuar nas unidades ativas; demais perfis mantêm carteira/unidade. Requer a migration `20261111134242_aniversarios_contatos`.
 - Meus lembretes orienta para a ficha do cliente e respeita o acesso do perfil nos links, inclusive Peças e Financeiro. Smoke de navegador atualizado para os seletores da central de atendimento atual.
 - Cadastro da equipe: origem do login validada em metadados controlados pelo servidor, retomada de cadastro parcial com senha provisória, busca de contas sem corte nas primeiras 20 páginas e proteção do próprio administrador contra desativação pelo formulário.
 - Encaminhamento interno de Peças/triagem: confirma registro apenas após gravar pedido, nota e avisos na mesma transação; repetição da mensagem preserva os efeitos únicos e destinatários incluem unidades adicionais. Contexto da conversa acompanha o `wamid`; requer a migration `20261111130139_encaminhamentos_bot`.

@@ -10,9 +10,9 @@ import { listarAniversarios } from "@/modulos/vendas/aniversarios-dados";
 import { quandoAniversario } from "@/modulos/vendas/aniversarios";
 import { contatoAniversarioAction, lembrarAniversarioAction } from "./_acoes/aniversarios";
 
-export default async function VisaoGeral({ searchParams }: { searchParams: Promise<{ erro?: string }> }) {
+export default async function VisaoGeral({ searchParams }: { searchParams: Promise<{ erro?: string; erro_aniversario?: string; aniv_pagina?: string }> }) {
   const u = await exigirAcesso();
-  const { erro } = await searchParams;
+  const { erro, erro_aniversario: erroAniversario, aniv_pagina: paginaAnivParam } = await searchParams;
   const cfg = await getConfig();
   const off = cfg.fuso_offset;
   const hoje = dataLocalISO(new Date(), off);
@@ -25,8 +25,19 @@ export default async function VisaoGeral({ searchParams }: { searchParams: Promi
   const verAtendimento = podeAcessar(u, "atendimento");
   const verCusto = podeAcessar(u, "financeiro");
   const verAniversarios = podeAcessar(u, "vendas");
-  const aniversarios = verAniversarios ? await listarAniversarios(u, hoje) : [];
+  let aniversarios: Awaited<ReturnType<typeof listarAniversarios>> = [];
+  let erroListaAniversarios = false;
+  if (verAniversarios) {
+    try {
+      aniversarios = await listarAniversarios(u, hoje, undefined, off);
+    } catch {
+      erroListaAniversarios = true;
+    }
+  }
   const supervisorAniv = u.papel === "admin" || u.papel === "gerente";
+  const paginasAniversarios = Math.max(1, Math.ceil(aniversarios.length / 15));
+  const paginaAniversarios = Math.max(1, Math.min(paginasAniversarios, /^\d{1,6}$/.test(paginaAnivParam ?? "") ? Number(paginaAnivParam) : 1));
+  const inicioAniversarios = (paginaAniversarios - 1) * 15;
   const multi = await nucleoAplicado();
   const doUsuario = <Q,>(q: Q): Q => (multi ? (q as unknown as { in: (c: string, v: string[]) => Q }).in("unidade", u.unidades) : q);
   const vazio = Promise.resolve({ data: null, count: null });
@@ -59,6 +70,7 @@ export default async function VisaoGeral({ searchParams }: { searchParams: Promi
     <>
       <Cabecalho titulo={`Olá, ${u.nome.split(" ")[0]}`} sub={`Resumo de hoje, ${formatarDataHora(new Date(), off).split(" às")[0]}`} />
       {erro === "sem_permissao" && <div className="alerta aviso">Seu perfil não tem acesso a essa área.</div>}
+      {verAniversarios && erroAniversario && <div className="alerta erro" role="alert">{erroAniversario.slice(0, 240)}</div>}
       {!cfg.bot_ativo && <div className="alerta erro">O assistente virtual está DESLIGADO. Todas as conversas estão indo para a recepção.</div>}
 
       <div className="grade g4">
@@ -73,7 +85,7 @@ export default async function VisaoGeral({ searchParams }: { searchParams: Promi
       </div>
 
       {verAniversarios && (
-        <section className="secao card">
+        <section className="secao card" id="aniversarios">
           <div className="aniv-cabecalho">
             <h2>Aniversários {supervisorAniv ? "das carteiras" : "da sua carteira"}</h2>
             <span className="mudo">próximos 7 dias e últimos 7 · 🟡 vem aí · 🟢 hoje · 🔴 passou sem contato</span>
@@ -81,11 +93,13 @@ export default async function VisaoGeral({ searchParams }: { searchParams: Promi
           {supervisorAniv && aniversarios.some((a) => a.estado === "passou") && (
             <div className="alerta erro">{aniversarios.filter((a) => a.estado === "passou").length} aniversário(s) passaram sem contato registrado.</div>
           )}
-          {!aniversarios.length ? (
+          {erroListaAniversarios ? (
+            <p className="alerta erro" role="alert">Não foi possível carregar os aniversários. Atualize a página para tentar novamente.</p>
+          ) : !aniversarios.length ? (
             <p className="mudo">Nenhum aniversário na janela. Preencha a data de nascimento na ficha do cliente (Clientes → Editar dados) para aparecer aqui.</p>
           ) : (
             <ul className="lista-aniversarios">
-              {aniversarios.slice(0, 15).map((a) => (
+              {aniversarios.slice(inicioAniversarios, inicioAniversarios + 15).map((a) => (
                 <li key={a.clienteId} className={`aniv-${a.estado}`}>
                   <span className="aniv-marca" aria-hidden="true">{a.estado === "passou" ? "🔴" : a.estado === "hoje" ? "🟢" : a.estado === "proximo" ? "🟡" : "✅"}</span>
                   <div className="aniv-info">
@@ -96,7 +110,7 @@ export default async function VisaoGeral({ searchParams }: { searchParams: Promi
                   </div>
                   {a.estado !== "feito" && (supervisorAniv || a.vendedorId === u.id) && (
                     <div className="aniv-acoes">
-                      <form action={contatoAniversarioAction}><input type="hidden" name="cliente_id" value={a.clienteId} /><button className="btn pequeno">Contato feito</button></form>
+                      <form action={contatoAniversarioAction}><input type="hidden" name="cliente_id" value={a.clienteId} /><input type="hidden" name="data_aniversario" value={a.data} /><button className="btn pequeno">Contato feito</button></form>
                       {a.lembreteAtivo
                         ? <span className="tag info">lembrete ativo</span>
                         : <form action={lembrarAniversarioAction}><input type="hidden" name="cliente_id" value={a.clienteId} /><button className="btn pequeno" title="Avisa toda vez que você abrir o painel, até marcar contato feito">Lembrar até eu falar</button></form>}
@@ -105,6 +119,13 @@ export default async function VisaoGeral({ searchParams }: { searchParams: Promi
                 </li>
               ))}
             </ul>
+          )}
+          {!erroListaAniversarios && aniversarios.length > 15 && (
+            <nav className="aniv-acoes" aria-label="Páginas de aniversários">
+              <span className="mudo">{inicioAniversarios + 1}–{Math.min(inicioAniversarios + 15, aniversarios.length)} de {aniversarios.length}</span>
+              {paginaAniversarios > 1 && <Link className="btn pequeno" href={`/painel?aniv_pagina=${paginaAniversarios - 1}#aniversarios`}>Anteriores</Link>}
+              {paginaAniversarios < paginasAniversarios && <Link className="btn pequeno" href={`/painel?aniv_pagina=${paginaAniversarios + 1}#aniversarios`}>Próximos</Link>}
+            </nav>
           )}
         </section>
       )}
