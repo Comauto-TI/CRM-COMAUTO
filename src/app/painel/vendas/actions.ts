@@ -6,10 +6,10 @@ import { exigirAcesso } from "@/lib/auth";
 import { getConfig } from "@/lib/config";
 import { localParaUtc } from "@/lib/time";
 import {
-  criarOportunidade, moverOportunidade, assumirOportunidade, atualizarQualificacao, registrarAtividade, criarTarefa, concluirTarefa, clienteDoCartao, vincularExterno, desvincularExterno,
+  criarOportunidade, moverOportunidade, assumirOportunidade, atualizarQualificacao, registrarAtividade, criarTarefa, concluirTarefa, clienteDoCartao, vincularExterno, desvincularExterno, transferirOportunidade, transferirCarteira,
 } from "@/modulos/vendas/dados";
 import { agendarLembrete, agendarMensagem } from "@/lib/agendados";
-import { lerValorBRL, ehChave, PAGAMENTOS, PRAZOS, TEMPERATURAS, QUALIFICACOES, TIPOS_ATIVIDADE, MOTIVOS_PERDA } from "@/modulos/vendas/regras";
+import { MOTIVOS_TRANSFERENCIA, lerValorBRL, ehChave, PAGAMENTOS, PRAZOS, TEMPERATURAS, QUALIFICACOES, TIPOS_ATIVIDADE, MOTIVOS_PERDA } from "@/modulos/vendas/regras";
 
 const texto = (f: FormData, k: string) => String(f.get(k) ?? "").trim();
 const valorBRL = lerValorBRL;
@@ -146,4 +146,23 @@ export async function desvincular(f: FormData) {
   const r = await desvincularExterno(u, id, texto(f, "tipo") === "avaliex" ? "avaliex" : "processo_vendas");
   revalidatePath("/painel/vendas");
   redirect(voltar(f, r.ok ? { op: id } : { op: id, erro: r.motivo }));
+}
+
+/** Transferir um lead para outro vendedor (caiu errado, férias...). */
+export async function transferir(f: FormData) {
+  const u = await exigirAcesso("vendas");
+  const id = texto(f, "id");
+  const motivo = texto(f, "motivo");
+  const r = await transferirOportunidade(u, id, texto(f, "para"), ehChave(MOTIVOS_TRANSFERENCIA, motivo) ? motivo : "outro", f.get("mover_carteira") === "on");
+  revalidatePath("/painel/vendas");
+  redirect(voltar(f, r.ok ? { op: id, ok: "transferido" } : { op: id, erro: r.motivo, transferir: "1" }));
+}
+
+/** Férias/saída: transferir os cartões abertos de um vendedor (para outro ou divididos no rodízio). Só supervisor. */
+export async function transferirCarteiraAction(f: FormData) {
+  const u = await exigirAcesso("vendas");
+  const motivo = texto(f, "motivo");
+  const r = await transferirCarteira(u, texto(f, "de"), texto(f, "para"), ehChave(MOTIVOS_TRANSFERENCIA, motivo) ? motivo : "ferias", f.get("mover_carteira") === "on");
+  revalidatePath("/painel/vendas");
+  redirect(voltar(f, r.ok ? { ok: "carteira", qtd: String(r.total) } : { erro: r.motivo }));
 }

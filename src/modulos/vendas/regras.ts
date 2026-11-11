@@ -203,3 +203,33 @@ export function temperaturaInicial(prazo: Prazo, pagamentoDefinido: boolean): Te
   if (prazo === "sem_prazo") return "frio";
   return "morno";
 }
+
+// ---------------------------------------------------------------------------
+// Transferência de leads (caiu errado / férias)
+// ---------------------------------------------------------------------------
+export const MOTIVOS_TRANSFERENCIA = { errado: "Caiu no vendedor errado", ferias: "Férias", folga: "Folga / ausência", saiu: "Saiu da empresa", outro: "Outro" } as const;
+export type MotivoTransferencia = keyof typeof MOTIVOS_TRANSFERENCIA;
+
+/** Quem pode transferir um cartão: o dono dele ou um supervisor (gerente/admin). Lead sem dono: só supervisor. */
+export function podeTransferir(u: { id: string; papel: Papel }, op: { vendedor_id: string | null }): boolean {
+  if (veTodasOportunidades(u)) return true;
+  return op.vendedor_id !== null && op.vendedor_id === u.id;
+}
+
+/**
+ * Férias: divide N cartões entre os vendedores que ficam, um por vez para quem está com MENOS abertas no momento
+ * (empate: quem recebeu lead há mais tempo, depois o id). Devolve o id escolhido para cada cartão, na ordem.
+ */
+export function distribuirRodizio(quantidade: number, vendedores: { id: string; abertas: number; ultimoLeadEm: string | null }[]): string[] {
+  if (!vendedores.length || quantidade <= 0) return [];
+  const carga = vendedores.map((v) => ({ ...v }));
+  const destino: string[] = [];
+  for (let i = 0; i < quantidade; i++) {
+    const escolhido = escolherVendedor(null, carga)!;
+    destino.push(escolhido);
+    const v = carga.find((x) => x.id === escolhido)!;
+    v.abertas++;
+    v.ultimoLeadEm = new Date(Date.UTC(2100, 0, 1, 0, 0, i)).toISOString(); // recebeu agora → vai para o fim do empate
+  }
+  return destino;
+}

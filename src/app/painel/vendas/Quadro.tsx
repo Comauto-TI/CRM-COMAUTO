@@ -4,6 +4,7 @@ import { useRef, useState, useTransition } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { moverCartao } from "./actions";
+import Icone from "../_components/Icone";
 import {
   diasNaEtapa, semaforoEtapa, posicaoEntre, tempoAtras, ordenarCartoes,
   TEMPERATURAS, MOTIVOS_PERDA, type Temperatura, type Ordenacao,
@@ -24,9 +25,9 @@ const iniciais = (nome: string | null) =>
   (nome ?? "?").split(/\s+/).filter(Boolean).slice(0, 2).map((p) => p[0]!.toUpperCase()).join("") || "?";
 
 export default function Quadro({
-  etapas, cartoes, podeMover, vendedores, linkBase, selecionado, ordem = "posicao",
+  etapas, cartoes, podeMover, podeTransferir = [], vendedores, linkBase, selecionado, ordem = "posicao",
 }: {
-  etapas: Etapa[]; cartoes: Cartao[]; podeMover: string[]; vendedores: Record<string, string>; linkBase: string; selecionado?: string; ordem?: Ordenacao;
+  etapas: Etapa[]; cartoes: Cartao[]; podeMover: string[]; podeTransferir?: string[]; vendedores: Record<string, string>; linkBase: string; selecionado?: string; ordem?: Ordenacao;
 }) {
   const router = useRouter();
   const [lista, setLista] = useState(cartoes);
@@ -38,6 +39,7 @@ export default function Quadro({
   const [pendente, iniciar] = useTransition();
   const dialogo = useRef<HTMLDialogElement>(null);
   const pode = new Set(podeMover);
+  const transferiveis = new Set(podeTransferir);
   const [agora] = useState(() => new Date());
 
   // mantém a lista sincronizada quando o servidor manda dados novos
@@ -99,8 +101,8 @@ export default function Quadro({
                   const movel = pode.has(c.id);
                   const vendedor = c.vendedor_id ? vendedores[c.vendedor_id] ?? "Vendedor" : null;
                   return (
+                    <div key={c.id} className="kanban-cartao-wrap">
                     <Link
-                      key={c.id}
                       href={`${linkBase}&op=${c.id}`}
                       scroll={false}
                       className={`kanban-cartao borda-${sem}${selecionado === c.id ? " selecionado" : ""}${arrastando === c.id ? " arrastando" : ""}`}
@@ -132,6 +134,12 @@ export default function Quadro({
                         {etapa.tipo === "aberta" && <span className={`dias dias-${sem}`} title="Dias nesta etapa">{dias}d na etapa</span>}
                       </div>
                     </Link>
+                    {transferiveis.has(c.id) && (
+                      <Link href={`${linkBase}&op=${c.id}&transferir=1`} scroll={false} className="botao-transferir" title="Transferir" aria-label={`Transferir ${c.cliente.nome ?? "lead"} para outro vendedor`}>
+                        <Icone nome="transferir" tamanho={15} />
+                      </Link>
+                    )}
+                    </div>
                   );
                 })}
                 {!doEstagio.length && <div className="kanban-vazio mudo">Nenhum cartão</div>}

@@ -4,7 +4,8 @@ import { auditar } from "@/lib/audit";
 import { buscarClientePorTelefone } from "@/lib/clientes-telefone";
 import { normalizarTelefone, mascararTelefone } from "@/lib/phone";
 import type { Usuario } from "@/lib/auth";
-import { veTodasOportunidades, podeMexer, podeAssumir, type EtapaResumo } from "./regras";
+import { veTodasOportunidades, podeMexer, podeAssumir, podeTransferir, distribuirRodizio, MOTIVOS_TRANSFERENCIA, type EtapaResumo, type MotivoTransferencia } from "./regras";
+import { notificar } from "@/lib/notificacoes";
 import { lerVinculoProcessoVendas, lerVinculoAvaliex } from "./vinculos";
 
 /** Acesso a dados do setor Vendas. SEMPRE chamado depois de exigirAcesso("vendas"). */
@@ -361,4 +362,107 @@ export async function desvincularExterno(u: Usuario, id: string, tipo: "processo
   await db().from("vendas_atividades").insert({ oportunidade_id: id, tipo: "nota", descricao: `Removeu o vínculo com ${tipo === "processo_vendas" ? "o Processo de Vendas" : "o Avaliex"}`, ator: u.email });
   await auditar(u.email, "desvincular_externo", "vendas_oportunidades", id, { tipo });
   return { ok: true };
+}
+
+// ---------------------------------------------------------------------------
+// Transferência de leads: um cartão (caiu errado) ou a carteira aberta inteira (férias)
+// ---------------------------------------------------------------------------
+async function vendedorValido(unidade: string, id: string) {
+  if (!/^[0-9a-f-]{36}$/i.test(id)) return null;
+  const { data } = await db().from("usuarios").select("user_id, nome").eq("user_id", id).eq("ativo", true).eq("unidade", unidade).in("papel", ["vendedor", "gerente"]).maybeSingle();
+  return data as { user_id: string; nome: string } | null;
+}
+
+export async function transferirOportunidade(
+  u: Usuario, id: string, novoId: string, motivo: MotivoTransferencia, moverCarteira: boolean,
+): Promise<{ ok: true } | { ok: false; motivo: string }> {
+  const op = await opParaAlterar(u, id);
+  if (!op) return { ok: false, motivo: "Oportunidade não encontrada" };
+  if (!podeTransferir(u, op)) return { ok: false, motivo: "Só o vendedor responsável ou o gerente transfere este cartão" };
+  if (novoId === op.vendedor_id) return { ok: false, motivo: "O cartão já está com esse vendedor" };
+  const novo = await vendedorValido(op.unidade, novoId);
+  if (!novo) return { ok: false, motivo: "Escolha um vendedor ativo desta unidade" };
+
+  // posse conferida na própria gravação: só transfere se o dono ainda for o mesmo que o usuário viu
+  let q = db().from("vendas_oportunidades").update({ vendedor_id: novo.user_id, atualizado_por: u.email }).eq("id", id).in("unidade", u.unidades);
+  q = op.vendedor_id ? q.eq("vendedor_id", op.vendedor_id) : q.is("vendedor_id", null);
+  const { data: gravou, error } = await q.select("cliente_id");
+  if (error || !gravou?.length) return { ok: false, motivo: "O cartão mudou de responsável. Recarregue a tela." };
+
+  const { data: antigo } = op.vendedor_id ? await db().from("usuarios").select("nome").eq("user_id", op.vendedor_id).maybeSingle() : { data: null };
+  const deNome = (antigo?.nome as string | undefined) ?? "sem vendedor";
+  await db().from("vendas_atividades").insert({
+    oportunidade_id: id, tipo: "nota", ator: u.email,
+    descricao: `Transferido de ${deNome} para ${novo.nome} (${MOTIVOS_TRANSFERENCIA[motivo]})${moverCarteira ? " · carteira do cliente também" : ""}`,
+  });
+  const clienteId = gravou[0].cliente_id as string;
+  if (moverCarteira) {
+    // só move a carteira se ela estava com o vendedor antigo (ou vazia) — não tira cliente de terceiro
+    let c = db().from("clientes").update({ vendedor_id: novo.user_id }).eq("id", clienteId);
+    c = op.vendedor_id ? c.or(`vendedor_id.is.null,vendedor_id.eq.${op.vendedor_id}`) : c.is("vendedor_id", null);
+    await c;
+  }
+  const { data: cli } = await db().from("clientes").select("nome").eq("id", clienteId).maybeSingle();
+  const { data: funil } = await db().from("vendas_funis").select("chave").eq("id", op.funil_id).maybeSingle();
+  if (novo.user_id !== u.id) {
+    await notificar(novo.user_id, {
+      tipo: "lead", unidade: op.unidade,
+      titulo: `Lead transferido para você: ${(cli?.nome as string | undefined) ?? "cliente"}`,
+      corpo: `De ${deNome} · ${MOTIVOS_TRANSFERENCIA[motivo]}`,
+      link: `/painel/vendas?funil=${(funil?.chave as string | undefined) ?? "novos"}&op=${id}`,
+    });
+  }
+  await auditar(u.email, "transferir_oportunidade", "vendas_oportunidades", id, { de: op.vendedor_id, para: novo.user_id, motivo, moverCarteira });
+  return { ok: true };
+}
+
+/** Férias/saída: passa os cartões ABERTOS de um vendedor para outro, ou divide entre os demais (rodízio). Só supervisor. */
+export async function transferirCarteira(
+  u: Usuario, deId: string, para: string, motivo: MotivoTransferencia, moverCarteira: boolean,
+): Promise<{ ok: true; total: number } | { ok: false; motivo: string }> {
+  if (!veTodasOportunidades(u)) return { ok: false, motivo: "Só gerente ou administrador transfere a carteira inteira" };
+  if (!/^[0-9a-f-]{36}$/i.test(deId)) return { ok: false, motivo: "Escolha o vendedor de origem" };
+  const { data: ops } = await db().from("vendas_oportunidades")
+    .select("id, unidade, cliente_id, funil_id").eq("vendedor_id", deId).is("fechado_em", null).in("unidade", u.unidades).limit(2000);
+  const lista = (ops ?? []) as { id: string; unidade: string; cliente_id: string; funil_id: string }[];
+  if (!lista.length) return { ok: false, motivo: "Esse vendedor não tem cartões abertos" };
+  const unidade = lista[0].unidade;
+
+  // destino: um vendedor escolhido ou o rodízio entre os ativos da unidade (sem o de origem)
+  let destinos: string[];
+  if (para === "rodizio") {
+    const { data: vs } = await db().from("usuarios").select("user_id").eq("ativo", true).eq("unidade", unidade).eq("papel", "vendedor").neq("user_id", deId);
+    const ids = (vs ?? []).map((v) => v.user_id as string);
+    if (!ids.length) return { ok: false, motivo: "Não há outros vendedores ativos para dividir" };
+    const { data: abertas } = await db().from("vendas_oportunidades").select("vendedor_id, criado_em").in("vendedor_id", ids).is("fechado_em", null);
+    const carga = ids.map((id) => {
+      const minhas = (abertas ?? []).filter((o) => o.vendedor_id === id);
+      return { id, abertas: minhas.length, ultimoLeadEm: minhas.map((o) => o.criado_em as string).sort().at(-1) ?? null };
+    });
+    destinos = distribuirRodizio(lista.length, carga);
+  } else {
+    const alvo = await vendedorValido(unidade, para);
+    if (!alvo || alvo.user_id === deId) return { ok: false, motivo: "Escolha outro vendedor ativo da unidade" };
+    destinos = lista.map(() => alvo.user_id);
+  }
+
+  const { data: nomes } = await db().from("usuarios").select("user_id, nome").in("user_id", [deId, ...new Set(destinos)]);
+  const nome = (id: string) => ((nomes ?? []).find((n) => n.user_id === id)?.nome as string | undefined) ?? "vendedor";
+  let total = 0;
+  const porDestino = new Map<string, number>();
+  for (let i = 0; i < lista.length; i++) {
+    const op = lista[i], novo = destinos[i];
+    const { data: gravou } = await db().from("vendas_oportunidades").update({ vendedor_id: novo, atualizado_por: u.email })
+      .eq("id", op.id).eq("vendedor_id", deId).is("fechado_em", null).select("id");
+    if (!gravou?.length) continue; // mudou no meio do caminho: não força
+    total++;
+    porDestino.set(novo, (porDestino.get(novo) ?? 0) + 1);
+    await db().from("vendas_atividades").insert({ oportunidade_id: op.id, tipo: "nota", ator: u.email, descricao: `Transferido de ${nome(deId)} para ${nome(novo)} (${MOTIVOS_TRANSFERENCIA[motivo]}, em lote)` });
+    if (moverCarteira) await db().from("clientes").update({ vendedor_id: novo }).eq("id", op.cliente_id).eq("vendedor_id", deId);
+  }
+  for (const [vendedor, qtd] of porDestino) {
+    await notificar(vendedor, { tipo: "lead", unidade, titulo: `${qtd} ${qtd === 1 ? "lead transferido" : "leads transferidos"} para você`, corpo: `Carteira de ${nome(deId)} · ${MOTIVOS_TRANSFERENCIA[motivo]}`, link: "/painel/vendas" });
+  }
+  await auditar(u.email, "transferir_carteira", "vendas_oportunidades", null, { de: deId, para, total, motivo, moverCarteira });
+  return { ok: true, total };
 }

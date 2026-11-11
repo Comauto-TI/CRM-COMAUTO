@@ -7,17 +7,18 @@ import {
   vendasDisponivel, funisDaUnidade, vendedoresDaUnidade, carregarQuadro, carregarOportunidade,
 } from "@/modulos/vendas/dados";
 import {
-  faixaFunil, taxaConversao, veTodasOportunidades, podeMexer, valorParaCampo,
+  faixaFunil, taxaConversao, veTodasOportunidades, podeMexer, podeTransferir, valorParaCampo, MOTIVOS_TRANSFERENCIA,
   PAGAMENTOS, PRAZOS, TEMPERATURAS, QUALIFICACOES, TIPOS_ATIVIDADE, MOTIVOS_PERDA, ORDENACOES, ehChave, type Ordenacao,
 } from "@/modulos/vendas/regras";
 import { Cabecalho, Vazio } from "../_components/ui";
 import Quadro from "./Quadro";
-import { novaOportunidade, assumir, salvarQualificacao, novaAtividade, novaTarefa, concluir, moverPeloFormulario, agendarNoCartao, vincular, desvincular } from "./actions";
+import { novaOportunidade, assumir, salvarQualificacao, novaAtividade, novaTarefa, concluir, moverPeloFormulario, agendarNoCartao, vincular, desvincular, transferir, transferirCarteiraAction } from "./actions";
+import Icone from "../_components/Icone";
 import { lerVinculos, linkProcessoVendas, linkAvaliex } from "@/modulos/vendas/vinculos";
 
 type SP = {
   funil?: string; vendedor?: string; op?: string; nova?: string; erro?: string; ok?: string;
-  nome?: string; telefone?: string; temperatura?: string; periodo?: string; ordem?: string; aviso?: string;
+  nome?: string; telefone?: string; temperatura?: string; periodo?: string; ordem?: string; aviso?: string; transferir?: string; qtd?: string;
 };
 
 export default async function Vendas({ searchParams }: { searchParams: Promise<SP> }) {
@@ -79,6 +80,29 @@ export default async function Vendas({ searchParams }: { searchParams: Promise<S
               <Link key={f.id} href={`/painel/vendas?funil=${f.chave}`} className={f.id === funil.id ? "ativo" : ""}>{f.nome}</Link>
             ))}
           </nav>
+          {supervisor && (
+            <details className="transferir-carteira">
+              <summary className="botao-transferir" title="Transferir carteira (férias)" aria-label="Transferir carteira de um vendedor"><Icone nome="transferir" tamanho={16} /></summary>
+              <form action={transferirCarteiraAction} className="form card transferir-carteira-form">
+                <input type="hidden" name="funil" value={funil.chave} />
+                <strong>Transferir carteira (férias, saída)</strong>
+                <label>De<select name="de" required defaultValue="">
+                  <option value="" disabled>Vendedor que vai sair</option>
+                  {vendedores.map((v) => <option key={v.user_id} value={v.user_id}>{v.nome}</option>)}
+                </select></label>
+                <label>Para<select name="para" required defaultValue="rodizio">
+                  <option value="rodizio">Dividir entre os outros vendedores (rodízio)</option>
+                  {vendedores.map((v) => <option key={v.user_id} value={v.user_id}>{v.nome}</option>)}
+                </select></label>
+                <label>Motivo<select name="motivo" defaultValue="ferias">
+                  {Object.entries(MOTIVOS_TRANSFERENCIA).filter(([k]) => k !== "errado").map(([k, v]) => <option key={k} value={k}>{v}</option>)}
+                </select></label>
+                <label className="check"><input type="checkbox" name="mover_carteira" /> Mover também os clientes da carteira (saída definitiva)</label>
+                <small className="mudo">Passa só os cartões ABERTOS. Cada vendedor que recebe é avisado; tudo fica registrado.</small>
+                <button className="btn primario">Transferir carteira</button>
+              </form>
+            </details>
+          )}
           <Link href={`${linkBase}&nova=1`} className="btn primario" scroll={false}>+ Nova oportunidade</Link>
         </Cabecalho>
 
@@ -113,6 +137,7 @@ export default async function Vendas({ searchParams }: { searchParams: Promise<S
         </form>
 
         {sp.erro && !sp.op && <div className="alerta erro">{sp.erro}</div>}
+        {sp.ok === "carteira" && <div className="alerta ok">Carteira transferida: {sp.qtd} {sp.qtd === "1" ? "cartão" : "cartões"}. Os vendedores que receberam foram avisados.</div>}
 
         <div className="vendas-topo">
           <div className="card funil-faixa" aria-label="Funil de conversão dos últimos 90 dias">
@@ -171,6 +196,7 @@ export default async function Vendas({ searchParams }: { searchParams: Promise<S
           etapas={quadro.etapas}
           cartoes={quadro.cartoes}
           podeMover={quadro.cartoes.filter((c) => podeMexer(u, c)).map((c) => c.id)}
+          podeTransferir={quadro.cartoes.filter((c) => podeTransferir(u, c)).map((c) => c.id)}
           vendedores={nomes}
           linkBase={linkBase}
           selecionado={detalhe?.op.id}
@@ -189,13 +215,37 @@ export default async function Vendas({ searchParams }: { searchParams: Promise<S
           <aside className="painel-lateral card" aria-label="Detalhe da oportunidade">
             <Link href={linkBase} className="fechar" aria-label="Fechar" scroll={false}>×</Link>
             <div className="mudo">{op.etapa?.nome} · desde {formatarDataHora(op.entrou_na_etapa_em, cfg.fuso_offset)}</div>
-            <h2>{op.cliente?.nome ?? "Cliente"}</h2>
+            <div className="painel-titulo">
+              <h2>{op.cliente?.nome ?? "Cliente"}</h2>
+              {podeTransferir(u, op) && (
+                <a href="#transferir" className="botao-transferir" title="Transferir" aria-label="Transferir para outro vendedor"><Icone nome="transferir" tamanho={15} /></a>
+              )}
+            </div>
             <div className="mudo">{op.cliente?.telefone}{op.cliente?.cidade ? ` · ${op.cliente.cidade}` : ""}</div>
             {sp.erro && <div className="alerta erro">{sp.erro}</div>}
             {sp.ok === "salvo" && <div className="alerta ok">Salvo.</div>}
             {sp.ok === "agendado" && <div className="alerta ok">Agendado. Acompanhe em <Link href="/painel/lembretes">Meus lembretes</Link>.</div>}
             {sp.ok === "vinculado" && <div className="alerta ok">Vínculo salvo.</div>}
             {sp.ok === "vinculado_aviso" && <div className="alerta aviso">Vínculo salvo. {sp.aviso?.slice(0, 160)}</div>}
+            {sp.ok === "transferido" && <div className="alerta ok">Lead transferido. O novo vendedor foi avisado.</div>}
+            {podeTransferir(u, op) && (
+              <details id="transferir" className="transferir-bloco" open={sp.transferir === "1"}>
+                <summary><Icone nome="transferir" tamanho={14} /> Transferir para outro vendedor</summary>
+                <form action={transferir} className="form">
+                  <input type="hidden" name="id" value={op.id} /><input type="hidden" name="funil" value={funil.chave} />
+                  <label>Para<select name="para" required defaultValue="">
+                    <option value="" disabled>Escolha o vendedor</option>
+                    {vendedores.filter((v) => v.user_id !== op.vendedor_id).map((v) => <option key={v.user_id} value={v.user_id}>{v.nome}{v.user_id === u.id ? " (você)" : ""}</option>)}
+                  </select></label>
+                  <label>Motivo<select name="motivo" defaultValue="errado">
+                    {Object.entries(MOTIVOS_TRANSFERENCIA).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
+                  </select></label>
+                  <label className="check"><input type="checkbox" name="mover_carteira" defaultChecked /> Mover também a carteira do cliente</label>
+                  <small className="mudo">Desmarque se for só temporário (férias, folga): o cliente continua na carteira atual.</small>
+                  <button className="btn primario">Transferir</button>
+                </form>
+              </details>
+            )}
 
             <dl className="ficha">
               <dt>Vendedor</dt><dd>{op.vendedor_id ? nomes[op.vendedor_id] ?? "—" : "Sem vendedor"}</dd>
@@ -239,11 +289,6 @@ export default async function Vendas({ searchParams }: { searchParams: Promise<S
                   )}
                   <label className="check"><input type="checkbox" name="tem_troca" defaultChecked={op.tem_troca} /> Tem usado na troca</label>
                   <label>Usado na troca<input name="troca" defaultValue={op.troca_descricao ?? ""} maxLength={300} /></label>
-                  {supervisor && (
-                    <label>Vendedor responsável<select name="vendedor_id" defaultValue={op.vendedor_id ?? ""}>
-                      <option value="">Sem vendedor</option>{vendedores.map((v) => <option key={v.user_id} value={v.user_id}>{v.nome}</option>)}
-                    </select></label>
-                  )}
                   <button className="btn primario">Salvar</button>
                 </fieldset>
               </form>

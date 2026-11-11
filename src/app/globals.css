@@ -1128,3 +1128,24 @@ a { color: var(--vw-azul); }
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation: none !important; transition: none !important; scroll-behavior: auto !important; }
 }
+
+/* ===== Transferir lead (botão de setas; ao passar o mouse aparece "Transferir") ===== */
+.kanban-cartao-wrap { position: relative; }
+.botao-transferir {
+  display: inline-grid; place-items: center; width: 28px; height: 28px; border-radius: 8px; flex: none;
+  border: 1px solid var(--borda); background: var(--superficie); color: var(--texto-2); cursor: pointer;
+  list-style: none; text-decoration: none !important; transition: color var(--transicao), border-color var(--transicao), background var(--transicao);
+}
+.botao-transferir::-webkit-details-marker { display: none; }
+.botao-transferir:hover, .botao-transferir:focus-visible { color: var(--vw-azul); border-color: var(--vw-azul); background: rgba(0, 64, 197, 0.06); }
+.kanban-cartao-wrap > .botao-transferir { position: absolute; top: 8px; right: 8px; width: 26px; height: 26px; }
+.painel-titulo { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding-right: 26px; }
+.transferir-bloco { margin: 10px 0; border: 1px solid var(--borda); border-radius: var(--raio); padding: 8px 12px; }
+.transferir-bloco[open] { border-color: var(--vw-azul); }
+.transferir-bloco summary { cursor: pointer; font-weight: 700; color: var(--vw-marinho); display: flex; align-items: center; gap: 6px; font-size: 13px; }
+.transferir-bloco .form { margin-top: 10px; }
+.transferir-carteira { position: relative; }
+.transferir-carteira > summary { width: 36px; height: 36px; }
+.transferir-carteira-form { position: absolute; right: 0; top: 42px; z-index: 30; width: 340px; padding: 14px; box-shadow: 0 16px 40px rgba(0, 30, 80, 0.18); }
+.transferir-carteira .check, .transferir-bloco .check { display: flex; gap: 6px; align-items: center; }
+.transferir-carteira .check input, .transferir-bloco .check input { width: auto; }

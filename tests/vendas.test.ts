@@ -167,3 +167,19 @@ describe("quadro estilo referência — tempo e ordenação", () => {
     expect(ordenarCartoes([a, b], "contato").map((c) => c.id)).toEqual(["b", "a"]); // nunca contatado primeiro
   });
 });
+
+import { podeTransferir, distribuirRodizio } from "@/modulos/vendas/regras";
+describe("transferência de leads", () => {
+  it("dono ou supervisor transfere; colega não; lead sem dono só o supervisor", () => {
+    expect(podeTransferir({ id: "v1", papel: "vendedor" }, { vendedor_id: "v1" })).toBe(true);
+    expect(podeTransferir({ id: "v2", papel: "vendedor" }, { vendedor_id: "v1" })).toBe(false);
+    expect(podeTransferir({ id: "v1", papel: "vendedor" }, { vendedor_id: null })).toBe(false);
+    expect(podeTransferir({ id: "g", papel: "gerente" }, { vendedor_id: "v1" })).toBe(true);
+  });
+  it("férias: divide entre os que ficam, equilibrando a carga", () => {
+    const r = distribuirRodizio(5, [{ id: "a", abertas: 3, ultimoLeadEm: null }, { id: "b", abertas: 0, ultimoLeadEm: null }]);
+    expect(r).toEqual(["b", "b", "b", "a", "b"]); // b vai de 0 a 3 empatando com a; depois alterna
+    expect(r.filter((x) => x === "a").length + r.filter((x) => x === "b").length).toBe(5);
+    expect(distribuirRodizio(3, [])).toEqual([]);
+  });
+});
