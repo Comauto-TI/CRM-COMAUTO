@@ -51,3 +51,33 @@ export function mascararDocumento(doc: string | null | undefined): string {
   if (d.length === 14) return `**.${d.slice(2, 5)}.${d.slice(5, 8)}/${d.slice(8, 12)}-**`;
   return d ? "***" : "";
 }
+
+export function cnpjValido(cnpj: string): boolean {
+  if (!/^\d{14}$/.test(cnpj) || /^(\d)\1{13}$/.test(cnpj)) return false;
+  const dv = (base: string) => {
+    const pesos = base.length === 12 ? [5, 4, 3, 2, 9, 8, 7, 6, 5, 4, 3, 2] : [6, 5, 4, 3, 2, 9, 8, 7, 6, 5, 4, 3, 2];
+    const r = base.split("").reduce((s, d, i) => s + Number(d) * pesos[i], 0) % 11;
+    return r < 2 ? 0 : 11 - r;
+  };
+  return dv(cnpj.slice(0, 12)) === Number(cnpj[12]) && dv(cnpj.slice(0, 13)) === Number(cnpj[13]);
+}
+
+/** Documento digitado na ficha: CPF ou CNPJ válidos → só dígitos; vazio → null; inválido → erro. */
+export function lerDocumento(entrada: string): { ok: true; valor: string | null } | { ok: false; motivo: string } {
+  const d = (entrada ?? "").replace(/\D/g, "");
+  if (!d) return { ok: true, valor: null };
+  if (d.length === 11) return cpfValido(d) ? { ok: true, valor: d } : { ok: false, motivo: "CPF inválido" };
+  if (d.length === 14) return cnpjValido(d) ? { ok: true, valor: d } : { ok: false, motivo: "CNPJ inválido" };
+  return { ok: false, motivo: "Documento deve ser CPF (11 dígitos) ou CNPJ (14)" };
+}
+
+/** Data de nascimento (input type=date, AAAA-MM-DD): entre 1900 e hoje. */
+export function lerNascimento(entrada: string, hoje: Date = new Date()): { ok: true; valor: string | null } | { ok: false; motivo: string } {
+  const t = (entrada ?? "").trim();
+  if (!t) return { ok: true, valor: null };
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(t);
+  if (!m) return { ok: false, motivo: "Data de nascimento inválida" };
+  const d = new Date(Date.UTC(+m[1], +m[2] - 1, +m[3]));
+  if (d.getUTCMonth() !== +m[2] - 1 || +m[1] < 1900 || d.getTime() > hoje.getTime()) return { ok: false, motivo: "Data de nascimento inválida" };
+  return { ok: true, valor: t };
+}

@@ -8,7 +8,7 @@ import { listarClientes, fichaCliente, ORIGENS_CLIENTE, FILTRO_AUTORIZACAO } fro
 import { tempoAtras } from "@/modulos/vendas/regras";
 import { db } from "@/lib/supabase/admin";
 import { Cabecalho, Status, Vazio } from "../_components/ui";
-import { anonimizar, optoutManual, importarCSV, agendarNaFicha } from "./actions";
+import { anonimizar, optoutManual, importarCSV, agendarNaFicha, editarCliente } from "./actions";
 
 type SP = {
   q?: string; nome?: string; telefone?: string; cidade?: string; origem?: string; autorizacao?: string; atalho?: string; vendedor?: string;
@@ -161,14 +161,33 @@ export default async function Clientes({ searchParams }: { searchParams: Promise
             <div className="mudo">{c.telefone}{c.cidade ? ` · ${c.cidade}` : ""}</div>
             {sp.erro && <div className="alerta erro">{sp.erro}</div>}
             {sp.ok === "agendado" && <div className="alerta ok">Agendado. Acompanhe em <Link href="/painel/lembretes">Meus lembretes</Link>.</div>}
+            {sp.ok === "dados" && <div className="alerta ok">Dados salvos.</div>}
 
             <dl className="ficha">
               <dt>Origem</dt><dd>{rotuloOrigem(c.origem)}</dd>
               {nucleo && (<><dt>Vendedor</dt><dd>{ficha.vendedorNome ?? "Sem vendedor"}</dd></>)}
               {c.cpf_cnpj && (<><dt>CPF/CNPJ</dt><dd>{c.cpf_cnpj}</dd></>)}
               {c.email && (<><dt>E-mail</dt><dd>{c.email}</dd></>)}
+              {nucleo && c.data_nascimento && (<><dt>Nascimento</dt><dd>{c.data_nascimento.split("-").reverse().join("/")}</dd></>)}
               <dt>Último contato</dt><dd>{c.ultimo_contato_em ? formatarDataHora(c.ultimo_contato_em, cfg.fuso_offset) : "—"}</dd>
             </dl>
+
+            {nucleo && !c.anonimizado && (
+              <details className="secao" open={sp.erro !== undefined && !sp.ok}>
+                <summary style={{ cursor: "pointer", fontWeight: 700 }}>Editar dados</summary>
+                <form action={editarCliente} className="form">
+                  <input type="hidden" name="id" value={c.id} />
+                  <label>Nome<input name="nome" defaultValue={c.nome ?? ""} maxLength={120} /></label>
+                  <label>E-mail<input name="email" type="email" defaultValue={c.email ?? ""} maxLength={160} /></label>
+                  <label>Cidade<input name="cidade" defaultValue={c.cidade ?? ""} maxLength={80} /></label>
+                  <label>Data de nascimento<input name="nascimento" type="date" defaultValue={c.data_nascimento ?? ""} /></label>
+                  <label>CPF ou CNPJ<input name="documento" inputMode="numeric" maxLength={20} placeholder={c.cpf_cnpj ? `Atual: ${c.cpf_cnpj} — deixe vazio para manter` : "Somente se o cliente informar"} /></label>
+                  {c.cpf_cnpj && <label className="check"><input type="checkbox" name="remover_documento" /> Remover o documento da ficha</label>}
+                  <button className="btn primario">Salvar dados</button>
+                  <small className="mudo">Telefone não se edita aqui: é a identidade do cliente no WhatsApp.</small>
+                </form>
+              </details>
+            )}
 
             <section className="secao">
               <h3>Autorizações (LGPD)</h3>

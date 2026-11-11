@@ -6,6 +6,9 @@ import { formatarBRL, formatarDataHora, localParaUtc, dataLocalISO } from "@/lib
 import { Cabecalho, Kpi, Status } from "./_components/ui";
 import { podeAcessar } from "@/lib/permissoes";
 import { nucleoAplicado } from "@/lib/usuarios";
+import { listarAniversarios } from "@/modulos/vendas/aniversarios-dados";
+import { quandoAniversario } from "@/modulos/vendas/aniversarios";
+import { contatoAniversarioAction, lembrarAniversarioAction } from "./_acoes/aniversarios";
 
 export default async function VisaoGeral({ searchParams }: { searchParams: Promise<{ erro?: string }> }) {
   const u = await exigirAcesso();
@@ -21,6 +24,9 @@ export default async function VisaoGeral({ searchParams }: { searchParams: Promi
   const verAgenda = podeAcessar(u, "agenda");
   const verAtendimento = podeAcessar(u, "atendimento");
   const verCusto = podeAcessar(u, "financeiro");
+  const verAniversarios = podeAcessar(u, "vendas");
+  const aniversarios = verAniversarios ? await listarAniversarios(u, hoje) : [];
+  const supervisorAniv = u.papel === "admin" || u.papel === "gerente";
   const multi = await nucleoAplicado();
   const doUsuario = <Q,>(q: Q): Q => (multi ? (q as unknown as { in: (c: string, v: string[]) => Q }).in("unidade", u.unidades) : q);
   const vazio = Promise.resolve({ data: null, count: null });
@@ -65,6 +71,43 @@ export default async function VisaoGeral({ searchParams }: { searchParams: Promi
           <Kpi rotulo="Bloqueios de segurança hoje" valor={bloqueios.count ?? 0} />
         ) : null}
       </div>
+
+      {verAniversarios && (
+        <section className="secao card">
+          <div className="aniv-cabecalho">
+            <h2>Aniversários {supervisorAniv ? "das carteiras" : "da sua carteira"}</h2>
+            <span className="mudo">próximos 7 dias e últimos 7 · 🟡 vem aí · 🟢 hoje · 🔴 passou sem contato</span>
+          </div>
+          {supervisorAniv && aniversarios.some((a) => a.estado === "passou") && (
+            <div className="alerta erro">{aniversarios.filter((a) => a.estado === "passou").length} aniversário(s) passaram sem contato registrado.</div>
+          )}
+          {!aniversarios.length ? (
+            <p className="mudo">Nenhum aniversário na janela. Preencha a data de nascimento na ficha do cliente (Clientes → Editar dados) para aparecer aqui.</p>
+          ) : (
+            <ul className="lista-aniversarios">
+              {aniversarios.slice(0, 15).map((a) => (
+                <li key={a.clienteId} className={`aniv-${a.estado}`}>
+                  <span className="aniv-marca" aria-hidden="true">{a.estado === "passou" ? "🔴" : a.estado === "hoje" ? "🟢" : a.estado === "proximo" ? "🟡" : "✅"}</span>
+                  <div className="aniv-info">
+                    <strong><Link href={`/painel/clientes?c=${a.clienteId}`}>{a.nome}</Link></strong>
+                    <small className="mudo">
+                      {a.estado === "feito" ? "contato feito" : quandoAniversario(a.dias)} · {a.data.slice(8, 10)}/{a.data.slice(5, 7)}{a.idade ? ` · ${a.idade} anos` : ""}{supervisorAniv && a.vendedor ? ` · ${a.vendedor}` : ""}
+                    </small>
+                  </div>
+                  {a.estado !== "feito" && (supervisorAniv || a.vendedorId === u.id) && (
+                    <div className="aniv-acoes">
+                      <form action={contatoAniversarioAction}><input type="hidden" name="cliente_id" value={a.clienteId} /><button className="btn pequeno">Contato feito</button></form>
+                      {a.lembreteAtivo
+                        ? <span className="tag info">lembrete ativo</span>
+                        : <form action={lembrarAniversarioAction}><input type="hidden" name="cliente_id" value={a.clienteId} /><button className="btn pequeno" title="Avisa toda vez que você abrir o painel, até marcar contato feito">Lembrar até eu falar</button></form>}
+                    </div>
+                  )}
+                </li>
+              ))}
+            </ul>
+          )}
+        </section>
+      )}
 
       {!verAgenda && !verAtendimento && !verCusto && (
         <div className="card secao">

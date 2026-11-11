@@ -60,3 +60,27 @@ describe("notificações — link só para dentro do painel", () => {
     expect(linkInternoSeguro(null)).toBeNull();
   });
 });
+
+import { cnpjValido, lerDocumento, lerNascimento } from "@/lib/busca";
+describe("ficha do cliente — documento e nascimento", () => {
+  it("CNPJ com dígitos verificadores", () => {
+    expect(cnpjValido("11222333000181")).toBe(true);
+    expect(cnpjValido("11222333000182")).toBe(false);
+    expect(cnpjValido("00000000000000")).toBe(false);
+  });
+  it("documento: CPF/CNPJ válidos viram só dígitos; vazio = sem documento", () => {
+    expect(lerDocumento("529.982.247-25")).toEqual({ ok: true, valor: "52998224725" });
+    expect(lerDocumento("11.222.333/0001-81")).toEqual({ ok: true, valor: "11222333000181" });
+    expect(lerDocumento("")).toEqual({ ok: true, valor: null });
+    expect(lerDocumento("123").ok).toBe(false);
+    expect(lerDocumento("529.982.247-24")).toEqual({ ok: false, motivo: "CPF inválido" });
+  });
+  it("nascimento: data real, entre 1900 e hoje", () => {
+    const hoje = new Date("2026-11-11T12:00:00Z");
+    expect(lerNascimento("1985-03-14", hoje)).toEqual({ ok: true, valor: "1985-03-14" });
+    expect(lerNascimento("", hoje)).toEqual({ ok: true, valor: null });
+    expect(lerNascimento("2027-01-01", hoje).ok).toBe(false);
+    expect(lerNascimento("1985-02-30", hoje).ok).toBe(false);
+    expect(lerNascimento("1850-01-01", hoje).ok).toBe(false);
+  });
+});

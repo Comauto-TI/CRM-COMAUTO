@@ -4,6 +4,8 @@ import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 
 type Notif = { id: string; tipo: string; titulo: string; corpo: string | null; link: string | null; criado_em: string };
+type Insistente = { id: string; clienteId: string; nome: string; dias: number };
+const quando = (d: number) => (d === 0 ? "é hoje" : d === 1 ? "é amanhã" : d === -1 ? "foi ontem" : d > 0 ? `em ${d} dias` : `foi há ${-d} dias`);
 
 const ICONE: Record<string, string> = { lead: "🚗", pecas: "🔧", atendimento: "💬", aniversario: "🎂", tarefa: "⏰", alerta: "⚠️", sistema: "ℹ️" };
 
@@ -31,6 +33,16 @@ function bipe() {
 export default function AlertaNotificacoes() {
   const router = useRouter();
   const [itens, setItens] = useState<Notif[]>([]);
+  // lembrete insistente: volta a cada abertura do painel; o × só esconde nesta visita
+  const [insistentes, setInsistentes] = useState<Insistente[]>([]);
+  const [escondidos, setEscondidos] = useState<Set<string>>(new Set());
+  async function contatoFeito(l: Insistente) {
+    setInsistentes((x) => x.filter((i) => i.id !== l.id));
+    try {
+      await fetch("/api/painel/notificacoes", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ contatoAniversario: l.clienteId }) });
+    } catch { /* tenta de novo na próxima abertura */ }
+    router.refresh();
+  }
   const vistos = useRef<Set<string> | null>(null);
 
   async function marcar(ids: string[]) {
@@ -54,7 +66,8 @@ export default function AlertaNotificacoes() {
       try {
         const r = await fetch("/api/painel/notificacoes", { cache: "no-store" });
         if (!r.ok) return;
-        const { naoLidas } = (await r.json()) as { naoLidas: Notif[] };
+        const { naoLidas, insistentes: ins } = (await r.json()) as { naoLidas: Notif[]; insistentes?: Insistente[] };
+        if (ativo) setInsistentes(ins ?? []);
         if (!ativo) return;
         const primeira = vistos.current === null;
         if (primeira) vistos.current = new Set();
@@ -80,9 +93,21 @@ export default function AlertaNotificacoes() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  if (!itens.length) return null;
+  const insVisiveis = insistentes.filter((l) => !escondidos.has(l.id));
+  if (!itens.length && !insVisiveis.length) return null;
   return (
     <div className="toast-pilha topo" aria-live="polite" aria-label="Notificações">
+      {insVisiveis.slice(0, 3).map((l) => (
+        <div key={`ins-${l.id}`} className="toast notif-aniversario insistente" role="alert">
+          <button className="toast-fechar" onClick={() => setEscondidos((s) => new Set(s).add(l.id))} aria-label="Esconder até a próxima vez que abrir o painel">×</button>
+          <strong>🎂 Aniversário de {l.nome} {quando(l.dias)}</strong>
+          <div className="mudo">Lembrete insistente: volta toda vez que você abrir o painel até registrar o contato.</div>
+          <div className="toast-acoes">
+            <button className="btn pequeno primario" onClick={() => contatoFeito(l)}>Contato feito</button>
+            <a className="btn pequeno" href={`/painel/clientes?c=${l.clienteId}`}>Abrir ficha</a>
+          </div>
+        </div>
+      ))}
       {itens.slice(0, 3).map((n) => (
         <div key={n.id} className={`toast notif-${n.tipo}`} onClick={() => abrir(n)} role="button" tabIndex={0}
           onKeyDown={(e) => { if (e.key === "Enter") abrir(n); }}>

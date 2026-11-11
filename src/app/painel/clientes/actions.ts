@@ -10,6 +10,7 @@ import { registrarConsentimento, aplicarOptout } from "@/lib/consent";
 import { getConfig } from "@/lib/config";
 import { localParaUtc } from "@/lib/time";
 import { agendarLembrete, agendarMensagem } from "@/lib/agendados";
+import { lerDocumento, lerNascimento } from "@/lib/busca";
 import { buscarClientePorTelefone } from "@/lib/clientes-telefone";
 
 /** LGPD: anonimiza o titular (mantém só o mínimo para comprovar opt-out/consentimentos). */
@@ -89,4 +90,41 @@ export async function importarCSV(formData: FormData) {
   }
   await auditar(u.email, "importar_base", "clientes", null, { ok, invalidos, optout, origem, tipos });
   redirect(`/painel/clientes?msg=import_ok&ok=${ok}&inv=${invalidos}&opt=${optout}`);
+}
+
+/** Ficha do cliente: editar dados básicos. CPF não vem preenchido (LGPD): vazio = manter o atual. */
+export async function editarCliente(formData: FormData) {
+  const u = await exigirAcesso("clientes");
+  const id = String(formData.get("id") ?? "");
+  const volta = (q: string) => `/painel/clientes?c=${encodeURIComponent(id)}&${q}`;
+  if (!/^[0-9a-f-]{36}$/i.test(id)) redirect("/painel/clientes");
+  const { data: atual } = await db().from("clientes").select("id, anonimizado").eq("id", id).maybeSingle();
+  if (!atual || atual.anonimizado) redirect(volta("erro=Cliente%20indispon%C3%ADvel"));
+
+  const nome = String(formData.get("nome") ?? "").trim().slice(0, 120);
+  const email = String(formData.get("email") ?? "").trim().toLowerCase().slice(0, 160);
+  const cidade = String(formData.get("cidade") ?? "").trim().slice(0, 80);
+  if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email)) redirect(volta("erro=E-mail%20inv%C3%A1lido"));
+  const nasc = lerNascimento(String(formData.get("nascimento") ?? ""));
+  if (!nasc.ok) redirect(volta(`erro=${encodeURIComponent(nasc.motivo)}`));
+  const patch: Record<string, unknown> = { nome: nome || null, email: email || null, cidade: cidade || null, data_nascimento: nasc.ok ? nasc.valor : null, atualizado_em: new Date().toISOString() };
+
+  const docTexto = String(formData.get("documento") ?? "");
+  if (docTexto.trim()) {
+    const doc = lerDocumento(docTexto);
+    if (!doc.ok) redirect(volta(`erro=${encodeURIComponent(doc.motivo)}`));
+    if (doc.ok && doc.valor) {
+      // ficha única: o mesmo CPF/CNPJ não pode estar em duas fichas
+      const { data: outro } = await db().from("clientes").select("id, nome").eq("cpf_cnpj", doc.valor).neq("id", id).limit(1).maybeSingle();
+      if (outro) redirect(volta(`erro=${encodeURIComponent(`Esse documento já está na ficha de ${(outro.nome as string | null) ?? "outro cliente"} — mesclar fichas é a próxima ferramenta`)}`));
+      patch.cpf_cnpj = doc.valor;
+    }
+  }
+  if (formData.get("remover_documento") === "on") patch.cpf_cnpj = null;
+
+  const { error } = await db().from("clientes").update(patch).eq("id", id).eq("anonimizado", false);
+  if (error) redirect(volta("erro=N%C3%A3o%20foi%20poss%C3%ADvel%20salvar"));
+  await auditar(u.email, "editar_cliente", "cliente", id, { campos: Object.keys(patch).filter((k) => k !== "atualizado_em") });
+  revalidatePath("/painel/clientes");
+  redirect(volta("ok=dados"));
 }

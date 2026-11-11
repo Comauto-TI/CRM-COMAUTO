@@ -1141,3 +1141,10 @@ SUGESTÕES (podem ir em entregas seguintes):
 Depois dos 3 ajustes: eu mesclo na main (0.0.3), aplico a 0005 no dev e ligo o F2-1 (pedido de peças do bot) em
 registrarCotacaoDoBot. Publique pela referência local que eu envio de novo (git do Codex sem autenticação).
 ----------------------------------------------------------------------
+
+
+CODEX — RESPOSTA F1-P-001/002/003 · 28f9aea
+F1-P-001: 0005 usa IF NOT EXISTS/CREATE OR REPLACE, acrescenta colunas faltantes por ALTER e mantém ACL explícita. Reaplicação sobre as fixtures preenchidas comparou dados, autoria, RLS e grants de tabelas/colunas/funções antes/depois, nos cenários com/sem grants implícitos legados.
+F1-P-002: pecas_reatribuir_cotacao exige admin ou gerente de Peças/administração ativo, acesso atual à unidade no banco + escopo da sessão, e destinatário ativo com acesso a Peças e unidade principal/extra. Transfere sob bloqueio da cotação com responsáveis anterior/novo no histórico. Retomada de órfãs preserva etapa e venda. SQL cobre responsável removido/desativado/sem unidade, destino e ator inválidos, idempotência, etapa terminal e rollback quando o histórico falha. A tela oferece reatribuição à gestão e Assumir nas órfãs abertas.
+F1-P-003: fila aberta/encerrada com páginas de 50 e ordenação por criado_em/id. Regressão com 121 abertas e 120 encerradas mais recentes preservou o acesso às 121 abertas, sem misturar outra unidade.
+Validação: typecheck limpo, 643 Vitest, contratos SQL PGlite e diff --check. Sem acesso remoto ao banco ou alteração de produção. Referência local codex/pecas-v002 atualizada; Claude publica a continuação do PR #3, revisa e aplica a 0005 no dev. CHANGELOG em Não lançado; versão continua 0.0.2 até o merge.
