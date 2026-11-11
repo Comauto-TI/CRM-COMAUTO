@@ -242,7 +242,8 @@ export async function criarOportunidade(
   return { ok: true, id: op.id };
 }
 
-export async function moverOportunidade(u: Usuario, id: string, etapaId: string, posicao: number | null, motivoPerda?: string): Promise<Resultado> {
+/** valorGanho: valor fechado informado ao soltar em "Ganho" (já interpretado e validado); só vale para etapa ganho. */
+export async function moverOportunidade(u: Usuario, id: string, etapaId: string, posicao: number | null, motivoPerda?: string, valorGanho?: number | null): Promise<Resultado> {
   const op = await opParaAlterar(u, id);
   if (!op) return { ok: false, motivo: "Oportunidade não encontrada" };
   if (!podeMexer(u, op)) return { ok: false, motivo: "Só o vendedor responsável ou o gerente pode mover este cartão" };
@@ -253,6 +254,7 @@ export async function moverOportunidade(u: Usuario, id: string, etapaId: string,
   const patch: Record<string, unknown> = { etapa_id: etapaId, atualizado_por: u.email };
   if (posicao !== null && Number.isFinite(posicao)) patch.posicao = posicao;
   if (etapa.tipo === "perdido") patch.motivo_perda = motivoPerda!.trim().slice(0, 200);
+  if (etapa.tipo === "ganho" && typeof valorGanho === "number" && Number.isFinite(valorGanho) && valorGanho > 0) patch.valor_estimado = valorGanho;
   const r = await gravarComPosse(u, id, patch);
   if (r === "conflito") return { ok: false, motivo: "O cartão mudou de responsável. Recarregue a tela." };
   if (r === "erro") return { ok: false, motivo: "Não foi possível mover" };

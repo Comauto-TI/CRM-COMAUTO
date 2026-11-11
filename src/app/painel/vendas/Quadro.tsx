@@ -24,6 +24,12 @@ const PERDA = {
   botao: "Marcar como perdida",
 };
 
+const GANHO = {
+  titulo: "Venda fechada!",
+  explicacao: "Qual foi o valor da venda? Assim as métricas e a previsão do mês ficam certas. Pode deixar em branco e preencher depois.",
+  botao: "Marcar como ganha",
+};
+
 export default function Quadro({
   etapas, cartoes, podeMover, podeTransferir = [], vendedores, linkBase, selecionado, ordem = "posicao",
 }: {
@@ -61,6 +67,7 @@ export default function Quadro({
       cartoes={lista}
       mover={moverCartao}
       perda={PERDA}
+      ganho={GANHO}
       selecionado={selecionado}
       ordem={ordem}
       textos={{ semResponsavel: "sem vendedor", naoMovel: "Somente o vendedor responsável ou o gerente move este cartão", transferir: "Transferir para outro vendedor:" }}

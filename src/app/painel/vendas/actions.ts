@@ -42,10 +42,17 @@ export async function novaOportunidade(f: FormData) {
 }
 
 /** Chamado pelo quadro (arrastar cartão). Devolve o resultado para a tela avisar. */
-export async function moverCartao(id: string, etapaId: string, posicao: number | null, motivoPerda?: string) {
+export async function moverCartao(id: string, etapaId: string, posicao: number | null, motivoPerda?: string, valorGanho?: string) {
   const u = await exigirAcesso("vendas");
   const motivo = motivoPerda && (MOTIVOS_PERDA as readonly string[]).includes(motivoPerda) ? motivoPerda : motivoPerda?.slice(0, 200);
-  const r = await moverOportunidade(u, String(id), String(etapaId), typeof posicao === "number" ? posicao : null, motivo);
+  // valor digitado ao ganhar: mesma leitura do formulário (aceita 150.000,00 / R$ 1.234,56); inválido ou absurdo = ignora
+  let valor: number | null = null;
+  if (typeof valorGanho === "string" && valorGanho.trim()) {
+    const v = valorBRL(valorGanho.slice(0, 40));
+    if (v === null || v <= 0 || v > 50_000_000) return { ok: false as const, motivo: "Valor da venda inválido. Use o formato 150.000,00" };
+    valor = v;
+  }
+  const r = await moverOportunidade(u, String(id), String(etapaId), typeof posicao === "number" ? posicao : null, motivo, valor);
   revalidatePath("/painel/vendas");
   return r;
 }

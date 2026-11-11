@@ -43,18 +43,21 @@ export type TextosQuadro = {
 };
 
 export type PerdaQuadro = { titulo: string; explicacao: string; motivos: readonly string[]; botao: string };
+/** Ao soltar em "ganho": pede o valor fechado (texto livre em R$, o SERVIDOR interpreta e valida). Vazio = mantém o valor atual. */
+export type GanhoQuadro = { titulo: string; explicacao: string; botao: string };
 
 const brl = (v: number | null) =>
   (v ?? 0).toLocaleString("pt-BR", { style: "currency", currency: "BRL", minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
 export default function QuadroKanban({
-  colunas, cartoes, mover, textos, perda, selecionado, ordem = "posicao",
+  colunas, cartoes, mover, textos, perda, ganho, selecionado, ordem = "posicao",
 }: {
   colunas: ColunaQuadro[];
   cartoes: CartaoQuadro[];
-  mover: (id: string, colunaId: string, posicao: number, motivoPerda?: string) => Promise<ResultadoMover>;
+  mover: (id: string, colunaId: string, posicao: number, motivoPerda?: string, valorGanho?: string) => Promise<ResultadoMover>;
   textos: TextosQuadro;
   perda?: PerdaQuadro; // sem isso, soltar numa coluna "perdido" não pede motivo
+  ganho?: GanhoQuadro; // sem isso, soltar numa coluna "ganho" não pede valor
   selecionado?: string;
   ordem?: Ordenacao;
 }) {
@@ -65,19 +68,22 @@ export default function QuadroKanban({
   const [erro, setErro] = useState<string | null>(null);
   const [pendentePerda, setPendentePerda] = useState<{ id: string; colunaId: string; posicao: number } | null>(null);
   const [motivo, setMotivo] = useState<string>(perda?.motivos[0] ?? "");
+  const [pendenteGanho, setPendenteGanho] = useState<{ id: string; colunaId: string; posicao: number } | null>(null);
+  const [valor, setValor] = useState("");
   const [pendente, iniciar] = useTransition();
   const dialogo = useRef<HTMLDialogElement>(null);
+  const dialogoGanho = useRef<HTMLDialogElement>(null);
   const [agora] = useState(() => new Date());
 
   // mantém a lista sincronizada quando o servidor manda dados novos
   const [base, setBase] = useState(cartoes);
   if (base !== cartoes) { setBase(cartoes); setLista(cartoes); }
 
-  function enviar(id: string, colunaId: string, posicao: number, motivoPerda?: string) {
+  function enviar(id: string, colunaId: string, posicao: number, motivoPerda?: string, valorGanho?: string) {
     const anterior = lista;
     setLista((l) => l.map((c) => (c.id === id ? { ...c, colunaId, posicao, entrouEm: c.colunaId === colunaId ? c.entrouEm : new Date().toISOString() } : c)));
     iniciar(async () => {
-      const r = await mover(id, colunaId, posicao, motivoPerda);
+      const r = await mover(id, colunaId, posicao, motivoPerda, valorGanho);
       if (!r.ok) { setLista(anterior); setErro(r.motivo); }
       else { setErro(null); router.refresh(); }
     });
@@ -95,6 +101,12 @@ export default function QuadroKanban({
     if (coluna.tipo === "perdido" && perda) {
       setPendentePerda({ id, colunaId: coluna.id, posicao });
       dialogo.current?.showModal();
+      return;
+    }
+    if (coluna.tipo === "ganho" && ganho) {
+      setPendenteGanho({ id, colunaId: coluna.id, posicao });
+      setValor(atual.valor ? atual.valor.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : "");
+      dialogoGanho.current?.showModal();
       return;
     }
     enviar(id, coluna.id, posicao);
@@ -189,6 +201,26 @@ export default function QuadroKanban({
             <div className="acoes" style={{ marginTop: 14 }}>
               <button className="btn" value="cancelar">Cancelar</button>
               <button className="btn primario" value="ok">{perda.botao}</button>
+            </div>
+          </form>
+        </dialog>
+      )}
+
+      {ganho && (
+        <dialog ref={dialogoGanho} className="dialogo" onClose={() => setPendenteGanho(null)}>
+          <form
+            method="dialog"
+            onSubmit={(e) => {
+              if ((e.nativeEvent as SubmitEvent).submitter?.getAttribute("value") !== "ok" || !pendenteGanho) return;
+              enviar(pendenteGanho.id, pendenteGanho.colunaId, pendenteGanho.posicao, undefined, valor.trim() || undefined);
+            }}
+          >
+            <h2>{ganho.titulo}</h2>
+            <p className="mudo">{ganho.explicacao}</p>
+            <input value={valor} onChange={(e) => setValor(e.target.value)} inputMode="decimal" placeholder="R$ 0,00" aria-label="Valor da venda" />
+            <div className="acoes" style={{ marginTop: 14 }}>
+              <button className="btn" value="cancelar">Cancelar</button>
+              <button className="btn primario" value="ok">{ganho.botao}</button>
             </div>
           </form>
         </dialog>
