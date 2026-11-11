@@ -27,7 +27,7 @@ const UUID_ATENDIMENTO = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a
 const uuidAtendimento = (v: unknown): v is string => typeof v === "string" && v.length === 36 && UUID_ATENDIMENTO.test(v);
 
 async function possuiAtendimentoModular(clienteId: string): Promise<boolean> {
-  const { count, error } = await db().from("atendimentos_modulares")
+  const { count, error } = await db().from("atendimentos_modulares_ativos")
     .select("id", { count: "exact", head: true }).eq("cliente_id", clienteId);
   if (error || count === null || !Number.isSafeInteger(count) || count < 0) throw new Error("verificacao_atendimento_indisponivel");
   return count > 0;

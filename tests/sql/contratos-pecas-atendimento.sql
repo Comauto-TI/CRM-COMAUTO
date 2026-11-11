@@ -405,7 +405,7 @@ end $$;
 select pg_temp.pm_erro(format('update public.mensagens set atendimento_id=(select id from public.atendimentos_modulares where cotacao_id=%L) where id=%L',pg_temp.pm_principal(),pg_temp.pm_uuid(402)),'23514',null,'postgres');
 select pg_temp.pm_erro(format('insert into public.mensagens(id,conversa_id,cliente_id,atendimento_id,direcao,autor,conteudo) values(%L,%L,%L,(select id from public.atendimentos_modulares where cotacao_id=%L),''saida'',''atendente'',''Identidade forjada'')',pg_temp.pm_uuid(499),pg_temp.pm_uuid(204),pg_temp.pm_uuid(104),pg_temp.pm_principal()),'23503','mensagens_atendimento_dialogo_fk','postgres');
 
--- APIs SQL fechadas e canais aderentes removidos definitivamente das views gerais.
+-- APIs SQL fechadas e negócios ainda abertos fora das views gerais, inclusive após devolver.
 do $$ declare assinatura text; papel text; tabela text; r jsonb; nome text;
 begin
   foreach assinatura in array array[
@@ -434,7 +434,7 @@ begin
   end loop;
   set local role service_role;
   if exists(select 1 from public.conversas_legadas where id in (pg_temp.pm_uuid(201),pg_temp.pm_uuid(208),pg_temp.pm_uuid(216)))
-    or exists(select 1 from public.mensagens_legadas where conversa_id=pg_temp.pm_uuid(201)) then raise exception 'Piloto devolvido ou ativo voltou ao legado.'; end if;
+    or exists(select 1 from public.mensagens_legadas where conversa_id=pg_temp.pm_uuid(201)) then raise exception 'Negócio ainda aberto voltou ao legado após devolver ou durante a posse.'; end if;
   if not exists(select 1 from public.conversas_legadas where id=pg_temp.pm_uuid(203)) then raise exception 'Canal legado sem adesão desapareceu.'; end if;
   reset role;
 end $$;

@@ -1410,3 +1410,11 @@ Integração: banco primeiro (0005/0006 sobre a consolidação2006bf2), núcleo 
 [OBTIDO] Formatador compartilhado usa v??0. Adaptador Peças acrescenta 'Valor a cotar'; o componente comum foi preservado. Alinhar ajuste do formatador com Claude na revisão.
 [TIPO] sugestao
 [GRAVIDADE] baixa
+
+[ID] CR-PEC-001
+[ARQUIVO] supabase/migrations/0006_atendimento.sql; src/lib/messaging/outbound.ts; src/lib/handoff.ts
+[TESTE] Cliente com Peças/Vendas encerradas pede novo atendimento geral; cliente ainda no setor pede atendente.
+[ESPERADO] Encerrados sem reserva retornam à recepção; ativos avisam responsável ou apoio elegível, sem roubar posse e sem silêncio em falha.
+[OBTIDO] Revisão do Claude confirmou bloqueio histórico permanente no núcleo7c44e9c. Correção local centraliza ATIVO em view servidor (negócio aberto OU reserva), usada por leitura legada e outbound. Mensagens associadas continuam fora do histórico geral. RPC notifica pela central existente e audita atomicamente; tools/handler verificam retorno, não anunciam transferência em erro e não copiam trecho bruto do cliente.
+[TIPO] bug corrigido localmente, aguardando revisão/aplicação de dev
+[GRAVIDADE] alta

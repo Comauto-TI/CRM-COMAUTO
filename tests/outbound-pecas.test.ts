@@ -1,12 +1,11 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { responderLivre, notificar, type ContextoAtendimento } from "@/lib/messaging/outbound";
 
-const f = vi.hoisted(() => ({ enviar: vi.fn(), botoes: vi.fn(), template: vi.fn(), autorizar: vi.fn(), open: true, optout: 0 as number | null, optoutError: null as unknown, modular: 0 as number | null, modularError: null as unknown, status: "bot", statusError: null as unknown, persistError: null as unknown, persisted: true, ops: [] as Array<{ tabela: string; acao: string; dados: unknown; filtros: Array<[string, unknown]> }>, calls: [] as string[] }));
+const f = vi.hoisted(() => ({ enviar: vi.fn(), botoes: vi.fn(), template: vi.fn(), autorizar: vi.fn(), open: true, optout: 0 as number | null, optoutError: null as unknown, modular: 0 as number | null, modularError: null as unknown, historicos: 0, templateAprovado: true, consentimentos: ["servico"], status: "bot", statusError: null as unknown, persistError: null as unknown, persisted: true, ops: [] as Array<{ tabela: string; acao: string; dados: unknown; filtros: Array<[string, unknown]> }>, calls: [] as string[] }));
 const clienteId = "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa", conv = "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb", att = "cccccccc-cccc-4ccc-8ccc-cccccccccccc", msg = "dddddddd-dddd-4ddd-8ddd-dddddddddddd";
 vi.mock("@/lib/whatsapp/client", () => ({ enviarTexto: f.enviar, enviarBotoes: f.botoes, enviarTemplate: f.template }));
 vi.mock("@/lib/time", () => ({ janela24hAberta: () => f.open, dentroHorarioEnvio: () => true }));
 vi.mock("@/lib/config", () => ({ getConfig: async () => ({ horario_envio: {}, fuso_offset: "-03:00" }) }));
-vi.mock("@/lib/messaging/regras", () => ({ decidirEnvio: () => ({ acao: "livre" }), preencherCorpo: () => "Notificação fictícia" }));
 vi.mock("@/lib/supabase/admin", () => ({ db: () => ({ from(tabela: string) {
   let acao = "select"; let dados: unknown; const filtros: Array<[string, unknown]> = [];
   const resolver = () => {
@@ -14,10 +13,11 @@ vi.mock("@/lib/supabase/admin", () => ({ db: () => ({ from(tabela: string) {
     if (acao !== "select") { f.ops.push({ tabela, acao, dados, filtros }); return { data: tabela === "mensagens" && acao === "update" && f.persisted ? { id: msg } : null, error: tabela === "mensagens" ? f.persistError : null }; }
     if (tabela === "clientes") return { data: { id: clienteId, telefone: "5511999991234", nome: "Cliente", ultimo_contato_em: "2026-11-11T12:00:00Z", anonimizado: false }, error: null };
     if (tabela === "optouts") return { count: f.optout, error: f.optoutError };
-    if (tabela === "atendimentos_modulares") return { count: f.modular, error: f.modularError };
+    if (tabela === "atendimentos_modulares_ativos") return { count: f.modular, error: f.modularError };
+    if (tabela === "atendimentos_modulares") return { count: f.historicos, error: null };
     if (tabela === "conversas") return { data: { id: conv, status: f.status }, error: f.statusError };
-    if (tabela === "templates") return { data: { nome: "fixture", idioma: "pt_BR", categoria_meta: "UTILITY", finalidade: "servico", corpo_exemplo: "Olá", botoes: [], status_aprovacao: "aprovado", ativo: true }, error: null };
-    if (tabela === "consentimentos") return { data: [{ tipo: "servico" }], error: null };
+    if (tabela === "templates") return { data: { nome: "fixture", idioma: "pt_BR", categoria_meta: "UTILITY", finalidade: "servico", corpo_exemplo: "Olá", botoes: [], status_aprovacao: f.templateAprovado ? "aprovado" : "pendente", ativo: true }, error: null };
+    if (tabela === "consentimentos") return { data: f.consentimentos.map(tipo => ({ tipo })), error: null };
     throw new Error("Tabela inesperada " + tabela);
   };
   const q = { select() { return q; }, eq(k: string, v: unknown) { filtros.push([k, v]); return q; }, in(k: string, v: unknown) { filtros.push([k, v]); return q; }, order() { return q; }, limit() { return q; },
@@ -29,7 +29,7 @@ const contexto = (): ContextoAtendimento => ({ id: att, mensagemId: msg, convers
 const pedido = () => ({ clienteId, texto: "Resposta fictícia", autor: "atendente" as const, contextoAtendimento: contexto() });
 
 beforeEach(() => {
-  vi.clearAllMocks(); f.open = true; f.optout = 0; f.optoutError = null; f.modular = 0; f.modularError = null; f.status = "bot"; f.statusError = null; f.persistError = null; f.persisted = true; f.ops = []; f.calls = [];
+  vi.clearAllMocks(); f.open = true; f.optout = 0; f.optoutError = null; f.modular = 0; f.modularError = null; f.historicos = 0; f.templateAprovado = true; f.consentimentos = ["servico"]; f.status = "bot"; f.statusError = null; f.persistError = null; f.persisted = true; f.ops = []; f.calls = [];
   f.enviar.mockResolvedValue({ ok: true, wamid: "wamid.envio.fixture" }); f.botoes.mockResolvedValue({ ok: true, wamid: "wamid.botoes.fixture" }); f.template.mockResolvedValue({ ok: true, wamid: "wamid.template.fixture" });
   f.autorizar.mockImplementation(async () => { f.calls.push("autorizar"); return true; });
   vi.stubGlobal("fetch", vi.fn(() => { throw new Error("HTTP real proibido"); }));
@@ -74,11 +74,46 @@ describe("outbound Peças resultado de persistência/HTTP", () => {
 });
 
 describe("outbound cerca do legado e compatibilidade", () => {
-  it.each([1, null, "erro"] as const)("atendente sem contexto e cadastro modular%s não envia", async valor => { if (valor === "erro") f.modularError = { message: "fixture_interno" }; else f.modular = valor; expect((await responderLivre({ clienteId, texto: "Legado", autor: "atendente" })).ok).toBe(false); expect(f.enviar).not.toHaveBeenCalled(); });
+  it.each([1, null, -1, 1.5, Number.POSITIVE_INFINITY, "erro"] as const)("atendente sem contexto e atendimento ativo/contagem inválida%s não envia", async valor => { if (valor === "erro") f.modularError = { message: "fixture_interno" }; else f.modular = valor; expect((await responderLivre({ clienteId, texto: "Legado", autor: "atendente" })).ok).toBe(false); expect(f.enviar).not.toHaveBeenCalled(); expect(f.calls).toContain("atendimentos_modulares_ativos:select"); });
   it("atendente legado sem ticket mantém INSERT e atualização da conversa", async () => { expect((await responderLivre({ clienteId, texto: "Legado", autor: "atendente" })).ok).toBe(true); expect(f.ops.map(o => [o.tabela, o.acao])).toEqual([["mensagens", "insert"], ["conversas", "update"]]); });
+  it.each(["42501", "PGRST205"])("view ativa com erro %s permanece bloqueada mesmo retornando count zero", async code => {
+    f.modular = 0; f.modularError = { code };
+    expect(await responderLivre({ clienteId, texto: "Não deve sair", autor: "atendente" })).toEqual({ ok: false, motivo: "verificacao_indisponivel" });
+    expect(await notificar({ clienteId, uso: "retomada_atendimento", valores: ["Cliente"] })).toEqual({ ok: false, motivo: "verificacao_indisponivel" });
+    expect(f.enviar).not.toHaveBeenCalled(); expect(f.template).not.toHaveBeenCalled(); expect(f.ops).toHaveLength(0);
+    expect(f.calls).not.toContain("atendimentos_modulares:select");
+  });
   it("bot em voo vê estado humano fresco e fica calado", async () => { f.status = "humano"; expect(await responderLivre({ clienteId, texto: "Bot", autor: "bot" })).toEqual({ ok: false, motivo: "atendimento_humano" }); expect(f.enviar).not.toHaveBeenCalled(); });
   it("erro ao revalidar status do bot falha fechado", async () => { f.statusError = { message: "fixture_interno" }; expect((await responderLivre({ clienteId, texto: "Bot", autor: "bot" })).ok).toBe(false); expect(f.enviar).not.toHaveBeenCalled(); });
   it("confirmação fixa de optout do sistema continua permitida", async () => { f.optout = 1; expect((await responderLivre({ clienteId, texto: "Descadastro confirmado", autor: "sistema" })).ok).toBe(true); expect(f.calls).not.toContain("optouts:select"); });
-  it.each([1, null, "erro"] as const)("retomada legada modular%s não manda texto nem template", async valor => { if (valor === "erro") f.modularError = { message: "fixture_interno" }; else f.modular = valor; expect((await notificar({ clienteId, uso: "retomada_atendimento", valores: ["Cliente"] })).ok).toBe(false); expect(f.enviar).not.toHaveBeenCalled(); expect(f.template).not.toHaveBeenCalled(); });
-  it("notificação fora do piloto conserva o fluxo existente", async () => { f.modular = 1; expect((await notificar({ clienteId, uso: "confirmacao_agendamento", valores: ["Cliente"] })).ok).toBe(true); expect(f.calls).not.toContain("atendimentos_modulares:select"); expect(f.ops[0].acao).toBe("insert"); });
+  it.each([1, null, -1, 1.5, Number.POSITIVE_INFINITY, "erro"] as const)("retomada legada ativa/contagem inválida%s não manda texto nem template", async valor => { if (valor === "erro") f.modularError = { message: "fixture_interno" }; else f.modular = valor; expect((await notificar({ clienteId, uso: "retomada_atendimento", valores: ["Cliente"] })).ok).toBe(false); expect(f.enviar).not.toHaveBeenCalled(); expect(f.template).not.toHaveBeenCalled(); expect(f.calls).toContain("atendimentos_modulares_ativos:select"); });
+  it("cliente somente com vínculos encerrados pode receber resposta geral", async () => {
+    f.historicos = 2;
+    expect(await responderLivre({ clienteId, texto: "Novo atendimento geral", autor: "atendente" })).toMatchObject({ ok: true, modo: "livre" });
+    expect(f.enviar).toHaveBeenCalledTimes(1);
+    expect(f.calls).toContain("atendimentos_modulares_ativos:select");
+    expect(f.calls).not.toContain("atendimentos_modulares:select");
+  });
+  it.each(["optout", "janela"] as const)("encerrados não dispensam %s para resposta geral", async bloqueio => {
+    f.historicos = 2;
+    if (bloqueio === "optout") f.optout = 1; else f.open = false;
+    expect(await responderLivre({ clienteId, texto: "Não deve sair", autor: "atendente" })).toEqual({ ok: false, motivo: bloqueio === "optout" ? "optout" : "janela_24h_fechada" });
+    expect(f.enviar).not.toHaveBeenCalled();
+  });
+  it("retomada de cliente com encerrados usa template aprovado fora da janela", async () => {
+    f.historicos = 1; f.open = false;
+    expect(await notificar({ clienteId, uso: "retomada_atendimento", valores: ["Cliente"], preferirLivre: false })).toMatchObject({ ok: true, modo: "template" });
+    expect(f.template).toHaveBeenCalledExactlyOnceWith("5511999991234", "fixture", "pt_BR", [{ texto: "Cliente" }], []);
+    expect(f.enviar).not.toHaveBeenCalled();
+    expect(f.calls).not.toContain("atendimentos_modulares:select");
+  });
+  it.each(["optout", "template", "consentimento"] as const)("retomada após encerramento mantém a exigência de %s", async bloqueio => {
+    f.historicos = 1; f.open = false;
+    if (bloqueio === "optout") f.optout = 1;
+    if (bloqueio === "template") f.templateAprovado = false;
+    if (bloqueio === "consentimento") f.consentimentos = [];
+    expect(await notificar({ clienteId, uso: "retomada_atendimento", valores: ["Cliente"], preferirLivre: false })).toEqual({ ok: false, motivo: bloqueio === "optout" ? "optout" : bloqueio === "template" ? "template_nao_aprovado" : "sem_consentimento_servico" });
+    expect(f.enviar).not.toHaveBeenCalled(); expect(f.template).not.toHaveBeenCalled();
+  });
+  it("notificação fora do piloto conserva o fluxo existente", async () => { f.modular = 1; expect((await notificar({ clienteId, uso: "confirmacao_agendamento", valores: ["Cliente"] })).ok).toBe(true); expect(f.calls).not.toContain("atendimentos_modulares_ativos:select"); expect(f.ops[0].acao).toBe("insert"); });
 });

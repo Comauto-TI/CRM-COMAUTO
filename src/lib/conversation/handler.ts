@@ -10,7 +10,7 @@ import { verificarEntrada, mensagemRecusa, filtrarSaida, mascararDadosSensiveis 
 import { detectarOptout, pediuAtendente, pedidoLGPD } from "@/lib/security/optout";
 import { responderLivre, consentimentosAtivos } from "@/lib/messaging/outbound";
 import { aplicarOptout } from "@/lib/consent";
-import { transferirParaHumano } from "@/lib/handoff";
+import { transferirParaHumano, avisarFalhaTransferencia } from "@/lib/handoff";
 import { confirmarAgendamento, cancelarAgendamento, agendamentosDoCliente } from "@/lib/scheduling/booking";
 import { registrarEventoSeguranca } from "@/lib/audit";
 import { lancarCustoMeta } from "@/lib/costs";
@@ -343,8 +343,15 @@ async function tratarMensagem(args: {
     return;
   }
 
-  // 2) Conversa com a recepção: a IA fica calada (a recepção vê no painel)
-  if (conv.status === "humano") return;
+  // 2) A IA fica calada no canal humano. Pedido explícito/LGPD ainda precisa avisar a equipe.
+  if (conv.status === "humano") {
+    if (pediuAtendente(textoSeguro) || pedidoLGPD(textoSeguro)) {
+      const r = await transferirParaHumano(cliente.id, pedidoLGPD(textoSeguro) ? "pedido LGPD (dados pessoais)" : "cliente pediu atendente")
+        .catch(() => ({ ok: false as const }));
+      if (!r.ok) await avisarFalhaTransferencia(cliente.id);
+    }
+    return;
+  }
 
   // 3) Botões
   let textoParaAgente = textoSeguro;
@@ -363,7 +370,8 @@ async function tratarMensagem(args: {
   // 5) Humano: pedido explícito, LGPD ou bot desligado
   if (!cfg.bot_ativo || pediuAtendente(textoParaAgente) || pedidoLGPD(textoParaAgente)) {
     const motivo = !cfg.bot_ativo ? "assistente desligado no painel" : pedidoLGPD(textoParaAgente) ? "pedido LGPD (dados pessoais)" : "cliente pediu atendente";
-    await transferirParaHumano(cliente.id, `${motivo}: "${textoParaAgente.slice(0, 80)}"`);
+    const r = await transferirParaHumano(cliente.id, motivo).catch(() => ({ ok: false as const }));
+    if (!r.ok) await avisarFalhaTransferencia(cliente.id);
     return;
   }
 
@@ -400,8 +408,10 @@ async function tratarMensagem(args: {
     }
     const falhas = (conv.falhas_entendimento ?? 0) + 1;
     await db().from("conversas").update({ falhas_entendimento: falhas }).eq("id", conv.id);
-    await responderLivre({ clienteId: cliente.id, autor: "sistema", texto: MSG_FALHA });
-    await transferirParaHumano(cliente.id, `falha técnica do assistente (${r.motivo})`, { avisarCliente: false });
+    const encaminhamento = await transferirParaHumano(cliente.id, "falha técnica do assistente", { avisarCliente: false })
+      .catch(() => ({ ok: false as const }));
+    if (encaminhamento.ok) await responderLivre({ clienteId: cliente.id, autor: "sistema", texto: MSG_FALHA });
+    else await avisarFalhaTransferencia(cliente.id);
     return;
   }
 

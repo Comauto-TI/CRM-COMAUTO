@@ -1402,10 +1402,21 @@ grant execute on function public.pecas_contexto_posse(uuid,uuid,integer),public.
 
 
 -- Apêndice proposto para 0006_atendimento.sql; aplicar depois das tabelas modulares.
--- A adesão é por canal físico: qualquer atendimento já aberto o retira do legado,
--- inclusive depois da devolução. Canais sem adesão preservam o fluxo da recepção.
+-- CR-PEC-001: histórico modular não exclui o cliente para sempre da recepção.
+-- Negócio ainda aberto OU reserva vigente bloqueia o canal, mesmo sem claimant ativo.
 create index if not exists atendimentos_modulares_conversa_idx
   on public.atendimentos_modulares(conversa_id);
+
+create or replace view public.atendimentos_modulares_ativos
+with (security_invoker = true, security_barrier = true) as
+select a.id,a.cliente_id,a.conversa_id,a.setor,a.unidade,
+  coalesce(p.responsavel_id,v.vendedor_id) as responsavel_id
+from public.atendimentos_modulares a
+left join public.pecas_cotacoes p on p.id=a.cotacao_id
+left join public.vendas_oportunidades v on v.id=a.oportunidade_id
+where exists(select 1 from public.atendimento_canais s where s.atendimento_id=a.id)
+  or (a.setor='pecas' and p.status in ('novo','em_cotacao','aguardando_cliente','aprovado','em_separacao'))
+  or (a.setor='vendas' and v.id is not null and v.fechado_em is null);
 
 -- Campos planos da ficha evitam inferência de relacionamentos sobre views no PostgREST.
 create or replace view public.conversas_legadas
@@ -1417,7 +1428,7 @@ select c.id, c.cliente_id, c.status, c.motivo_transferencia, c.aguardando_desde,
 from public.conversas c
 join public.clientes cl on cl.id = c.cliente_id
 where not exists (
-  select 1 from public.atendimentos_modulares a where a.conversa_id = c.id
+  select 1 from public.atendimentos_modulares_ativos a where a.conversa_id = c.id
 );
 
 create or replace view public.mensagens_legadas
@@ -1425,13 +1436,15 @@ with (security_invoker = true, security_barrier = true) as
 select m.id, m.conversa_id, m.cliente_id, m.direcao, m.autor, m.tipo,
   m.conteudo, m.status, m.erro, m.criado_em
 from public.mensagens m
-where not exists (
-  select 1 from public.atendimentos_modulares a where a.conversa_id = m.conversa_id
-);
+where m.atendimento_id is null
+  and not exists(select 1 from public.atendimento_mensagens v where v.mensagem_id=m.id)
+  and not exists (
+    select 1 from public.atendimentos_modulares_ativos a where a.conversa_id = m.conversa_id
+  );
 
-revoke all on public.conversas_legadas, public.mensagens_legadas
+revoke all on public.atendimentos_modulares_ativos, public.conversas_legadas, public.mensagens_legadas
   from public, anon, authenticated, service_role;
-grant select on public.conversas_legadas, public.mensagens_legadas to service_role;
+grant select on public.atendimentos_modulares_ativos, public.conversas_legadas, public.mensagens_legadas to service_role;
 -- Dependências invoker explícitas, sem permissões de escrita adicionais nas bases.
 grant select (id, cliente_id, status, motivo_transferencia, aguardando_desde,
   assumida_por, assumida_em, alerta_reenviado_em, encerrada_em, resultado,
@@ -1461,6 +1474,73 @@ create trigger impedir_posse_legada_em_canal_modular
 before update of status, assumida_por on public.conversas
 for each row when (old.status is distinct from new.status or old.assumida_por is distinct from new.assumida_por)
 execute function public.impedir_posse_legada_em_canal_modular();
+
+-- O pedido humano continua visível enquanto um setor detém o canal. Usa a central
+-- já existente; não transfere posse, não expõe histórico e não envia WhatsApp direto.
+create or replace function public.registrar_pedido_humano_modular(p_cliente uuid,p_motivo text)
+returns jsonb language plpgsql security invoker set search_path = '' as $$
+declare canal uuid; atendimento record; destinos uuid[]; total integer:=0; inseridas integer;
+begin
+  if p_cliente is null or p_motivo is null or char_length(btrim(p_motivo)) not between 1 and 300 then
+    return pg_catalog.jsonb_build_object('ok',false,'codigo','invalido');
+  end if;
+  perform 1 from public.clientes c where c.id=p_cliente and not c.anonimizado for share;
+  if not found then return pg_catalog.jsonb_build_object('ok',false,'codigo','nao_encontrado'); end if;
+  select c.id into canal from public.conversas c where c.cliente_id=p_cliente for update;
+  if not found then return pg_catalog.jsonb_build_object('ok',false,'codigo','nao_encontrado'); end if;
+  if not exists(select 1 from public.atendimentos_modulares_ativos a where a.conversa_id=canal) then
+    return pg_catalog.jsonb_build_object('ok',false,'codigo','legado');
+  end if;
+  for atendimento in
+    select v.*,a.assumido_por,a.cotacao_id,a.oportunidade_id
+    from public.atendimentos_modulares_ativos v join public.atendimentos_modulares a on a.id=v.id
+    where v.conversa_id=canal and (not exists(select 1 from public.atendimento_canais s where s.conversa_id=canal)
+      or exists(select 1 from public.atendimento_canais s where s.conversa_id=canal and s.atendimento_id=v.id))
+  loop
+    destinos:=null;
+    -- Claimant elegível primeiro; responsável do negócio é a segunda opção.
+    select array[u.user_id] into destinos from public.usuarios u
+    join public.unidades loja on loja.chave=atendimento.unidade and loja.ativa
+    where u.user_id=any(array[atendimento.assumido_por,atendimento.responsavel_id]) and u.ativo
+      and (u.papel='admin' or (u.papel='gerente' and u.setor in (atendimento.setor,'administracao'))
+        or (atendimento.setor='pecas' and u.papel='pecas') or (atendimento.setor='vendas' and u.papel='vendedor'))
+      and (u.papel='admin' or u.unidade=atendimento.unidade or exists(
+        select 1 from public.usuario_unidades x where x.user_id=u.user_id and x.unidade=atendimento.unidade))
+    order by (u.user_id=atendimento.assumido_por) desc nulls last,u.user_id limit 1;
+    if destinos is null then
+      select array_agg(u.user_id) into destinos from public.usuarios u
+      join public.unidades loja on loja.chave=atendimento.unidade and loja.ativa
+      where u.ativo and (u.papel in ('admin','recepcao','atendente')
+        or (u.papel='gerente' and u.setor in (atendimento.setor,'administracao')))
+        and (u.papel='admin' or u.unidade=atendimento.unidade or exists(
+          select 1 from public.usuario_unidades x where x.user_id=u.user_id and x.unidade=atendimento.unidade));
+    end if;
+    insert into public.notificacoes(usuario_id,unidade,tipo,titulo,corpo,link)
+      select u.user_id,atendimento.unidade,'atendimento','Pedido de atendimento humano',
+        'Há um pedido de atendimento no setor '||atendimento.setor||'. Confira o atendimento com a equipe responsável.',
+        case when u.papel in ('recepcao','atendente') then null
+          when atendimento.setor='pecas' then '/painel/pecas?cotacao='||atendimento.cotacao_id::text
+          else '/painel/vendas?op='||atendimento.oportunidade_id::text end
+      from public.usuarios u where u.user_id=any(destinos) and u.ativo
+        and (u.papel in ('admin','recepcao','atendente')
+          or (u.papel='gerente' and u.setor in (atendimento.setor,'administracao'))
+          or (atendimento.setor='pecas' and u.papel='pecas') or (atendimento.setor='vendas' and u.papel='vendedor'))
+        and exists(select 1 from public.unidades loja where loja.chave=atendimento.unidade and loja.ativa)
+        and (u.papel='admin' or u.unidade=atendimento.unidade or exists(
+          select 1 from public.usuario_unidades x where x.user_id=u.user_id and x.unidade=atendimento.unidade));
+    get diagnostics inseridas=row_count;
+    total:=total+inseridas;
+  end loop;
+  -- Não copiar motivo bruto/trechos do cliente para avisos ou auditoria.
+  insert into public.audit_log(ator,acao,entidade,entidade_id,dados)
+    values('sistema',case when total>0 then 'pedido_humano_modular' else 'pedido_humano_modular_sem_destinatario' end,
+      'conversa',canal::text,pg_catalog.jsonb_build_object('destinatarios',total));
+  if total=0 then return pg_catalog.jsonb_build_object('ok',false,'codigo','sem_destinatario'); end if;
+  return pg_catalog.jsonb_build_object('ok',true,'destinatarios',total);
+end $$;
+revoke all on function public.registrar_pedido_humano_modular(uuid,text) from public,anon,authenticated,service_role;
+grant execute on function public.registrar_pedido_humano_modular(uuid,text) to service_role;
+grant insert(usuario_id,unidade,tipo,titulo,corpo,link) on public.notificacoes to service_role;
 
 -- Quadro do piloto: carteira/fila autorizada no mesmo statement que lê os dados.
 -- Também é a origem da leitura direta do detalhe, sem autorização só pela unidade da sessão.

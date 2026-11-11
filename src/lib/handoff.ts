@@ -20,6 +20,25 @@ import { papelValido, supervisiona } from "@/lib/permissoes";
 
 export type EstadoConversa = "bot" | "humano" | "encerrada";
 
+type ResultadoTransferencia = { ok: true; jaEstava: boolean; modular?: true } | { ok: false; motivo: string };
+
+function falhaTransferencia(etapa: string): ResultadoTransferencia {
+  // Apenas códigos controlados: motivo do cliente, telefone e erro do provedor não entram no log.
+  console.error("[handoff] transferencia_nao_confirmada", { etapa });
+  return { ok: false, motivo: etapa };
+}
+
+/** O chamador só confirma a transferência depois de conferir o resultado do handoff. */
+export async function avisarFalhaTransferencia(clienteId: string) {
+  try {
+    const r = await responderLivre({
+      clienteId, autor: "sistema",
+      texto: "Não consegui confirmar o aviso à nossa equipe agora. Por favor, tente pedir ATENDENTE novamente em instantes.",
+    });
+    if (!r.ok) console.error("[handoff] aviso_de_falha_nao_confirmado");
+  } catch { console.error("[handoff] aviso_de_falha_nao_confirmado"); }
+}
+
 /** Transições válidas (pura — testável). */
 export function transicaoValida(de: EstadoConversa, acao: "transferir" | "assumir" | "devolver" | "encerrar", assumidaPor: string | null, quem?: string): boolean {
   switch (acao) {
@@ -33,46 +52,63 @@ export function transicaoValida(de: EstadoConversa, acao: "transferir" | "assumi
   }
 }
 
-export async function transferirParaHumano(clienteId: string, motivo: string, opts: { avisarCliente?: boolean } = {}) {
-  const cfg = await getConfig();
-  const { data: conv, error: erroConsulta } = await db()
-    .from("conversas_legadas")
-    .select("id, status, assumida_por")
-    .eq("cliente_id", clienteId)
-    .maybeSingle();
-  if (erroConsulta) return { ok: false as const, motivo: "falha ao consultar a conversa" };
-  if (!conv) return { ok: false as const, motivo: "conversa_inexistente" };
-  if (conv.status === "humano") return { ok: true as const, jaEstava: true };
+export async function transferirParaHumano(clienteId: string, motivo: string, opts: { avisarCliente?: boolean } = {}): Promise<ResultadoTransferencia> {
+  try {
+    const cfg = await getConfig();
+    const consultar = () => db().from("conversas_legadas").select("id, status, assumida_por")
+      .eq("cliente_id", clienteId).maybeSingle();
+    let { data: conv, error: erroConsulta } = await consultar();
+    if (erroConsulta) return falhaTransferencia("falha ao consultar a conversa");
+    if (!conv) {
+      const { data, error } = await db().rpc("registrar_pedido_humano_modular", { p_cliente: clienteId, p_motivo: motivo.slice(0, 300) });
+      if (error || !data || typeof data !== "object" || Array.isArray(data)) return falhaTransferencia("falha ao registrar pedido modular");
+      if (data.ok === true && Number.isSafeInteger(data.destinatarios) && data.destinatarios > 0) {
+        if (opts.avisarCliente !== false) {
+          try {
+            const aviso = await responderLivre({ clienteId, autor: "sistema", texto: "Avisei a equipe responsável pelo seu atendimento para continuar por aqui." });
+            if (!aviso.ok) console.error("[handoff] aviso_modular_ao_cliente_nao_confirmado");
+          } catch { console.error("[handoff] aviso_modular_ao_cliente_nao_confirmado"); }
+        }
+        return { ok: true, jaEstava: false, modular: true };
+      }
+      if (data.ok !== false || data.codigo !== "legado") return falhaTransferencia("pedido modular nao confirmado");
+      // O negócio pode ter sido encerrado entre a view e a RPC. Uma única nova consulta basta.
+      ({ data: conv, error: erroConsulta } = await consultar());
+      if (erroConsulta) return falhaTransferencia("falha ao consultar a conversa");
+      if (!conv) return falhaTransferencia("conversa_inexistente");
+    }
+    if (conv.status === "humano") return { ok: true as const, jaEstava: true };
 
-  const { data: alteradas, error } = await db()
-    .from("conversas")
-    .update({
-      status: "humano",
-      motivo_transferencia: motivo.slice(0, 300),
-      aguardando_desde: new Date().toISOString(),
-      assumida_por: null,
-      assumida_em: null,
-      alerta_reenviado_em: null,
-      encerrada_em: null,
-      resultado: null,
-      falhas_entendimento: 0,
-    })
-    .eq("id", conv.id)
-    .eq("status", conv.status)
-    .select("id");
-  if (error || !alteradas?.length) return { ok: false as const, motivo: "falha ao atualizar a conversa" };
+    const { data: alteradas, error } = await db()
+      .from("conversas")
+      .update({
+        status: "humano",
+        motivo_transferencia: motivo.slice(0, 300),
+        aguardando_desde: new Date().toISOString(),
+        assumida_por: null,
+        assumida_em: null,
+        alerta_reenviado_em: null,
+        encerrada_em: null,
+        resultado: null,
+        falhas_entendimento: 0,
+      })
+      .eq("id", conv.id)
+      .eq("status", conv.status)
+      .select("id");
+    if (error || !alteradas?.length) return falhaTransferencia("falha ao atualizar a conversa");
 
-  const noHorario = dentroHorarioEnvio(new Date(), cfg.horario_envio, cfg.fuso_offset);
-  if (opts.avisarCliente !== false) {
-    await responderLivre({
-      clienteId,
-      autor: "sistema",
-      texto: noHorario ? cfg.atendimento.msg_transferencia : cfg.atendimento.msg_fora_horario,
-    });
-  }
-  await alertarRecepcao(conv.id, clienteId, motivo);
-  await auditar("sistema", "transferir_humano", "conversa", conv.id, { motivo });
-  return { ok: true as const, jaEstava: false };
+    const noHorario = dentroHorarioEnvio(new Date(), cfg.horario_envio, cfg.fuso_offset);
+    if (opts.avisarCliente !== false) {
+      await responderLivre({
+        clienteId,
+        autor: "sistema",
+        texto: noHorario ? cfg.atendimento.msg_transferencia : cfg.atendimento.msg_fora_horario,
+      });
+    }
+    await alertarRecepcao(conv.id, clienteId, motivo);
+    await auditar("sistema", "transferir_humano", "conversa", conv.id, { motivo });
+    return { ok: true as const, jaEstava: false };
+  } catch { return falhaTransferencia("falha ao processar transferencia"); }
 }
 
 /** Template de alerta no WhatsApp de cada recepcionista ativa que aceitou receber. */

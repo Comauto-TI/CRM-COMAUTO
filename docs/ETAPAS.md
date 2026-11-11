@@ -110,6 +110,14 @@ Primeiro PR do Codex após F0-2: módulo em branch `codex/*` com escopo e crité
 
 Decisão do Simão repassada pelo Claude no chat: cumprir a ordem abaixo antes de ampliar A1.
 
+**Revisão CR-PEC-001:** Claude aprovou o desenho do núcleo `7c44e9c` e identificou um bloqueio de retorno
+à recepção após encerramento. Corrigido localmente: view de atendimentos ativos compartilhada com outbound,
+histórico setorial preservado fora da leitura geral e pedido humano ativo com notificação/auditoria atômicas,
+sem alterar posse. Ferramenta/handler verificam falha e avisam o cliente. **1.695 Vitest / 40 arquivos**, typecheck,
+gitleaks e contrato SQL novo com/sem defaults/reaplicação passaram; revisão independente sem bloqueantes.
+Correção será disponibilizada em commit separado para o Claude revisar e aplicar `0006` antes do código.
+Dev/login real continuam pendentes; demais fatias não foram reabertas.
+
 1. Consolidar os nove arquivos avulsos em 0003_vendas (F5 e proveniência de Vendas) e 0006_atendimento (encaminhamentos e A1.1/A1.2), sem mudar contratos. Estado: CONCLUÍDO LOCALMENTE — instalação limpa com nove contratos, reaplicação e upgrade populado PGlite passaram com e sem defaults permissivos; dados e schema preservados. Reorganização em commit separado.
 2. MVP kanban de Peças implementado localmente: quadro comum `06b7cb5`, conversa no cartão, assumir/devolver/responder pelo outbound dentro de 24h, vínculo explícito das novas mensagens e desvios legados do piloto bloqueados. Quadro/detalhe usam política de carteira/unidade atual no banco; movimentações reaproveitam o domínio e seu histórico. SQL com/sem defaults, reaplicação populada, Vitest, typecheck e visual offline passaram. [Recorte, integração e limites](PECAS-MVP-PILOTO.md). Ainda aguarda revisão e aplicação no dev; A1 não está concluída.
 3. Entregas em commits menores, conforme novo repasse do Claude: SQL `c020b63`, quadro primeiro `e250d9d`, núcleo isolado `7c44e9c` e depois conversa. Base `claude/quadro-comum` incorporada por merge `7b5c65d`. Após revisão, Claude publica o PR/aplica no dev e Simão valida por partes com a conta de teste de Peças. Conector GitHub do Codex está somente leitura; nenhum PR remoto foi declarado criado. Login/E2E, dev e produção ainda não comprovados nesta entrega.

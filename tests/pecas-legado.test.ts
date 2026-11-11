@@ -9,7 +9,7 @@ import { assumirConversa, devolverAoBot, encerrarConversa, transferirParaHumano,
 type Linha = Record<string, unknown>;
 type Consulta = { tabela: string; operacao: string; selecao: string; filtros: [string, string, unknown][]; patch?: Linha };
 const fixture = vi.hoisted(() => ({
-  db: vi.fn(), usuarioApi: vi.fn(), exigirAcesso: vi.fn(), getConfig: vi.fn(), auditar: vi.fn(),
+  db: vi.fn(), rpc: vi.fn(), usuarioApi: vi.fn(), exigirAcesso: vi.fn(), getConfig: vi.fn(), auditar: vi.fn(),
   responderLivre: vi.fn(), notificar: vi.fn(), enviarTemplate: vi.fn(), revalidatePath: vi.fn(),
   tabelas: {} as Record<string, Linha[]>, pilotos: new Set<string>(), consultas: [] as Consulta[],
   falhaUpdate: false, falhaView: false, pilotarDuranteFicha: false, pilotarAposListaSla: false, pilotarDuranteAlertaSla: false,
@@ -32,7 +32,8 @@ const clientePiloto = "10000000-0000-4000-8000-000000000101";
 const clienteLegado = "10000000-0000-4000-8000-000000000102";
 const quem = { email, papel: "recepcao" };
 
-// O fake representa respostas do recorte SQL, não prova a implementação das views/trigger.
+// pilotos contém somente os canais com atendimento modular ATIVO. Um vínculo encerrado não os exclui.
+// O fake representa respostas do recorte SQL, não prova a implementação das views/trigger/RPC.
 // Ele rejeita SELECT direto em conversas/mensagens para capturar um fallback indevido.
 function consulta(tabela: string) {
   const c: Consulta = { tabela, operacao: "select", selecao: "", filtros: [] };
@@ -68,7 +69,9 @@ function consulta(tabela: string) {
         const cliente = fixture.tabelas.clientes.find(cl => cl.id === r.cliente_id);
         return { ...r, cliente_nome: cliente?.nome, cliente_telefone: cliente?.telefone };
       });
-      if (tabela === "mensagens_legadas") linhas = fixture.tabelas.mensagens.filter(r => !fixture.pilotos.has(String(r.conversa_id)));
+      if (tabela === "mensagens_legadas") linhas = fixture.tabelas.mensagens.filter(r =>
+        !fixture.pilotos.has(String(r.conversa_id)) && r.atendimento_id == null &&
+        !fixture.tabelas.atendimento_mensagens.some(a => a.mensagem_id === r.id));
       linhas = linhas.filter(r => c.filtros.every(([k, op, v]) => {
         if (op === "eq") return r[k] === v;
         if (op === "neq") return r[k] !== v;
@@ -110,11 +113,13 @@ beforeEach(() => {
   fixture.tabelas = {
     conversas: [{ ...base, id: piloto, cliente_id: clientePiloto }, { ...base, id: legado, cliente_id: clienteLegado }],
     clientes: [{ id: clientePiloto, nome: "Lead Peças", telefone: "5511999990001" }, { id: clienteLegado, nome: "Lead Recepção", telefone: "5511999990002" }],
-    mensagens: [{ id: "msg-piloto", conversa_id: piloto, conteudo: "Segredo setorial", criado_em: "2026-11-11T12:01:00Z" }, { id: "msg-legado", conversa_id: legado, conteudo: "Olá recepção", criado_em: "2026-11-11T12:00:00Z" }],
+    mensagens: [{ id: "msg-piloto", conversa_id: piloto, atendimento_id: "atendimento-ficticio", conteudo: "Segredo setorial", criado_em: "2026-11-11T12:01:00Z" }, { id: "msg-legado", conversa_id: legado, conteudo: "Olá recepção", criado_em: "2026-11-11T12:00:00Z" }],
+    atendimento_mensagens: [],
     usuarios: [{ nome: "Recepção", telefone_whatsapp: "5511999990099", ativo: true, recebe_alertas: true, consentimento_alertas_em: "2026-01-01" }],
     templates: [{ uso: "alerta_recepcao", nome: "alerta", idioma: "pt_BR", status_aprovacao: "aprovado", ativo: true }],
   };
-  fixture.db.mockReturnValue({ from: consulta });
+  fixture.db.mockReturnValue({ from: consulta, rpc: fixture.rpc });
+  fixture.rpc.mockResolvedValue({ data: { ok: true, destinatarios: 1 }, error: null });
   fixture.usuarioApi.mockResolvedValue({ email });
   fixture.exigirAcesso.mockResolvedValue({ email, nome: "Recepção", papel: "recepcao", setor: "oficina" });
   fixture.getConfig.mockResolvedValue({ empresa: { nome: "Comauto" }, atendimento: { sla_min: 15, msg_sla: "Aguarde o atendimento", msg_transferencia: "Transferindo", msg_fora_horario: "Fora do horário" }, horario_envio: {}, fuso_offset: -3 });
@@ -154,6 +159,25 @@ describe("piloto Peças fora das leituras gerais", () => {
     expect((await detalhe(legado)).status).toBe(503);
     expect(atualizacoes()).toHaveLength(0);
   });
+  it("canal sem atendimento ativo volta ao geral sem expor mensagens modulares históricas", async () => {
+    fixture.pilotos.delete(piloto);
+    fixture.tabelas.conversas[0].status = "bot";
+    fixture.tabelas.mensagens.push(
+      { id: "msg-associada", conversa_id: piloto, atendimento_id: null, conteudo: "Histórico associado protegido", criado_em: "2026-11-11T12:02:00Z" },
+      { id: "msg-nova-geral", conversa_id: piloto, atendimento_id: null, conteudo: "Novo pedido geral", criado_em: "2026-11-11T13:00:00Z" },
+    );
+    fixture.tabelas.atendimento_mensagens.push({ atendimento_id: "atendimento-ficticio", mensagem_id: "msg-associada" });
+    const r = await detalhe(piloto);
+    expect(r.status).toBe(200);
+    const body = await r.json();
+    expect(body.mensagens.map((m: Linha) => m.id)).toEqual(["msg-nova-geral"]);
+    expect(JSON.stringify(body)).not.toContain("Segredo setorial");
+    expect(JSON.stringify(body)).not.toContain("Histórico associado protegido");
+    const inbox = await (await inboxGet(new NextRequest("http://localhost/api/painel/inbox?aba=bot"))).json();
+    expect(inbox.itens.find((i: Linha) => i.id === piloto)?.ultimaMsg).toBe("Novo pedido geral");
+    expect(JSON.stringify(inbox)).not.toContain("Segredo setorial");
+    expect(JSON.stringify(inbox)).not.toContain("Histórico associado protegido");
+  });
   it("inbox conta e mostra só legado e mantém prévia/telefone mascarado", async () => {
     const r = await inboxGet(new NextRequest("http://localhost/api/painel/inbox?aba=espera"));
     const body = await r.json();
@@ -191,7 +215,6 @@ describe("piloto não passa pelas ações gerais", () => {
     () => puxarParaHumano(piloto),
     () => responder(piloto, "Olá, como posso ajudar?"),
     () => enviarRetomada(piloto),
-    () => transferirParaHumano(clientePiloto, "motivo"),
   ])("nega sem mutação, envio ou auditoria", async executar => {
     expect(await executar()).toMatchObject({ ok: false });
     expect(atualizacoes()).toHaveLength(0);
@@ -199,11 +222,49 @@ describe("piloto não passa pelas ações gerais", () => {
     expect(fixture.notificar).not.toHaveBeenCalled();
     expect(fixture.auditar).not.toHaveBeenCalled();
   });
-  it("não libera após devolver o slot modular: a adesão histórica permanece", async () => {
-    // A view depende do atendimento persistido, e não da posse física ou do slot ativo.
+  it("devolver o slot não libera o geral enquanto a cotação continua aberta", async () => {
+    // A cotação aberta ainda mantém o atendimento ativo, mesmo sem a posse física do canal.
     fixture.tabelas.conversas[0].status = "bot";
     expect(await puxarParaHumano(piloto)).toMatchObject({ ok: false });
     expect((await detalhe(piloto)).status).toBe(404);
+  });
+  it("pedido humano modular notifica pela RPC sem tentar assumir o canal geral", async () => {
+    const antes = structuredClone(fixture.tabelas.conversas);
+    expect(await transferirParaHumano(clientePiloto, "Pedido de ajuda")).toMatchObject({ ok: true });
+    expect(fixture.rpc).toHaveBeenCalledExactlyOnceWith("registrar_pedido_humano_modular", { p_cliente: clientePiloto, p_motivo: "Pedido de ajuda" });
+    expect(fixture.tabelas.conversas).toEqual(antes);
+    expect(atualizacoes()).toHaveLength(0);
+    expect(fixture.responderLivre).toHaveBeenCalledExactlyOnceWith({ clienteId: clientePiloto, autor: "sistema", texto: expect.any(String) });
+    expect(fixture.responderLivre.mock.invocationCallOrder[0]).toBeGreaterThan(fixture.rpc.mock.invocationCallOrder[0]);
+    expect(fixture.enviarTemplate).not.toHaveBeenCalled();
+    // Destinatários e auditoria são responsabilidade atômica da RPC, provada pelos testes SQL.
+    expect(fixture.auditar).not.toHaveBeenCalled();
+  });
+  it("pedido modular sem aviso opcional não manda mensagem ao cliente", async () => {
+    expect(await transferirParaHumano(clientePiloto, "Pedido silencioso", { avisarCliente: false })).toMatchObject({ ok: true });
+    expect(fixture.rpc).toHaveBeenCalledTimes(1);
+    expect(fixture.responderLivre).not.toHaveBeenCalled();
+    expect(atualizacoes()).toHaveLength(0);
+  });
+  it.each([
+    { data: { ok: false, codigo: "sem_destinatario" }, error: null },
+    { data: { ok: true, destinatarios: 0 }, error: null },
+    { data: { ok: true, destinatarios: "1" }, error: null },
+    { data: null, error: { code: "42501" } },
+  ])("falha ou sucesso modular inválido não confirma transferência nem avisa", async resposta => {
+    fixture.rpc.mockResolvedValue(resposta);
+    expect(await transferirParaHumano(clientePiloto, "Pedido")).toMatchObject({ ok: false });
+    expect(fixture.responderLivre).not.toHaveBeenCalled();
+    expect(fixture.auditar).not.toHaveBeenCalled();
+    expect(atualizacoes()).toHaveLength(0);
+  });
+  it("apenas vínculos encerrados permitem nova transferência geral", async () => {
+    fixture.pilotos.delete(piloto);
+    fixture.tabelas.conversas[0].status = "bot";
+    expect(await transferirParaHumano(clientePiloto, "Novo assunto geral")).toMatchObject({ ok: true });
+    expect(fixture.tabelas.conversas[0].status).toBe("humano");
+    expect(fixture.rpc).not.toHaveBeenCalled();
+    expect(fixture.auditar).toHaveBeenCalledExactlyOnceWith("sistema", "transferir_humano", "conversa", piloto, { motivo: "Novo assunto geral" });
   });
   it("erro do trigger não vira replay de posse bem-sucedido", async () => {
     fixture.tabelas.conversas[1].assumida_por = email;

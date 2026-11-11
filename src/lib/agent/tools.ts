@@ -11,7 +11,7 @@ import {
   reagendar,
   cancelarAgendamento,
 } from "@/lib/scheduling/booking";
-import { transferirParaHumano } from "@/lib/handoff";
+import { transferirParaHumano, avisarFalhaTransferencia } from "@/lib/handoff";
 import { registrarConsentimento, TEXTO_CONSENTIMENTO } from "@/lib/consent";
 import { rotearLead } from "@/modulos/vendas/leads";
 import { ehChave, INTERESSES, PAGAMENTOS, PRAZOS, type Interesse } from "@/modulos/vendas/regras";
@@ -367,8 +367,13 @@ export async function executarTool(nome: string, input: In, ctx: ContextoTool): 
     }
 
     case "transferir_humano": {
-      await transferirParaHumano(ctx.clienteId, String(input.motivo ?? "solicitado pelo agente"));
-      return { resultado: ok({ transferido: true, instrucao: "não responda mais nada; o sistema já avisou o cliente" }), transferiu: true };
+      const r = await transferirParaHumano(ctx.clienteId, String(input.motivo ?? "solicitado pelo agente"))
+        .catch(() => ({ ok: false as const }));
+      if (!r.ok) {
+        await avisarFalhaTransferencia(ctx.clienteId);
+        return { resultado: erro("transferencia_nao_confirmada", { instrucao: "a transferência não foi confirmada; não afirme que o cliente foi transferido nem que a equipe recebeu o aviso" }) };
+      }
+      return { resultado: ok({ transferido: true, instrucao: "não responda mais nada; a solicitação de atendimento humano está registrada" }), transferiu: true };
     }
 
     default:

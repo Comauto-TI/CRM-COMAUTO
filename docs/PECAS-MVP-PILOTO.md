@@ -39,9 +39,17 @@ Opt-out, janela de 24h e filtro de segredos continuam obrigatórios. Depois da a
 uma chamada HTTP em voo pode terminar; devolver não promete cancelá-la. Timeout ou persistência incerta
 preservam a incerteza e não provocam reenvio automático. A finalização não restaura texto removido por LGPD.
 
-Os canais que aderiram ao modelo modular deixam as views legadas de leitura/fila/alertas, inclusive após
-devolver. O legado não pode assumir um canal com reserva modular ativa, e envio humano antigo sem contexto
-não passa pelo outbound nesses clientes. Canais sem adesão preservam o atendimento da recepção.
+CR-PEC-001: a exclusão das views gerais e do envio humano sem contexto vale enquanto houver negócio
+modular aberto ou reserva vigente. Devolver o slot sem encerrar a cotação não devolve o canal à recepção;
+encerrar todos os negócios e liberar as reservas permite novo atendimento geral, inclusive retomada
+pelas regras existentes. O histórico de mensagens já associado ao módulo continua fora da leitura geral.
+
+Pedido humano durante um atendimento ativo é registrado pela RPC `registrar_pedido_humano_modular`:
+notifica o claimant elegível ou responsável do negócio; na falta deles, recepção/gestão elegível da
+unidade recebe o aviso na central existente. A notificação e a auditoria são atômicas, sem copiar corpo
+de mensagem ou motivo bruto. A reserva/status não são alterados. Ausência de destinatário ou erro
+não vira transferência bem-sucedida: ferramentas e handler conferem o resultado e avisam a falha
+ao cliente pelo outbound. Uma falha no ACK opcional não desfaz um aviso já confirmado no banco.
 
 ## Integração e revisão
 
@@ -55,6 +63,13 @@ não passa pelo outbound nesses clientes. Canais sem adesão preservam o atendim
    metadados de outras contas nesta entrega. Sem produção ou operação destrutiva implícita.
 
 ## Evidências e limites
+
+CR-PEC-001: regressão final com **1.695 Vitest / 40 arquivos**, typecheck, gitleaks e diff check aprovados.
+Contrato `tests/sql/contratos-pecas-retorno-legado.sql` validado nos dois modos de permissões e com
+reaplicação populada: abertos/encerrados Peças e Vendas, reserva ainda vigente, mistura de ativos,
+retorno à recepção sem histórico setorial, destinatários atuais e falhas reais de notificação/auditoria
+com rollback integral. Harness local `work/validar-pecas-retorno-legado.mjs`. O restante da matriz SQL
+inalterada não foi repetido. Fonte 0006 revisada: SHA256 `F764326CF1F3EBEF6FD9D39EE5AF9F6A74BB322FE1181FAC4BA6692D9EA90CE5`.
 
 SQL PGlite: MVP, quadro/mover e reaplicação populada passaram com defaults fechados e permissivos.
 Os nove contratos anteriores passaram na rodada de regressão; a fixture de reatribuição agora comprova
