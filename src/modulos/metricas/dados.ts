@@ -3,7 +3,7 @@ import { db } from "@/lib/supabase/admin";
 import type { Usuario } from "@/lib/auth";
 import { faixaFunil, type EtapaResumo } from "@/modulos/vendas/regras";
 import { funisDaUnidade } from "@/modulos/vendas/dados";
-import type { OpMetrica } from "./calculos";
+import { resumoDaCoorte, type OpMetrica } from "./calculos";
 
 /** F8 — leitura para a aba Métricas. Sempre depois de exigirAcesso("metricas"); tudo filtrado pelas unidades do usuário. */
 
@@ -11,7 +11,8 @@ export const PERIODOS = { "30": "Últimos 30 dias", "90": "Últimos 90 dias", "1
 export type Periodo = keyof typeof PERIODOS;
 const JANELA_VENDA_EVENTO_DIAS = 60;
 
-export async function carregarMetricasVendas(u: Usuario, funilChave: string | undefined, periodo: Periodo) {
+/** vendedorId: recorte de UMA pessoa (vendedor vê só as próprias; gerente pode escolher). Sem ele = setor inteiro. */
+export async function carregarMetricasVendas(u: Usuario, funilChave: string | undefined, periodo: Periodo, vendedorId: string | null = null) {
   const funis = await funisDaUnidade(u.unidade);
   const funil = funis.find((f) => f.chave === funilChave) ?? funis[0];
   if (!funil) return null;
@@ -23,9 +24,9 @@ export async function carregarMetricasVendas(u: Usuario, funilChave: string | un
 
   const [{ data: etapas }, resumo, ops, { data: vendedores }] = await Promise.all([
     db().from("vendas_etapas").select("id, nome, ordem, tipo").eq("funil_id", funil.id).eq("ativo", true).order("ordem"),
-    db().rpc("vendas_funil_resumo", { p_funil: funil.id, p_desde: desde }),
+    vendedorId ? Promise.resolve({ data: null }) : db().rpc("vendas_funil_resumo", { p_funil: funil.id, p_desde: desde }),
     // coorte do período + fechadas no último ano (base das chances por etapa) — F8-002: paginado
-    lerTodas(funil.id, u.unidades, desde, umAno),
+    lerTodas(funil.id, u.unidades, desde, umAno, vendedorId),
     db().from("usuarios").select("user_id, nome").in("unidade", u.unidades),
   ]);
   const listaEtapas = (etapas ?? []) as { id: string; nome: string; ordem: number; tipo: "aberta" | "ganho" | "perdido" }[];
@@ -63,7 +64,8 @@ export async function carregarMetricasVendas(u: Usuario, funilChave: string | un
   return {
     funil, funis,
     etapas: listaEtapas,
-    faixa: faixaFunil(((resumo.data ?? []) as EtapaResumo[]).map((r) => ({ ...r, abertas: Number(r.abertas), alcancaram: Number(r.alcancaram) }))),
+    // funil de uma pessoa sai das oportunidades DELA; do setor, da função do banco (mesma regra)
+    faixa: faixaFunil(vendedorId ? resumoDaCoorte(coorte, listaEtapas) : ((resumo.data ?? []) as EtapaResumo[]).map((r) => ({ ...r, abertas: Number(r.abertas), alcancaram: Number(r.alcancaram) }))),
     ganhoId: listaEtapas.find((e) => e.tipo === "ganho")?.id,
     coorte, fechadasAno, abertasAgora, ganhosNoMes, saidas,
     nomesVendedores: Object.fromEntries((vendedores ?? []).map((v) => [v.user_id as string, v.nome as string])),
@@ -75,12 +77,14 @@ export async function carregarMetricasVendas(u: Usuario, funilChave: string | un
 const PAGINA = 1000;
 const TETO_LEITURA = 50_000;
 /** F8-002: lê TODAS as oportunidades do recorte em páginas ordenadas; acima do teto devolve parcial = true. */
-async function lerTodas(funilId: string, unidades: string[], desde: string, umAno: string) {
+async function lerTodas(funilId: string, unidades: string[], desde: string, umAno: string, vendedorId: string | null) {
   const linhas: Record<string, unknown>[] = [];
   for (let de = 0; de < TETO_LEITURA; de += PAGINA) {
-    const { data, error } = await db().from("vendas_oportunidades")
+    let q = db().from("vendas_oportunidades")
       .select("id, vendedor_id, origem, valor_estimado, criado_em, fechado_em, motivo_perda, etapa_id")
-      .eq("funil_id", funilId).in("unidade", unidades)
+      .eq("funil_id", funilId).in("unidade", unidades);
+    if (vendedorId) q = q.eq("vendedor_id", vendedorId);
+    const { data, error } = await q
       .or(`criado_em.gte.${desde},fechado_em.gte.${umAno},fechado_em.is.null`)
       .order("id")
       .range(de, de + PAGINA - 1);

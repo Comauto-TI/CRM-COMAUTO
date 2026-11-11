@@ -47,7 +47,7 @@ export const AREAS = {
   inicio: TODOS,
   notificacoes: TODOS,
   lembretes: TODOS, // "Meus lembretes": cada um vê só os próprios (filtro por usuário no servidor)
-  metricas: ["gerente", "financeiro"], // F8 — aba Métricas (página a cargo do Codex)
+  metricas: ["gerente", "vendedor", "financeiro"], // vendedor vê SÓ as próprias (recorte no servidor); gerente o setor
   busca: ["gerente", "vendedor", "consultor_tecnico", "pecas", ...RECEPCAO],
   clientes: ["gerente", "vendedor", "consultor_tecnico", "pecas", ...RECEPCAO],
   atendimento: ["gerente", "vendedor", "consultor_tecnico", ...RECEPCAO],

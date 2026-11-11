@@ -116,3 +116,17 @@ export function funilEvento(c: { chamados: Set<string>; confirmados: Set<string>
     { etapa_id: "vendidos", nome: "Vendidos", quantidade: vendidos.size, pct: pct(vendidos.size) },
   ];
 }
+
+/**
+ * Métricas por pessoa: monta o resumo do funil a partir das oportunidades de UM recorte (ex.: a carteira do vendedor),
+ * com a mesma regra do vendas_funil_resumo — etapa aberta = quantos alcançaram até ali; ganho/perdido = desfecho atual.
+ */
+export function resumoDaCoorte(
+  coorte: OpMetrica[],
+  etapas: { id: string; nome: string; ordem: number; tipo: "aberta" | "ganho" | "perdido" }[],
+): { etapa_id: string; nome: string; ordem: number; tipo: "aberta" | "ganho" | "perdido"; abertas: number; alcancaram: number }[] {
+  return etapas.map((e) => ({
+    etapa_id: e.id, nome: e.nome, ordem: e.ordem, tipo: e.tipo, abertas: 0,
+    alcancaram: e.tipo === "aberta" ? coorte.filter((o) => o.maior_ordem >= e.ordem).length : coorte.filter((o) => o.desfecho === e.tipo).length,
+  }));
+}

@@ -111,3 +111,11 @@ describe("agenda é da Oficina", () => {
     expect(podeAcessar({ papel: "consultor_tecnico", setor: "oficina" }, "agenda")).toBe(true);
   });
 });
+
+describe("métricas por pessoa", () => {
+  it("vendedor acessa Métricas (a página recorta só as oportunidades dele)", () => {
+    expect(podeAcessar({ papel: "vendedor", setor: "vendas" }, "metricas")).toBe(true);
+    expect(podeAcessar({ papel: "pecas", setor: "pecas" }, "metricas")).toBe(false);
+    expect(podeAcessar({ papel: "recepcao", setor: "oficina" }, "metricas")).toBe(false);
+  });
+});
