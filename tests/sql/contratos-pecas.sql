@@ -1,6 +1,12 @@
 -- Executar em banco descartável após 0001_init, 0002_nucleo e 0005_pecas.
 begin;
 
+-- A RPC do bot só lê estas colunas da ficha e da unidade.
+grant select (id, anonimizado) on public.clientes to service_role;
+grant select (chave, ativa) on public.unidades to service_role;
+
+insert into public.unidades (chave, nome, ativa) values ('pecas_fixture', 'Unidade fixture de Peças', true);
+
 insert into auth.users (id) values
   ('00000000-0000-4000-8000-000000000051'),
   ('00000000-0000-4000-8000-000000000055');
@@ -10,6 +16,9 @@ values
   ('00000000-0000-4000-8000-000000000055', 'Fixture segundo responsável', 'pecas', 'pecas');
 insert into public.clientes (id, telefone, nome)
 values ('00000000-0000-4000-8000-000000000052', '5511900000052', 'Fixture cliente');
+insert into public.clientes (id, telefone, nome, anonimizado) values
+  ('00000000-0000-4000-8000-000000000071', '5511900000071', 'Outra ficha', false),
+  ('00000000-0000-4000-8000-000000000072', '5511900000072', null, true);
 insert into public.veiculos (id, cliente_id)
 values ('00000000-0000-4000-8000-000000000053', '00000000-0000-4000-8000-000000000052');
 
@@ -351,6 +360,65 @@ begin
   end if;
 end $$;
 
+do $$
+declare
+  cliente_fixture constant uuid := '00000000-0000-4000-8000-000000000052';
+  outro_cliente constant uuid := '00000000-0000-4000-8000-000000000071';
+  cliente_anonimo constant uuid := '00000000-0000-4000-8000-000000000072';
+  referencia constant text := 'wamid.fixture-pecas';
+  descricao_inicial constant text := 'Consultar disponibilidade de filtro';
+  cotacao_bot uuid;
+  referencia_invalida text;
+begin
+  begin
+    insert into public.pecas_cotacoes (cliente_id, origem, descricao)
+    values (cliente_fixture, 'whatsapp', descricao_inicial);
+    raise exception 'Uma cotação de WhatsApp exige referência.';
+  exception when check_violation then null;
+  end;
+
+  foreach referencia_invalida in array array[null, '', ' wamid.fixture', E'wamid.fixture\t', repeat('x', 513)] loop
+    if public.pecas_registrar_cotacao_bot(cliente_fixture, 'comauto', referencia_invalida, descricao_inicial) is not null then
+      raise exception 'A referência exige de 1 a 512 caracteres aparados.';
+    end if;
+  end loop;
+  if public.pecas_registrar_cotacao_bot(cliente_fixture, 'comauto', referencia, '') is not null
+    or public.pecas_registrar_cotacao_bot(cliente_fixture, 'comauto', referencia, ' Descrição') is not null
+    or public.pecas_registrar_cotacao_bot(cliente_fixture, 'comauto', referencia, repeat('x', 1001)) is not null then
+    raise exception 'A cotação pelo bot exige descrição válida.';
+  end if;
+
+  if public.pecas_registrar_cotacao_bot(cliente_fixture, 'santaluzia', referencia, descricao_inicial) is not null
+    or public.pecas_registrar_cotacao_bot(cliente_fixture, 'inexistente', referencia, descricao_inicial) is not null
+    or public.pecas_registrar_cotacao_bot(cliente_anonimo, 'comauto', referencia, descricao_inicial) is not null
+    or public.pecas_registrar_cotacao_bot('00000000-0000-4000-8000-000000000079', 'comauto', referencia, descricao_inicial) is not null then
+    raise exception 'A cotação pelo bot exige unidade ativa e ficha disponível.';
+  end if;
+
+  cotacao_bot := public.pecas_registrar_cotacao_bot(cliente_fixture, 'comauto', referencia, descricao_inicial);
+  if cotacao_bot is null
+    or public.pecas_registrar_cotacao_bot(cliente_fixture, 'comauto', referencia, 'Descrição do reenvio') is distinct from cotacao_bot
+    or public.pecas_registrar_cotacao_bot(outro_cliente, 'comauto', referencia, descricao_inicial) is not null
+    or public.pecas_registrar_cotacao_bot(cliente_fixture, 'pecas_fixture', referencia, descricao_inicial) is not null then
+    raise exception 'O reenvio exige a mesma ficha e unidade e deve retornar o ID original.';
+  end if;
+  if (select count(*) from public.pecas_cotacoes where origem = 'whatsapp' and origem_ref = referencia) <> 1
+    or not exists (
+      select 1 from public.pecas_cotacoes
+      where id = cotacao_bot and cliente_id = cliente_fixture and unidade = 'comauto' and origem = 'whatsapp'
+        and origem_ref = referencia and descricao = descricao_inicial and status = 'novo'
+        and criado_por is null and responsavel_id is null and veiculo_id is null
+        and criado_em between transaction_timestamp() and clock_timestamp()
+    ) then
+    raise exception 'O bot deve abrir uma única cotação nova e preservar a descrição original.';
+  end if;
+  if public.pecas_registrar_cotacao_bot(
+    cliente_fixture, 'pecas_fixture', 'wamid.' || repeat('x', 506), descricao_inicial
+  ) is null then
+    raise exception 'Uma referência distinta de 512 caracteres deve ser aceita na outra unidade ativa.';
+  end if;
+end $$;
+
 reset role;
 
 do $$
@@ -372,7 +440,9 @@ begin
     or has_function_privilege('anon', 'public.pecas_registrar_apresentacao(uuid,text[],uuid,jsonb)', 'EXECUTE')
     or has_function_privilege('authenticated', 'public.pecas_registrar_apresentacao(uuid,text[],uuid,jsonb)', 'EXECUTE')
     or has_function_privilege('anon', 'public.pecas_registrar_aprovacao(uuid,text[],uuid)', 'EXECUTE')
-    or has_function_privilege('authenticated', 'public.pecas_registrar_aprovacao(uuid,text[],uuid)', 'EXECUTE') then
+    or has_function_privilege('authenticated', 'public.pecas_registrar_aprovacao(uuid,text[],uuid)', 'EXECUTE')
+    or has_function_privilege('anon', 'public.pecas_registrar_cotacao_bot(uuid,text,text,text)', 'EXECUTE')
+    or has_function_privilege('authenticated', 'public.pecas_registrar_cotacao_bot(uuid,text,text,text)', 'EXECUTE') then
     raise exception 'A cotação e seu histórico devem manter RLS fechada e os grants mínimos do servidor.';
   end if;
 

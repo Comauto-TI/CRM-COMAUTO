@@ -5,6 +5,12 @@ import { listarCotacoes } from "@/modulos/pecas/cotacoes";
 import { Cabecalho, Status, Vazio } from "../_components/ui";
 import { assumirCotacao, criarCotacao } from "./actions";
 
+const ORIGENS = {
+  balcao: "Balcão",
+  oficina: "Oficina",
+  whatsapp: "WhatsApp",
+};
+
 const MENSAGENS: Record<string, string> = {
   criada: "Cotação registrada.",
   iniciada: "Cotação em andamento.",
@@ -53,7 +59,7 @@ export default async function PecasPage({ searchParams }: { searchParams: Promis
                       <td>{c.veiculos?.placa ?? "—"}</td>
                       <td>{c.descricao}</td>
                       <td>{c.unidade}</td>
-                      <td>{c.origem === "oficina" ? "Oficina" : "Balcão"}</td>
+                      <td>{ORIGENS[c.origem]}</td>
                       <td><Status valor={c.status} /></td>
                       <td>{c.responsavel?.nome ?? "—"}</td>
                       <td>

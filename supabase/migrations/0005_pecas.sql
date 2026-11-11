@@ -4,7 +4,8 @@ create table public.pecas_cotacoes (
   unidade text not null default 'comauto' references public.unidades (chave),
   cliente_id uuid not null references public.clientes (id) on delete restrict,
   veiculo_id uuid references public.veiculos (id) on delete set null,
-  origem text not null default 'balcao' check (origem in ('balcao', 'oficina')),
+  origem text not null default 'balcao' check (origem in ('balcao', 'oficina', 'whatsapp')),
+  origem_ref text,
   descricao text not null check (
     char_length(descricao) between 1 and 1000
     and descricao !~ '^[[:space:]]|[[:space:]]$'
@@ -15,11 +16,22 @@ create table public.pecas_cotacoes (
   )),
   responsavel_id uuid references public.usuarios (user_id) on delete set null,
   criado_por uuid references public.usuarios (user_id) on delete set null,
-  criado_em timestamptz not null default now()
+  criado_em timestamptz not null default now(),
+  constraint pecas_cotacoes_referencia_whatsapp_check check (
+    origem <> 'whatsapp' or (
+      origem_ref is not null
+      and char_length(origem_ref) between 1 and 512
+      and origem_ref !~ '^[[:space:]]|[[:space:]]$'
+    )
+  )
 );
 
 create index pecas_cotacoes_unidade_criado_em_idx
   on public.pecas_cotacoes (unidade, criado_em desc);
+
+create unique index pecas_cotacoes_referencia_whatsapp_idx
+  on public.pecas_cotacoes (origem_ref)
+  where origem = 'whatsapp';
 
 alter table public.pecas_cotacoes enable row level security;
 revoke all on table public.pecas_cotacoes from public, anon, authenticated, service_role;
@@ -329,3 +341,45 @@ end $$;
 revoke all on function public.pecas_registrar_aprovacao(uuid, text[], uuid)
   from public, anon, authenticated, service_role;
 grant execute on function public.pecas_registrar_aprovacao(uuid, text[], uuid) to service_role;
+
+create function public.pecas_registrar_cotacao_bot(
+  p_cliente_id uuid, p_unidade text, p_referencia text, p_descricao text
+)
+returns uuid
+language plpgsql
+security invoker
+set search_path = ''
+as $$
+declare
+  cotacao_criada uuid;
+begin
+  begin
+    insert into public.pecas_cotacoes (unidade, cliente_id, origem, origem_ref, descricao)
+    select u.chave, c.id, 'whatsapp', p_referencia, p_descricao
+    from public.unidades u
+    cross join public.clientes c
+    where u.chave = p_unidade and u.ativa
+      and c.id = p_cliente_id and not c.anonimizado
+    on conflict (origem_ref) where origem = 'whatsapp' do nothing
+    returning id into cotacao_criada;
+  exception when check_violation or not_null_violation or foreign_key_violation then
+    return null;
+  end;
+
+  if found then
+    return cotacao_criada;
+  end if;
+
+  return (
+    select q.id
+    from public.pecas_cotacoes q
+    join public.unidades u on u.chave = q.unidade and u.ativa
+    join public.clientes c on c.id = q.cliente_id and not c.anonimizado
+    where q.origem = 'whatsapp' and q.origem_ref = p_referencia
+      and q.cliente_id = p_cliente_id and q.unidade = p_unidade
+  );
+end $$;
+
+revoke all on function public.pecas_registrar_cotacao_bot(uuid, text, text, text)
+  from public, anon, authenticated, service_role;
+grant execute on function public.pecas_registrar_cotacao_bot(uuid, text, text, text) to service_role;

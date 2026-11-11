@@ -6,7 +6,7 @@ import type { DadosCotacao, DadosEdicaoItem, DadosItem } from "./dados-cotacao";
 type Cotacao = {
   id: string;
   unidade: string;
-  origem: string;
+  origem: "balcao" | "oficina" | "whatsapp";
   descricao: string;
   status: string;
   criado_em: string;
@@ -81,6 +81,41 @@ export async function registrarItem(u: Usuario, cotacaoId: string, dados: DadosI
 }
 
 type ResultadoCotacao = "criada" | "cliente" | "veiculo" | "unidade" | "pendente" | "erro";
+
+type PedidoDoBot = {
+  clienteId: string;
+  unidade: string;
+  referencia: string;
+  descricao: string;
+};
+
+type ResultadoCotacaoDoBot =
+  | { ok: true; id: string }
+  | { ok: false; motivo: "invalido" | "pendente" | "indisponivel" | "erro" };
+
+export async function registrarCotacaoDoBot(pedido: PedidoDoBot): Promise<ResultadoCotacaoDoBot> {
+  const clienteId = pedido.clienteId.trim();
+  const unidade = pedido.unidade.trim();
+  const referencia = pedido.referencia.trim();
+  const descricao = pedido.descricao.trim();
+
+  if (!clienteId || !unidade || !referencia || referencia.length > 512 || !descricao || descricao.length > 1000) {
+    return { ok: false, motivo: "invalido" };
+  }
+
+  const { data, error } = await db().rpc("pecas_registrar_cotacao_bot", {
+    p_cliente_id: clienteId,
+    p_unidade: unidade,
+    p_referencia: referencia,
+    p_descricao: descricao,
+  });
+  if (error) {
+    const pendente = tabelaPendente(error.code) || error.code === "PGRST202";
+    return { ok: false, motivo: pendente ? "pendente" : "erro" };
+  }
+  if (typeof data === "string") return { ok: true, id: data };
+  return { ok: false, motivo: "indisponivel" };
+}
 
 export async function iniciarCotacao(u: Usuario, id: string): Promise<"iniciada" | "indisponivel" | "pendente" | "erro_inicio"> {
   const { data, error } = await db().rpc("pecas_assumir_cotacao", { p_id: id, p_unidades: u.unidades, p_ator: u.id });
