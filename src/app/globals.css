@@ -1201,3 +1201,8 @@ a { color: var(--vw-azul); }
 .meu-dia h3.texto-erro { display: block; margin-top: 0; }
 .meu-dia ul { list-style: none; margin: 0 0 4px; padding: 0; display: grid; gap: 6px; }
 .meu-dia li { line-height: 1.35; }
+
+/* Filtros do cabeçalho precisam caber na tela de celular. */
+@media (max-width: 560px) {
+  .cabecalho .linha-form { flex-wrap: wrap; }
+}
