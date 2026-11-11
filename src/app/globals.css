@@ -1213,3 +1213,31 @@ a { color: var(--vw-azul); }
 .form-coluna label { display: grid; gap: 4px; font-weight: 600; font-size: 13px; }
 .link-conta { color: inherit; text-decoration: none; }
 .link-conta:hover { text-decoration: underline; }
+
+/* Login corporativo: foto à esquerda, formulário à direita (pedido do Simão) */
+.acesso { min-height: 100vh; display: grid; grid-template-columns: minmax(0, 1.25fr) minmax(380px, 1fr); background: #fff; }
+.acesso-foto {
+  position: relative; background: #0b1a33 url("/login-gti.webp") center / cover no-repeat;
+}
+.acesso-foto::after {
+  content: ""; position: absolute; inset: 0;
+  background: linear-gradient(180deg, rgba(0, 20, 50, 0.15) 0%, rgba(0, 20, 50, 0.05) 45%, rgba(0, 18, 46, 0.82) 100%);
+}
+.acesso-foto-texto { position: absolute; z-index: 1; left: 48px; right: 48px; bottom: 44px; color: #fff; }
+.acesso-selo { display: inline-block; font-size: 12px; font-weight: 700; letter-spacing: .14em; text-transform: uppercase; opacity: .85; }
+.acesso-foto-texto p { margin: 8px 0 0; font-size: 26px; line-height: 1.25; font-weight: 600; max-width: 520px; }
+.acesso-painel { display: flex; align-items: center; justify-content: center; padding: 48px 32px; background: #fff; border-left: 1px solid #e5e9f0; }
+.acesso-form { width: 100%; max-width: 380px; display: grid; gap: 18px; }
+.acesso-titulo h1 { margin: 6px 0 4px; font-size: 26px; color: var(--vw-marinho); letter-spacing: -0.01em; }
+.acesso-titulo p { margin: 0; color: var(--texto-2); font-size: 14px; }
+.acesso-form label { display: grid; gap: 6px; font-size: 13px; font-weight: 600; color: var(--texto-2); }
+.acesso-form input { height: 46px; font-size: 15px; }
+.acesso-botao { height: 48px; font-size: 15px; font-weight: 700; }
+.acesso-rodape { margin: 4px 0 0; font-size: 12px; color: var(--mudo); border-top: 1px solid #eef1f5; padding-top: 14px; }
+@media (max-width: 900px) {
+  .acesso { grid-template-columns: 1fr; }
+  .acesso-foto { min-height: 220px; }
+  .acesso-foto-texto { left: 24px; right: 24px; bottom: 20px; }
+  .acesso-foto-texto p { font-size: 18px; }
+  .acesso-painel { border-left: 0; padding: 32px 20px; }
+}

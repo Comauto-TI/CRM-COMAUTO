@@ -11,9 +11,15 @@ export default async function Cadastro({ params, searchParams }: { params: Promi
   const conv = sp.ok ? null : await lerConvite(token);
 
   return (
-    <main className="login">
-      <div className="login-grade" style={{ gridTemplateColumns: "1fr" }}>
-        <section className="card login-card" style={{ maxWidth: 440, margin: "0 auto" }}>
+    <main className="acesso">
+      <section className="acesso-foto" aria-hidden="true">
+        <div className="acesso-foto-texto">
+          <span className="acesso-selo">Plataforma Comauto</span>
+          <p>Bem-vindo à equipe.</p>
+        </div>
+      </section>
+      <section className="acesso-painel">
+        <div className="acesso-form">
           <Marca nome="Comauto" sub="Plataforma" grande />
           {sp.ok ? (
             <>
@@ -43,8 +49,8 @@ export default async function Cadastro({ params, searchParams }: { params: Promi
               <p className="mudo">🔒 Acesso restrito à equipe da Comauto. Todas as ações ficam registradas.</p>
             </form>
           )}
-        </section>
-      </div>
+        </div>
+      </section>
     </main>
   );
 }
