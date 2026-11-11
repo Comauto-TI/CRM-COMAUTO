@@ -1,7 +1,7 @@
 import "server-only";
 import type { Usuario } from "@/lib/auth";
 import { db } from "@/lib/supabase/admin";
-import type { DadosCotacao, DadosItem } from "./dados-cotacao";
+import type { DadosCotacao, DadosEdicaoItem, DadosItem } from "./dados-cotacao";
 
 type Cotacao = {
   id: string;
@@ -17,6 +17,7 @@ type Cotacao = {
 
 type ItemCotacao = {
   id: string;
+  versao: number;
   descricao: string;
   quantidade: number;
   preco_unitario_centavos: number;
@@ -46,7 +47,7 @@ export async function listarCotacoes(unidades: string[]) {
 export async function obterCotacao(unidades: string[], id: string) {
   const { data, error } = await db()
     .from("pecas_cotacoes")
-    .select(`${RESUMO_COTACAO}, responsavel_id, itens:pecas_cotacao_itens(id, descricao, quantidade, preco_unitario_centavos, custo_unitario_centavos)`)
+    .select(`${RESUMO_COTACAO}, responsavel_id, itens:pecas_cotacao_itens(id, versao, descricao, quantidade, preco_unitario_centavos, custo_unitario_centavos)`)
     .in("unidade", unidades)
     .eq("id", id)
     .order("criado_em", { referencedTable: "itens" })
@@ -59,8 +60,8 @@ export async function obterCotacao(unidades: string[], id: string) {
 
 type ResultadoItem = "adicionado" | "indisponivel" | "limite" | "pendente" | "erro_item";
 
-export async function registrarItem(u: Usuario, cotacaoId: string, dados: DadosItem): Promise<ResultadoItem> {
-  const { data, error } = await db().rpc("pecas_adicionar_item", {
+function parametrosItem(u: Usuario, cotacaoId: string, dados: DadosItem) {
+  return {
     p_cotacao_id: cotacaoId,
     p_item_id: dados.id,
     p_unidades: u.unidades,
@@ -69,7 +70,11 @@ export async function registrarItem(u: Usuario, cotacaoId: string, dados: DadosI
     p_quantidade: dados.quantidade,
     p_preco_unitario_centavos: dados.precoUnitarioCentavos,
     p_custo_unitario_centavos: dados.custoUnitarioCentavos,
-  });
+  };
+}
+
+export async function registrarItem(u: Usuario, cotacaoId: string, dados: DadosItem): Promise<ResultadoItem> {
+  const { data, error } = await db().rpc("pecas_adicionar_item", parametrosItem(u, cotacaoId, dados));
   if (error) return tabelaPendente(error.code) || error.code === "PGRST202" ? "pendente" : "erro_item";
   if (data === "adicionado" || data === "indisponivel" || data === "limite") return data;
   return "erro_item";
@@ -81,6 +86,18 @@ export async function iniciarCotacao(u: Usuario, id: string): Promise<"iniciada"
   const { data, error } = await db().rpc("pecas_assumir_cotacao", { p_id: id, p_unidades: u.unidades, p_ator: u.id });
   if (error) return tabelaPendente(error.code) || error.code === "PGRST202" ? "pendente" : "erro_inicio";
   return data === true ? "iniciada" : "indisponivel";
+}
+
+type ResultadoEdicaoItem = "atualizado" | "indisponivel" | "desatualizado" | "pendente" | "erro_edicao";
+
+export async function atualizarItem(u: Usuario, cotacaoId: string, dados: DadosEdicaoItem): Promise<ResultadoEdicaoItem> {
+  const { data, error } = await db().rpc("pecas_atualizar_item", {
+    ...parametrosItem(u, cotacaoId, dados),
+    p_versao: dados.versao,
+  });
+  if (error) return tabelaPendente(error.code) || error.code === "PGRST202" ? "pendente" : "erro_edicao";
+  if (data === "atualizado" || data === "indisponivel" || data === "desatualizado") return data;
+  return "erro_edicao";
 }
 
 export async function registrarCotacao(u: Usuario, dados: DadosCotacao): Promise<ResultadoCotacao> {

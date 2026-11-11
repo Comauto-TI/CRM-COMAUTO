@@ -172,6 +172,71 @@ begin
   end if;
 end $$;
 
+do $$
+declare
+  cotacao_fixture constant uuid := '00000000-0000-4000-8000-000000000054';
+  outra_cotacao constant uuid := '00000000-0000-4000-8000-000000000058';
+  ator_fixture constant uuid := '00000000-0000-4000-8000-000000000051';
+  outro_ator constant uuid := '00000000-0000-4000-8000-000000000055';
+  item_fixture constant uuid := '00000000-0000-4000-8000-000000000057';
+  unidades_fixture constant text[] := array['comauto'];
+begin
+  if (select versao from public.pecas_cotacao_itens where id = item_fixture) is distinct from 1 then
+    raise exception 'O item deve começar na versão 1.';
+  end if;
+
+  if public.pecas_atualizar_item(cotacao_fixture, item_fixture, array['santaluzia'], ator_fixture, 1, 'Filtro novo', 2, 120, null) is distinct from 'indisponivel'
+    or public.pecas_atualizar_item(cotacao_fixture, item_fixture, unidades_fixture, outro_ator, 1, 'Filtro novo', 2, 120, null) is distinct from 'indisponivel'
+    or public.pecas_atualizar_item(outra_cotacao, item_fixture, unidades_fixture, ator_fixture, 1, 'Filtro novo', 2, 120, null) is distinct from 'indisponivel' then
+    raise exception 'Editar exige a cotação do item, a unidade e o responsável corretos.';
+  end if;
+
+  if public.pecas_atualizar_item(cotacao_fixture, item_fixture, unidades_fixture, ator_fixture, 1, 'Filtro novo', 2, 120, null) is distinct from 'atualizado'
+    or public.pecas_atualizar_item(cotacao_fixture, item_fixture, unidades_fixture, ator_fixture, 1, 'Filtro novo', 2, 120, null) is distinct from 'atualizado'
+    or public.pecas_atualizar_item(cotacao_fixture, item_fixture, unidades_fixture, ator_fixture, 2, 'Filtro novo', 2, 120, null) is distinct from 'atualizado'
+    or public.pecas_atualizar_item(cotacao_fixture, item_fixture, unidades_fixture, ator_fixture, 1, 'Alteração concorrente', 2, 120, null) is distinct from 'desatualizado'
+    or public.pecas_atualizar_item(cotacao_fixture, item_fixture, unidades_fixture, ator_fixture, 1, 'Filtro novo', 2, 120, 0) is distinct from 'desatualizado' then
+    raise exception 'Uma edição idêntica pode ser repetida; conteúdo novo exige a versão atual.';
+  end if;
+
+  if public.pecas_atualizar_item(cotacao_fixture, item_fixture, unidades_fixture, ator_fixture, 0, 'Filtro novo', 2, 120, null) is distinct from 'indisponivel'
+    or public.pecas_atualizar_item(cotacao_fixture, item_fixture, unidades_fixture, ator_fixture, null, 'Filtro novo', 2, 120, null) is distinct from 'indisponivel'
+    or public.pecas_atualizar_item(cotacao_fixture, item_fixture, unidades_fixture, ator_fixture, 2, ' Filtro', 2, 120, null) is distinct from 'indisponivel'
+    or public.pecas_atualizar_item(cotacao_fixture, item_fixture, unidades_fixture, ator_fixture, 2, repeat('x', 201), 2, 120, null) is distinct from 'indisponivel'
+    or public.pecas_atualizar_item(cotacao_fixture, item_fixture, unidades_fixture, ator_fixture, 2, null, 2, 120, null) is distinct from 'indisponivel'
+    or public.pecas_atualizar_item(cotacao_fixture, item_fixture, unidades_fixture, ator_fixture, 2, 'Filtro', 0, 120, null) is distinct from 'indisponivel'
+    or public.pecas_atualizar_item(cotacao_fixture, item_fixture, unidades_fixture, ator_fixture, 2, 'Filtro', 2, 100000000, null) is distinct from 'indisponivel'
+    or public.pecas_atualizar_item(cotacao_fixture, item_fixture, unidades_fixture, ator_fixture, 2, 'Filtro', 2, 120, -1) is distinct from 'indisponivel' then
+    raise exception 'A edição deve rejeitar versões e valores inválidos.';
+  end if;
+
+  if not exists (
+    select 1 from public.pecas_cotacao_itens
+    where id = item_fixture and versao = 2 and descricao = 'Filtro novo' and quantidade = 2
+      and preco_unitario_centavos = 120 and custo_unitario_centavos is null
+  ) then
+    raise exception 'Só a primeira edição válida deve alterar o item e avançar a versão.';
+  end if;
+
+  if public.pecas_atualizar_item(cotacao_fixture, item_fixture, unidades_fixture, ator_fixture, 2, 'Filtro novo', 2, 120, 0) is distinct from 'atualizado'
+    or public.pecas_atualizar_item(cotacao_fixture, item_fixture, unidades_fixture, ator_fixture, 2, 'Filtro novo', 2, 120, 0) is distinct from 'atualizado' then
+    raise exception 'A edição deve aceitar custo zero e permitir repetição.';
+  end if;
+  if not exists (
+    select 1 from public.pecas_cotacao_itens
+    where id = item_fixture and versao = 3 and custo_unitario_centavos = 0
+  ) then
+    raise exception 'Trocar custo ausente por zero deve incrementar a versão uma única vez.';
+  end if;
+
+  update public.pecas_cotacoes set status = 'aguardando_cliente' where id = cotacao_fixture;
+  if public.pecas_atualizar_item(cotacao_fixture, item_fixture, unidades_fixture, ator_fixture, 3, 'Filtro novo', 2, 120, 0) is distinct from 'indisponivel'
+    or public.pecas_atualizar_item(cotacao_fixture, item_fixture, unidades_fixture, ator_fixture, 3, 'Mudança após envio', 2, 120, 0) is distinct from 'indisponivel' then
+    raise exception 'Após apresentar a cotação, nem edição nem repetição devem ser aceitas.';
+  end if;
+  update public.pecas_cotacoes set status = 'em_cotacao' where id = cotacao_fixture;
+end $$;
+
 reset role;
 
 do $$
@@ -207,8 +272,16 @@ begin
     or has_table_privilege('anon', 'public.pecas_cotacao_itens', 'SELECT, INSERT, UPDATE, DELETE, TRUNCATE, REFERENCES, TRIGGER')
     or has_table_privilege('authenticated', 'public.pecas_cotacao_itens', 'SELECT, INSERT, UPDATE, DELETE, TRUNCATE, REFERENCES, TRIGGER')
     or has_table_privilege('service_role', 'public.pecas_cotacao_itens', 'UPDATE, DELETE, TRUNCATE, REFERENCES, TRIGGER')
+    or exists (
+      select 1 from information_schema.columns
+      where table_schema = 'public' and table_name = 'pecas_cotacao_itens'
+        and column_name not in ('descricao', 'quantidade', 'preco_unitario_centavos', 'custo_unitario_centavos', 'versao')
+        and has_column_privilege('service_role', 'public.pecas_cotacao_itens', column_name, 'UPDATE')
+    )
     or has_function_privilege('anon', 'public.pecas_adicionar_item(uuid,uuid,text[],uuid,text,integer,integer,integer)', 'EXECUTE')
-    or has_function_privilege('authenticated', 'public.pecas_adicionar_item(uuid,uuid,text[],uuid,text,integer,integer,integer)', 'EXECUTE') then
+    or has_function_privilege('authenticated', 'public.pecas_adicionar_item(uuid,uuid,text[],uuid,text,integer,integer,integer)', 'EXECUTE')
+    or has_function_privilege('anon', 'public.pecas_atualizar_item(uuid,uuid,text[],uuid,integer,text,integer,integer,integer)', 'EXECUTE')
+    or has_function_privilege('authenticated', 'public.pecas_atualizar_item(uuid,uuid,text[],uuid,integer,text,integer,integer,integer)', 'EXECUTE') then
     raise exception 'Os itens e a RPC devem manter RLS fechada e os grants mínimos do servidor.';
   end if;
 

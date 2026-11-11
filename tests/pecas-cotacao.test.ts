@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { lerDadosCotacao, lerDadosItem } from "@/modulos/pecas/dados-cotacao";
+import { centavosParaCampo, lerDadosCotacao, lerDadosEdicaoItem, lerDadosItem } from "@/modulos/pecas/dados-cotacao";
 
 function pedido() {
   const form = new FormData();
@@ -78,5 +78,28 @@ describe("entrada de itens da cotação", () => {
     const form = item();
     form.set(campo, valor);
     expect(lerDadosItem(form)).toBeNull();
+  });
+});
+
+describe("edição de itens da cotação", () => {
+  it("reabre o preço com centavos sem alterar o valor ao salvar outro campo", () => {
+    const form = item();
+    form.set("preco", centavosParaCampo(1250050));
+    form.set("custo", centavosParaCampo(0));
+    form.set("versao", "3");
+    expect(lerDadosEdicaoItem(form)).toMatchObject({
+      precoUnitarioCentavos: 1250050,
+      custoUnitarioCentavos: 0,
+      versao: 3,
+    });
+
+    form.set("custo", centavosParaCampo(null));
+    expect(lerDadosEdicaoItem(form)?.custoUnitarioCentavos).toBeNull();
+  });
+
+  it.each(["", "0", "1.5", "2147483648"])("rejeita versão inválida %s", (versao) => {
+    const form = item();
+    form.set("versao", versao);
+    expect(lerDadosEdicaoItem(form)).toBeNull();
   });
 });

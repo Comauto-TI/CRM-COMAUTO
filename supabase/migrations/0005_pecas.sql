@@ -91,6 +91,7 @@ create table public.pecas_cotacao_itens (
   quantidade integer not null check (quantidade between 1 and 9999),
   preco_unitario_centavos integer not null check (preco_unitario_centavos between 0 and 99999999),
   custo_unitario_centavos integer check (custo_unitario_centavos between 0 and 99999999),
+  versao integer not null default 1 check (versao > 0),
   criado_em timestamptz not null default now()
 );
 
@@ -99,6 +100,8 @@ create index pecas_cotacao_itens_cotacao_idx on public.pecas_cotacao_itens (cota
 alter table public.pecas_cotacao_itens enable row level security;
 revoke all on table public.pecas_cotacao_itens from public, anon, authenticated, service_role;
 grant select, insert on table public.pecas_cotacao_itens to service_role;
+grant update (descricao, quantidade, preco_unitario_centavos, custo_unitario_centavos, versao)
+  on table public.pecas_cotacao_itens to service_role;
 
 create function public.pecas_adicionar_item(
   p_cotacao_id uuid,
@@ -168,4 +171,74 @@ end $$;
 revoke all on function public.pecas_adicionar_item(uuid, uuid, text[], uuid, text, integer, integer, integer)
   from public, anon, authenticated, service_role;
 grant execute on function public.pecas_adicionar_item(uuid, uuid, text[], uuid, text, integer, integer, integer)
+  to service_role;
+
+create function public.pecas_atualizar_item(
+  p_cotacao_id uuid,
+  p_item_id uuid,
+  p_unidades text[],
+  p_ator uuid,
+  p_versao integer,
+  p_descricao text,
+  p_quantidade integer,
+  p_preco_unitario_centavos integer,
+  p_custo_unitario_centavos integer
+)
+returns text
+language plpgsql
+security invoker
+set search_path = ''
+as $$
+declare
+  item_atual public.pecas_cotacao_itens%rowtype;
+begin
+  perform 1
+  from public.pecas_cotacoes
+  where id = p_cotacao_id
+    and unidade = any (p_unidades)
+    and status = 'em_cotacao'
+    and responsavel_id = p_ator
+  for update;
+
+  if not found or p_versao is null or p_versao < 1 then
+    return 'indisponivel';
+  end if;
+
+  select * into item_atual
+  from public.pecas_cotacao_itens
+  where id = p_item_id and cotacao_id = p_cotacao_id
+  for update;
+
+  if not found then
+    return 'indisponivel';
+  end if;
+
+  if item_atual.descricao = p_descricao
+    and item_atual.quantidade = p_quantidade
+    and item_atual.preco_unitario_centavos = p_preco_unitario_centavos
+    and item_atual.custo_unitario_centavos is not distinct from p_custo_unitario_centavos then
+    return 'atualizado';
+  end if;
+
+  if item_atual.versao <> p_versao then
+    return 'desatualizado';
+  end if;
+
+  begin
+    update public.pecas_cotacao_itens
+    set descricao = p_descricao,
+        quantidade = p_quantidade,
+        preco_unitario_centavos = p_preco_unitario_centavos,
+        custo_unitario_centavos = p_custo_unitario_centavos,
+        versao = versao + 1
+    where id = p_item_id and cotacao_id = p_cotacao_id;
+  exception when check_violation or not_null_violation or numeric_value_out_of_range then
+    return 'indisponivel';
+  end;
+  return 'atualizado';
+end $$;
+
+revoke all on function public.pecas_atualizar_item(uuid, uuid, text[], uuid, integer, text, integer, integer, integer)
+  from public, anon, authenticated, service_role;
+grant execute on function public.pecas_atualizar_item(uuid, uuid, text[], uuid, integer, text, integer, integer, integer)
   to service_role;

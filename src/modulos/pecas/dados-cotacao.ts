@@ -52,3 +52,18 @@ export function lerDadosItem(form: FormData) {
 }
 
 export type DadosItem = NonNullable<ReturnType<typeof lerDadosItem>>;
+
+export function centavosParaCampo(centavos: number | null): string {
+  return centavos === null ? "" : (centavos / 100).toFixed(2).replace(".", ",");
+}
+
+export function lerDadosEdicaoItem(form: FormData) {
+  const dados = lerDadosItem(form);
+  const entradaVersao = campo(form, "versao");
+  if (!dados || !/^[1-9]\d{0,9}$/.test(entradaVersao)) return null;
+
+  const versao = Number(entradaVersao);
+  return versao <= 2147483647 ? { ...dados, versao } : null;
+}
+
+export type DadosEdicaoItem = NonNullable<ReturnType<typeof lerDadosEdicaoItem>>;

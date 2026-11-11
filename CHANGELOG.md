@@ -35,6 +35,7 @@ Versionamento semântico a partir de **0.0.1** (decisão do Simão, 10/11/2026).
 - Peças (`codex/pecas`): primeira fila por unidade e cadastro de cotação de balcão, com vínculo a cliente e veículo quando informado.
 - Peças (`codex/pecas`): assumir a cotação atribui o responsável e registra a mudança de etapa no histórico.
 - Peças (`codex/pecas`): detalhe da cotação com inclusão de itens pelo responsável, quantidade, preço, custo opcional e total cotado.
+- Peças (`codex/pecas`): edição dos itens em cotação com verificação de versão para preservar alterações recentes.
 ### Corrigido (revisão do Codex)
 - Agenda respeita a unidade no banco (FK composta) e no servidor; pg_trgm independe do search_path.
 - Exportação integral do cliente só com permissão LGPD; início mostra só o que o perfil pode ver.
