@@ -3,6 +3,7 @@ import { db } from "@/lib/supabase/admin";
 import { auditar } from "@/lib/audit";
 import { notificar } from "@/lib/notificacoes";
 import { nucleoAplicado } from "@/lib/usuarios";
+import { registrarCotacaoDoBot } from "@/modulos/pecas/cotacoes";
 import { destinoDoLead, escolherVendedor, temperaturaInicial, completarQualificacao, type Interesse, type Pagamento, type Prazo } from "./regras";
 
 /**
@@ -24,6 +25,8 @@ export type DadosLead = {
   trocaDescricao: string | null;
   resumo: string;
   clienteConfirmou: boolean;
+  /** wamid da mensagem: referência estável (a mesma mensagem nunca cria duas cotações de peças). */
+  referencia?: string | null;
 };
 
 export type ResultadoLead =
@@ -84,6 +87,18 @@ export async function rotearLead(d: DadosLead): Promise<ResultadoLead> {
   const nome = (cliente.nome as string | null) ?? "Cliente";
   const resumo = d.resumo.slice(0, 300);
 
+  // Peças: o pedido entra na FILA DE COTAÇÕES do setor (módulo do Codex), sem duplicar pela mesma mensagem.
+  let cotacaoId: string | null = null;
+  if (destino.tipo === "pecas") {
+    const r = await registrarCotacaoDoBot({
+      clienteId: d.clienteId,
+      unidade,
+      referencia: d.referencia || `bot:${d.clienteId}:${new Date().toISOString().slice(0, 16)}`,
+      descricao: resumo.slice(0, 1000),
+    });
+    if (r.ok) cotacaoId = r.id; // se a fila ainda não existir no banco, cai no aviso + nota abaixo
+  }
+
   if (destino.tipo === "pecas" || destino.tipo === "triagem") {
     // F2-1-001: encaminhamento é INTERNO — nota na ficha + aviso à equipe. Nunca vira follow-up
     // (o cron de follow-up manda template de marketing ao cliente; o resumo é texto interno).
@@ -99,7 +114,7 @@ export async function rotearLead(d: DadosLead): Promise<ResultadoLead> {
         tipo: destino.tipo === "pecas" ? "pecas" : "lead",
         titulo: destino.tipo === "pecas" ? `Pedido de peças pelo WhatsApp: ${nome}` : `Lead para triagem: ${nome}`,
         corpo: resumo,
-        link: `/painel/clientes?q=${encodeURIComponent(nome)}`,
+        link: cotacaoId ? `/painel/pecas/${cotacaoId}` : `/painel/clientes?q=${encodeURIComponent(nome)}`,
       },
     );
     return { ok: true, destino: destino.tipo };

@@ -14,6 +14,7 @@ Versionamento semântico a partir de **0.0.1** (decisão do Simão, 10/11/2026).
 - Transferir carteira (gerente/admin, férias/saída): cartões abertos de um vendedor para outro ou divididos no rodízio.
 - Equipe em Configurações: o admin cadastra a pessoa (login + papel, setor e unidade) com senha provisória exibida uma vez (nunca na URL); vincula e-mail que já tem login em outro sistema do grupo sem trocar a senha; nova senha só para quem foi criado pela plataforma.
 - Prontidão do piloto (Gestão): o que bloqueia e o que falta, com a ação de cada item — só verifica se as chaves existem, nunca mostra valores.
+- Pedido de peças pelo WhatsApp entra direto na fila de cotações de Peças (sem duplicar se a mensagem chegar repetida); o aviso à equipe abre a cotação.
 ### Alterado
 - Troca de vendedor só pela transferência (registrada e avisada); saiu o campo solto do formulário de qualificação.
 - Painel sem animações contínuas nem desfoque.

@@ -1148,3 +1148,47 @@ F1-P-001: 0005 usa IF NOT EXISTS/CREATE OR REPLACE, acrescenta colunas faltantes
 F1-P-002: pecas_reatribuir_cotacao exige admin ou gerente de Peças/administração ativo, acesso atual à unidade no banco + escopo da sessão, e destinatário ativo com acesso a Peças e unidade principal/extra. Transfere sob bloqueio da cotação com responsáveis anterior/novo no histórico. Retomada de órfãs preserva etapa e venda. SQL cobre responsável removido/desativado/sem unidade, destino e ator inválidos, idempotência, etapa terminal e rollback quando o histórico falha. A tela oferece reatribuição à gestão e Assumir nas órfãs abertas.
 F1-P-003: fila aberta/encerrada com páginas de 50 e ordenação por criado_em/id. Regressão com 121 abertas e 120 encerradas mais recentes preservou o acesso às 121 abertas, sem misturar outra unidade.
 Validação: typecheck limpo, 643 Vitest, contratos SQL PGlite e diff --check. Sem acesso remoto ao banco ou alteração de produção. Referência local codex/pecas-v002 atualizada; Claude publica a continuação do PR #3, revisa e aplica a 0005 no dev. CHANGELOG em Não lançado; versão continua 0.0.2 até o merge.
+
+
+CODEX — REVISÃO DE TRANSFERÊNCIAS c650eb5 · 11/11/2026
+Fixture local: work/revisao-transferencias-20261111/revisar-transferencias.mjs. Importa os arquivos imutáveis do commit, com Data API, autenticação, auditoria e notificações simuladas. Sem banco remoto, credenciais, contas ou mensagens reais. Passaram transferência temporária normal (mantém carteira, registra nota e avisa destino) e recusa quando o responsável muda antes do UPDATE individual.
+
+[ID] F1-V-T001
+[ARQUIVO] src/modulos/vendas/dados.ts:370 (c650eb5)
+[TESTE] Destinatário ativo, papel gerente, setor oficina, mesma unidade. O mapa real podeAcessar(destino, 'vendas') devolveu false; transferirOportunidade foi executada pelo dono atual.
+[ESPERADO] Destinatário tem acesso atual a Vendas e à unidade do cartão.
+[OBTIDO] ok=true; o cartão e a carteira foram para o gerente de Oficina, que não consegue abrir Vendas. vendedorValido filtra papel, mas não setor. Ao corrigir, considerar unidade principal e adicionais do núcleo.
+[TIPO] bug
+[GRAVIDADE] média
+
+[ID] F1-V-T002
+[ARQUIVO] src/modulos/vendas/dados.ts:426-456 (c650eb5)
+[TESTE] Admin com acesso a Comauto e Motomecânica; vendedor de origem tem um cartão aberto em cada; destino tem somente Comauto, sem unidade adicional. Cenário separado simula mudança válida de unidade/funil/etapa entre leitura do lote e gravação.
+[ESPERADO] Validar o destino por unidade de cada cartão ou restringir o lote à unidade explicitamente escolhida. UPDATE repete o escopo atual e evita alterar cartão que saiu das unidades autorizadas.
+[OBTIDO] O lote usa lista[0].unidade para escolher/validar todos os destinos e retornou total=2 atribuindo também Motomecânica ao vendedor de Comauto. No cenário condicionado de mudança de escopo, o UPDATE em lote sem filtro de unidade ainda alterou o cartão movido para Santa Luzia, fora de u.unidades. A simulação é da Data API; não foi executada concorrência no banco remoto.
+[TIPO] bug
+[GRAVIDADE] média
+
+[ID] F1-V-T003
+[ARQUIVO] src/modulos/vendas/dados.ts:394-405 e 460-461 (c650eb5)
+[TESTE] UPDATE do responsável bem-sucedido; insert em vendas_atividades e update da carteira retornam erro 57014 na fixture.
+[ESPERADO] Histórico obrigatório acompanha a alteração de responsável atomicamente. Quando mover carteira foi solicitado, não relatar transferência completa se a carteira não foi movida.
+[OBTIDO] ok=true e aviso/auditoria de sucesso, mas sem nota de transferência e com a carteira no vendedor antigo. Os retornos das gravações auxiliares são ignorados. O texto da nota também afirma mover carteira mesmo quando a regra protege a carteira de um terceiro e nenhuma linha é atualizada. Preferir transação/RPC para as gravações obrigatórias e retorno explícito dos resultados parciais.
+[TIPO] bug
+[GRAVIDADE] média
+
+[ID] F1-V-T004
+[ARQUIVO] src/modulos/vendas/dados.ts:426 (c650eb5)
+[TESTE] 2.001 cartões abertos na fixture, com Data API simulada retornando no máximo 1.000 linhas por consulta.
+[ESPERADO] Transferência integral percorre páginas determinísticas ou avisa que há restantes/resultado parcial.
+[OBTIDO] ok=true,total=1000; 1.001 cartões continuaram com o vendedor de origem. limit(2000) sem paginação também limita o lote a 2.000 mesmo numa API com teto maior. O teto de dev não foi consultado.
+[TIPO] bug
+[GRAVIDADE] baixa
+
+[ID] F1-V-T005
+[ARQUIVO] src/app/painel/vendas/actions.ts:73-84; src/modulos/vendas/dados.ts:278 (c650eb5)
+[TESTE] salvarQualificacao chamado como admin com o campo legado vendedor_id no FormData, embora ele tenha saído do formulário visível.
+[ESPERADO] A alteração de responsável segue o novo fluxo de transferência com validação de destino, motivo, linha do tempo e aviso.
+[OBTIDO] Responsável alterado pela ação antiga, sem nota nem aviso de transferência. Caminho preexistente que permaneceu acessível após a remoção do campo na UI; remover o setter legado ou encaminhá-lo ao mesmo contrato de transferência.
+[TIPO] bug
+[GRAVIDADE] média
