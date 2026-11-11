@@ -18,7 +18,7 @@ import { lerVinculos, linkProcessoVendas, linkAvaliex } from "@/modulos/vendas/v
 
 type SP = {
   funil?: string; vendedor?: string; op?: string; nova?: string; erro?: string; ok?: string;
-  nome?: string; telefone?: string; temperatura?: string; periodo?: string; ordem?: string; aviso?: string; transferir?: string; qtd?: string;
+  nome?: string; telefone?: string; temperatura?: string; periodo?: string; ordem?: string; aviso?: string; transferir?: string; qtd?: string; pulados?: string; parcial?: string;
 };
 
 export default async function Vendas({ searchParams }: { searchParams: Promise<SP> }) {
@@ -138,6 +138,7 @@ export default async function Vendas({ searchParams }: { searchParams: Promise<S
 
         {sp.erro && !sp.op && <div className="alerta erro">{sp.erro}</div>}
         {sp.ok === "carteira" && <div className="alerta ok">Carteira transferida: {sp.qtd} {sp.qtd === "1" ? "cartão" : "cartões"}. Os vendedores que receberam foram avisados.</div>}
+        {sp.ok === "carteira" && (sp.pulados || sp.parcial) && <div className="alerta aviso">{sp.pulados ? `${sp.pulados} ${sp.pulados === "1" ? "cartão ficou" : "cartões ficaram"} com o vendedor de origem (mudou no meio do caminho ou não havia destino com acesso àquela unidade). ` : ""}{sp.parcial ? "Lote muito grande: rode a transferência de novo para os cartões restantes." : ""}</div>}
 
         <div className="vendas-topo">
           <div className="card funil-faixa" aria-label="Funil de conversão dos últimos 90 dias">
@@ -228,6 +229,7 @@ export default async function Vendas({ searchParams }: { searchParams: Promise<S
             {sp.ok === "vinculado" && <div className="alerta ok">Vínculo salvo.</div>}
             {sp.ok === "vinculado_aviso" && <div className="alerta aviso">Vínculo salvo. {sp.aviso?.slice(0, 160)}</div>}
             {sp.ok === "transferido" && <div className="alerta ok">Lead transferido. O novo vendedor foi avisado.</div>}
+            {sp.ok === "transferido_aviso" && <div className="alerta aviso">{sp.aviso?.slice(0, 160)} O novo vendedor foi avisado.</div>}
             {podeTransferir(u, op) && (
               <details id="transferir" className="transferir-bloco" open={sp.transferir === "1"}>
                 <summary><Icone nome="transferir" tamanho={14} /> Transferir para outro vendedor</summary>

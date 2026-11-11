@@ -4,7 +4,7 @@ import { auditar } from "@/lib/audit";
 import { buscarClientePorTelefone } from "@/lib/clientes-telefone";
 import { normalizarTelefone, mascararTelefone } from "@/lib/phone";
 import type { Usuario } from "@/lib/auth";
-import { veTodasOportunidades, podeMexer, podeAssumir, podeTransferir, distribuirRodizio, MOTIVOS_TRANSFERENCIA, type EtapaResumo, type MotivoTransferencia } from "./regras";
+import { veTodasOportunidades, podeMexer, podeAssumir, podeTransferir, podeReceberLead, distribuirRodizio, MOTIVOS_TRANSFERENCIA, type EtapaResumo, type MotivoTransferencia } from "./regras";
 import { notificar } from "@/lib/notificacoes";
 import { lerVinculoProcessoVendas, lerVinculoAvaliex } from "./vinculos";
 
@@ -45,15 +45,25 @@ export async function funisDaUnidade(unidade: string): Promise<Funil[]> {
   return (data ?? []) as Funil[];
 }
 
+type Elegivel = { user_id: string; nome: string; papel: string };
+
+/**
+ * Quem pode receber leads na unidade (F1-V-T001): ativo, vendedor/gerente com acesso à área Vendas
+ * e à unidade (principal OU adicional). Mesma regra para a lista da tela e para validar a gravação.
+ */
+async function elegiveisVendas(unidade: string, papeis: readonly string[] = ["vendedor", "gerente"]): Promise<Elegivel[]> {
+  const { data: extras } = await db().from("usuario_unidades").select("user_id").eq("unidade", unidade);
+  const idsExtras = new Set((extras ?? []).map((e) => e.user_id as string));
+  let q = db().from("usuarios").select("user_id, nome, papel, setor, unidade, ativo").eq("ativo", true).in("papel", [...papeis]);
+  q = idsExtras.size ? q.or(`unidade.eq.${unidade},user_id.in.(${[...idsExtras].join(",")})`) : q.eq("unidade", unidade);
+  const { data } = await q.order("nome");
+  return (data ?? [])
+    .filter((p) => podeReceberLead({ papel: p.papel, setor: p.setor, ativo: p.ativo, unidade: p.unidade, extras: idsExtras.has(p.user_id) ? [unidade] : [] }, unidade))
+    .map((p) => ({ user_id: p.user_id as string, nome: p.nome as string, papel: p.papel as string }));
+}
+
 export async function vendedoresDaUnidade(unidade: string): Promise<{ user_id: string; nome: string }[]> {
-  const { data } = await db()
-    .from("usuarios")
-    .select("user_id, nome")
-    .eq("ativo", true)
-    .eq("unidade", unidade)
-    .in("papel", ["vendedor", "gerente"])
-    .order("nome");
-  return (data ?? []) as { user_id: string; nome: string }[];
+  return (await elegiveisVendas(unidade)).map(({ user_id, nome }) => ({ user_id, nome }));
 }
 
 export async function carregarQuadro(u: Usuario, funil: Funil, filtros: FiltrosQuadro = {}) {
@@ -263,7 +273,7 @@ export async function assumirOportunidade(u: Usuario, id: string): Promise<Resul
 
 export async function atualizarQualificacao(
   u: Usuario, id: string,
-  campos: { temperatura: string; qualificacao: string; pagamento: string; prazo: string; veiculo: string | null; valor: number | null; temTroca: boolean; troca: string | null; canal: string | null; vendedorId?: string | null },
+  campos: { temperatura: string; qualificacao: string; pagamento: string; prazo: string; veiculo: string | null; valor: number | null; temTroca: boolean; troca: string | null; canal: string | null },
 ): Promise<Resultado> {
   const op = await opParaAlterar(u, id);
   if (!op) return { ok: false, motivo: "Oportunidade não encontrada" };
@@ -274,12 +284,11 @@ export async function atualizarQualificacao(
     tem_troca: campos.temTroca, troca_descricao: campos.temTroca ? campos.troca?.slice(0, 300) || null : null,
     canal_venda: campos.canal, atualizado_por: u.email,
   };
-  // só supervisor redistribui carteira
-  if (veTodasOportunidades(u) && campos.vendedorId !== undefined) patch.vendedor_id = campos.vendedorId;
+  // F1-V-T005: responsável NÃO muda por aqui — só pela transferência (destino validado, motivo, nota e aviso)
   const r = await gravarComPosse(u, id, patch);
   if (r === "conflito") return { ok: false, motivo: "O cartão mudou de responsável. Recarregue a tela." };
   if (r === "erro") return { ok: false, motivo: "Não foi possível salvar" };
-  await auditar(u.email, "editar_oportunidade", "vendas_oportunidades", id, { vendedor: patch.vendedor_id });
+  await auditar(u.email, "editar_oportunidade", "vendas_oportunidades", id);
   return { ok: true };
 }
 
@@ -369,39 +378,34 @@ export async function desvincularExterno(u: Usuario, id: string, tipo: "processo
 // ---------------------------------------------------------------------------
 async function vendedorValido(unidade: string, id: string) {
   if (!/^[0-9a-f-]{36}$/i.test(id)) return null;
-  const { data } = await db().from("usuarios").select("user_id, nome").eq("user_id", id).eq("ativo", true).eq("unidade", unidade).in("papel", ["vendedor", "gerente"]).maybeSingle();
-  return data as { user_id: string; nome: string } | null;
+  return (await elegiveisVendas(unidade)).find((p) => p.user_id === id) ?? null;
 }
+
+type RetornoTransferir = { ok: boolean; cliente_id?: string; carteira?: boolean };
 
 export async function transferirOportunidade(
   u: Usuario, id: string, novoId: string, motivo: MotivoTransferencia, moverCarteira: boolean,
-): Promise<{ ok: true } | { ok: false; motivo: string }> {
+): Promise<{ ok: true; aviso?: string } | { ok: false; motivo: string }> {
   const op = await opParaAlterar(u, id);
   if (!op) return { ok: false, motivo: "Oportunidade não encontrada" };
   if (!podeTransferir(u, op)) return { ok: false, motivo: "Só o vendedor responsável ou o gerente transfere este cartão" };
   if (novoId === op.vendedor_id) return { ok: false, motivo: "O cartão já está com esse vendedor" };
   const novo = await vendedorValido(op.unidade, novoId);
-  if (!novo) return { ok: false, motivo: "Escolha um vendedor ativo desta unidade" };
-
-  // posse conferida na própria gravação: só transfere se o dono ainda for o mesmo que o usuário viu
-  let q = db().from("vendas_oportunidades").update({ vendedor_id: novo.user_id, atualizado_por: u.email }).eq("id", id).in("unidade", u.unidades);
-  q = op.vendedor_id ? q.eq("vendedor_id", op.vendedor_id) : q.is("vendedor_id", null);
-  const { data: gravou, error } = await q.select("cliente_id");
-  if (error || !gravou?.length) return { ok: false, motivo: "O cartão mudou de responsável. Recarregue a tela." };
+  if (!novo) return { ok: false, motivo: "Escolha um vendedor com acesso a Vendas nesta unidade" };
 
   const { data: antigo } = op.vendedor_id ? await db().from("usuarios").select("nome").eq("user_id", op.vendedor_id).maybeSingle() : { data: null };
   const deNome = (antigo?.nome as string | undefined) ?? "sem vendedor";
-  await db().from("vendas_atividades").insert({
-    oportunidade_id: id, tipo: "nota", ator: u.email,
-    descricao: `Transferido de ${deNome} para ${novo.nome} (${MOTIVOS_TRANSFERENCIA[motivo]})${moverCarteira ? " · carteira do cliente também" : ""}`,
+  // F1-V-T003: responsável + carteira + nota numa transação só; posse e unidade conferidas na gravação
+  const { data, error } = await db().rpc("vendas_transferir", {
+    p_id: id, p_de: op.vendedor_id, p_para: novo.user_id, p_unidades: [op.unidade], p_so_abertas: false,
+    p_mover_carteira: moverCarteira, p_ator: u.email,
+    p_descricao: `Transferido de ${deNome} para ${novo.nome} (${MOTIVOS_TRANSFERENCIA[motivo]})`,
   });
-  const clienteId = gravou[0].cliente_id as string;
-  if (moverCarteira) {
-    // só move a carteira se ela estava com o vendedor antigo (ou vazia) — não tira cliente de terceiro
-    let c = db().from("clientes").update({ vendedor_id: novo.user_id }).eq("id", clienteId);
-    c = op.vendedor_id ? c.or(`vendedor_id.is.null,vendedor_id.eq.${op.vendedor_id}`) : c.is("vendedor_id", null);
-    await c;
-  }
+  if (error) return { ok: false, motivo: "Não foi possível transferir — nada foi alterado" };
+  const r = data as RetornoTransferir | null;
+  if (!r?.ok || !r.cliente_id) return { ok: false, motivo: "O cartão mudou de responsável. Recarregue a tela." };
+  const clienteId = r.cliente_id;
+
   const { data: cli } = await db().from("clientes").select("nome").eq("id", clienteId).maybeSingle();
   const { data: funil } = await db().from("vendas_funis").select("chave").eq("id", op.funil_id).maybeSingle();
   if (novo.user_id !== u.id) {
@@ -412,57 +416,90 @@ export async function transferirOportunidade(
       link: `/painel/vendas?funil=${(funil?.chave as string | undefined) ?? "novos"}&op=${id}`,
     });
   }
-  await auditar(u.email, "transferir_oportunidade", "vendas_oportunidades", id, { de: op.vendedor_id, para: novo.user_id, motivo, moverCarteira });
-  return { ok: true };
+  await auditar(u.email, "transferir_oportunidade", "vendas_oportunidades", id, { de: op.vendedor_id, para: novo.user_id, motivo, moverCarteira, carteiraMovida: !!r.carteira });
+  return moverCarteira && !r.carteira
+    ? { ok: true, aviso: "Cartão transferido. A carteira do cliente continuou com o vendedor dela (é de outra pessoa)." }
+    : { ok: true };
 }
 
-/** Férias/saída: passa os cartões ABERTOS de um vendedor para outro, ou divide entre os demais (rodízio). Só supervisor. */
+/** Teto de um lote de férias (F1-V-T004): acima disso a operação avisa que foi parcial. */
+const LOTE_MAXIMO = 10_000;
+const PAGINA = 1000;
+
+/**
+ * Férias/saída: passa os cartões ABERTOS de um vendedor para outro, ou divide entre os demais (rodízio). Só supervisor.
+ * F1-V-T002: cada unidade valida os próprios destinos e a gravação repete a unidade do cartão.
+ * F1-V-T004: o lote é lido inteiro (em páginas estáveis) ANTES de gravar; acima do teto avisa que foi parcial.
+ */
 export async function transferirCarteira(
   u: Usuario, deId: string, para: string, motivo: MotivoTransferencia, moverCarteira: boolean,
-): Promise<{ ok: true; total: number } | { ok: false; motivo: string }> {
+): Promise<{ ok: true; total: number; pulados: number; parcial: boolean } | { ok: false; motivo: string }> {
   if (!veTodasOportunidades(u)) return { ok: false, motivo: "Só gerente ou administrador transfere a carteira inteira" };
   if (!/^[0-9a-f-]{36}$/i.test(deId)) return { ok: false, motivo: "Escolha o vendedor de origem" };
-  const { data: ops } = await db().from("vendas_oportunidades")
-    .select("id, unidade, cliente_id, funil_id").eq("vendedor_id", deId).is("fechado_em", null).in("unidade", u.unidades).limit(2000);
-  const lista = (ops ?? []) as { id: string; unidade: string; cliente_id: string; funil_id: string }[];
+
+  type Op = { id: string; unidade: string };
+  const lista: Op[] = [];
+  let parcial = false;
+  for (let de = 0; ; de += PAGINA) {
+    const { data, error } = await db().from("vendas_oportunidades")
+      .select("id, unidade").eq("vendedor_id", deId).is("fechado_em", null).in("unidade", u.unidades)
+      .order("id").range(de, de + PAGINA - 1);
+    if (error) return { ok: false, motivo: "Não foi possível ler a carteira desse vendedor" };
+    lista.push(...((data ?? []) as Op[]));
+    if (!data || data.length < PAGINA) break;
+    if (lista.length >= LOTE_MAXIMO) { parcial = true; break; }
+  }
   if (!lista.length) return { ok: false, motivo: "Esse vendedor não tem cartões abertos" };
-  const unidade = lista[0].unidade;
 
-  // destino: um vendedor escolhido ou o rodízio entre os ativos da unidade (sem o de origem)
-  let destinos: string[];
-  if (para === "rodizio") {
-    const { data: vs } = await db().from("usuarios").select("user_id").eq("ativo", true).eq("unidade", unidade).eq("papel", "vendedor").neq("user_id", deId);
-    const ids = (vs ?? []).map((v) => v.user_id as string);
-    if (!ids.length) return { ok: false, motivo: "Não há outros vendedores ativos para dividir" };
-    const { data: abertas } = await db().from("vendas_oportunidades").select("vendedor_id, criado_em").in("vendedor_id", ids).is("fechado_em", null);
-    const carga = ids.map((id) => {
-      const minhas = (abertas ?? []).filter((o) => o.vendedor_id === id);
-      return { id, abertas: minhas.length, ultimoLeadEm: minhas.map((o) => o.criado_em as string).sort().at(-1) ?? null };
-    });
-    destinos = distribuirRodizio(lista.length, carga);
-  } else {
-    const alvo = await vendedorValido(unidade, para);
-    if (!alvo || alvo.user_id === deId) return { ok: false, motivo: "Escolha outro vendedor ativo da unidade" };
-    destinos = lista.map(() => alvo.user_id);
+  const porUnidade = new Map<string, Op[]>();
+  for (const op of lista) porUnidade.set(op.unidade, [...(porUnidade.get(op.unidade) ?? []), op]);
+  const plano: { op: Op; novo: string }[] = [];
+  const semDestino: string[] = [];
+  for (const [unidade, ops] of porUnidade) {
+    if (para === "rodizio") {
+      const ids = (await elegiveisVendas(unidade, ["vendedor"])).map((p) => p.user_id).filter((id) => id !== deId);
+      if (!ids.length) { semDestino.push(unidade); continue; }
+      const { data: abertas } = await db().from("vendas_oportunidades").select("vendedor_id, criado_em").in("vendedor_id", ids).is("fechado_em", null);
+      const carga = ids.map((id) => {
+        const minhas = (abertas ?? []).filter((o) => o.vendedor_id === id);
+        return { id, abertas: minhas.length, ultimoLeadEm: minhas.map((o) => o.criado_em as string).sort().at(-1) ?? null };
+      });
+      const destinos = distribuirRodizio(ops.length, carga);
+      ops.forEach((op, i) => plano.push({ op, novo: destinos[i] }));
+    } else {
+      const alvo = await vendedorValido(unidade, para);
+      if (!alvo || alvo.user_id === deId) { semDestino.push(unidade); continue; }
+      ops.forEach((op) => plano.push({ op, novo: alvo.user_id }));
+    }
+  }
+  if (!plano.length) {
+    return { ok: false, motivo: para === "rodizio" ? "Não há outros vendedores com acesso a Vendas nessa unidade" : "Esse vendedor não tem acesso a Vendas na unidade dos cartões" };
   }
 
-  const { data: nomes } = await db().from("usuarios").select("user_id, nome").in("user_id", [deId, ...new Set(destinos)]);
+  const { data: nomes } = await db().from("usuarios").select("user_id, nome").in("user_id", [deId, ...new Set(plano.map((x) => x.novo))]);
   const nome = (id: string) => ((nomes ?? []).find((n) => n.user_id === id)?.nome as string | undefined) ?? "vendedor";
-  let total = 0;
-  const porDestino = new Map<string, number>();
-  for (let i = 0; i < lista.length; i++) {
-    const op = lista[i], novo = destinos[i];
-    const { data: gravou } = await db().from("vendas_oportunidades").update({ vendedor_id: novo, atualizado_por: u.email })
-      .eq("id", op.id).eq("vendedor_id", deId).is("fechado_em", null).select("id");
-    if (!gravou?.length) continue; // mudou no meio do caminho: não força
+  let total = 0, erros = 0;
+  const porDestino = new Map<string, { vendedor: string; unidade: string; qtd: number }>();
+  for (const { op, novo } of plano) {
+    // unidade do cartão repetida na gravação: se ele mudou de unidade no meio do caminho, não é tocado
+    const { data, error } = await db().rpc("vendas_transferir", {
+      p_id: op.id, p_de: deId, p_para: novo, p_unidades: [op.unidade], p_so_abertas: true,
+      p_mover_carteira: moverCarteira, p_ator: u.email,
+      p_descricao: `Transferido de ${nome(deId)} para ${nome(novo)} (${MOTIVOS_TRANSFERENCIA[motivo]}, em lote)`,
+    });
+    if (error) { erros++; continue; }
+    if (!(data as RetornoTransferir | null)?.ok) continue; // mudou no meio do caminho: não força
     total++;
-    porDestino.set(novo, (porDestino.get(novo) ?? 0) + 1);
-    await db().from("vendas_atividades").insert({ oportunidade_id: op.id, tipo: "nota", ator: u.email, descricao: `Transferido de ${nome(deId)} para ${nome(novo)} (${MOTIVOS_TRANSFERENCIA[motivo]}, em lote)` });
-    if (moverCarteira) await db().from("clientes").update({ vendedor_id: novo }).eq("id", op.cliente_id).eq("vendedor_id", deId);
+    const k = `${novo}|${op.unidade}`;
+    const atual = porDestino.get(k) ?? { vendedor: novo, unidade: op.unidade, qtd: 0 };
+    atual.qtd++;
+    porDestino.set(k, atual);
   }
-  for (const [vendedor, qtd] of porDestino) {
+  if (!total && erros) return { ok: false, motivo: "Não foi possível transferir — nada foi alterado" };
+  for (const { vendedor, unidade, qtd } of porDestino.values()) {
     await notificar(vendedor, { tipo: "lead", unidade, titulo: `${qtd} ${qtd === 1 ? "lead transferido" : "leads transferidos"} para você`, corpo: `Carteira de ${nome(deId)} · ${MOTIVOS_TRANSFERENCIA[motivo]}`, link: "/painel/vendas" });
   }
-  await auditar(u.email, "transferir_carteira", "vendas_oportunidades", null, { de: deId, para, total, motivo, moverCarteira });
-  return { ok: true, total };
+  const pulados = lista.length - total;
+  await auditar(u.email, "transferir_carteira", "vendas_oportunidades", null, { de: deId, para, total, pulados, erros, semDestino, parcial, motivo, moverCarteira });
+  return { ok: true, total, pulados, parcial };
 }

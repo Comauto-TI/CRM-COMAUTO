@@ -70,7 +70,6 @@ export async function salvarQualificacao(f: FormData) {
   const u = await exigirAcesso("vendas");
   const id = texto(f, "id");
   const [temperatura, qualificacao, pagamento, prazo, canal] = ["temperatura", "qualificacao", "pagamento", "prazo", "canal"].map((k) => texto(f, k));
-  const vendedor = texto(f, "vendedor_id");
   const r = await atualizarQualificacao(u, id, {
     temperatura: ehChave(TEMPERATURAS, temperatura) ? temperatura : "morno",
     qualificacao: ehChave(QUALIFICACOES, qualificacao) ? qualificacao : "a_verificar",
@@ -81,7 +80,6 @@ export async function salvarQualificacao(f: FormData) {
     valor: valorBRL(texto(f, "valor")),
     temTroca: f.get("tem_troca") === "on",
     troca: texto(f, "troca") || null,
-    vendedorId: f.has("vendedor_id") ? (/^[0-9a-f-]{36}$/i.test(vendedor) ? vendedor : null) : undefined,
   });
   revalidatePath("/painel/vendas");
   redirect(voltar(f, r.ok ? { op: id, ok: "salvo" } : { op: id, erro: r.motivo }));
@@ -155,7 +153,7 @@ export async function transferir(f: FormData) {
   const motivo = texto(f, "motivo");
   const r = await transferirOportunidade(u, id, texto(f, "para"), ehChave(MOTIVOS_TRANSFERENCIA, motivo) ? motivo : "outro", f.get("mover_carteira") === "on");
   revalidatePath("/painel/vendas");
-  redirect(voltar(f, r.ok ? { op: id, ok: "transferido" } : { op: id, erro: r.motivo, transferir: "1" }));
+  redirect(voltar(f, r.ok ? (r.aviso ? { op: id, ok: "transferido_aviso", aviso: r.aviso } : { op: id, ok: "transferido" }) : { op: id, erro: r.motivo, transferir: "1" }));
 }
 
 /** Férias/saída: transferir os cartões abertos de um vendedor (para outro ou divididos no rodízio). Só supervisor. */
@@ -164,5 +162,5 @@ export async function transferirCarteiraAction(f: FormData) {
   const motivo = texto(f, "motivo");
   const r = await transferirCarteira(u, texto(f, "de"), texto(f, "para"), ehChave(MOTIVOS_TRANSFERENCIA, motivo) ? motivo : "ferias", f.get("mover_carteira") === "on");
   revalidatePath("/painel/vendas");
-  redirect(voltar(f, r.ok ? { ok: "carteira", qtd: String(r.total) } : { erro: r.motivo }));
+  redirect(voltar(f, r.ok ? { ok: "carteira", qtd: String(r.total), ...(r.pulados ? { pulados: String(r.pulados) } : {}), ...(r.parcial ? { parcial: "1" } : {}) } : { erro: r.motivo }));
 }

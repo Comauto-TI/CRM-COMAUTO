@@ -255,6 +255,48 @@ language sql stable set search_path = public as $$
 $$;
 
 -- ---------------------------------------------------------------------
+-- F1-V-T003: transferência atômica — troca de responsável, carteira e nota na MESMA transação.
+-- Posse conferida na gravação (p_de = responsável que a tela viu) e escopo de unidade repetido.
+-- A nota diz a verdade sobre a carteira: movida, mantida (cliente de outro vendedor) ou não pedida.
+-- ---------------------------------------------------------------------
+create or replace function vendas_transferir(
+  p_id uuid, p_de uuid, p_para uuid, p_unidades text[], p_so_abertas boolean,
+  p_mover_carteira boolean, p_ator text, p_descricao text
+) returns jsonb
+language plpgsql set search_path = public as $$
+declare
+  v_cliente uuid;
+  v_carteira boolean := false;
+begin
+  update vendas_oportunidades
+     set vendedor_id = p_para, atualizado_por = p_ator
+   where id = p_id
+     and unidade = any (p_unidades)
+     and vendedor_id is not distinct from p_de
+     and (not p_so_abertas or fechado_em is null)
+  returning cliente_id into v_cliente;
+  if v_cliente is null then
+    return jsonb_build_object('ok', false);
+  end if;
+
+  if p_mover_carteira then
+    -- só move se a carteira estava com o responsável anterior (ou vazia): nunca tira cliente de terceiro
+    update clientes set vendedor_id = p_para
+     where id = v_cliente and (vendedor_id is null or vendedor_id is not distinct from p_de);
+    v_carteira := found;
+  end if;
+
+  insert into vendas_atividades (oportunidade_id, tipo, descricao, ator)
+  values (p_id, 'nota', left(p_descricao || case
+            when v_carteira then ' · carteira do cliente também'
+            when p_mover_carteira then ' · carteira mantida (cliente é de outro vendedor)'
+            else '' end, 2000), p_ator);
+
+  return jsonb_build_object('ok', true, 'cliente_id', v_cliente, 'carteira', v_carteira);
+end;
+$$;
+
+-- ---------------------------------------------------------------------
 -- RLS: fechado, acesso só pelo servidor (igual ao núcleo)
 -- ---------------------------------------------------------------------
 do $$
@@ -266,6 +308,7 @@ begin
   end loop;
 end $$;
 revoke all on function vendas_funil_resumo(uuid, timestamptz) from public, anon, authenticated;
+revoke all on function vendas_transferir(uuid, uuid, uuid, text[], boolean, boolean, text, text) from public, anon, authenticated;
 
 -- F1-V-004: grants explícitos para o servidor (service_role), sem depender dos grants implícitos
 -- antigos do Supabase. O navegador (anon/authenticated) continua sem acesso nenhum.
@@ -275,5 +318,6 @@ begin
     grant select, insert, update, delete on vendas_funis, vendas_etapas, vendas_oportunidades,
       vendas_historico, vendas_atividades, vendas_tarefas to service_role;
     grant execute on function vendas_funil_resumo(uuid, timestamptz) to service_role;
+    grant execute on function vendas_transferir(uuid, uuid, uuid, text[], boolean, boolean, text, text) to service_role;
   end if;
 end $$;

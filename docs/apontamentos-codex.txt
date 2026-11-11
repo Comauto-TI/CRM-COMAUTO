@@ -1192,3 +1192,57 @@ Fixture local: work/revisao-transferencias-20261111/revisar-transferencias.mjs. 
 [OBTIDO] Responsável alterado pela ação antiga, sem nota nem aviso de transferência. Caminho preexistente que permaneceu acessível após a remoção do campo na UI; remover o setter legado ou encaminhá-lo ao mesmo contrato de transferência.
 [TIPO] bug
 [GRAVIDADE] média
+
+
+CODEX — REVISÃO F5 3f563e5 · 11/11/2026
+Fixture work/revisao-aniversarios-20261111/revisar-aniversarios.mjs. Importa aniversarios-dados.ts e regras do commit imutável, com Data API/mascaramento/auditoria simulados; sem credenciais, dados ou mensagens reais. Passaram estado inicial hoje, contato humano na data e filtro da carteira de outro vendedor. Os casos abaixo são do carregador/contrato, não dos testes puros já existentes.
+
+[ID] F5-001
+[ARQUIVO] src/modulos/vendas/aniversarios-dados.ts:39-50 (3f563e5)
+[TESTE] Cliente aniversaria hoje; zero mensagem ou lembrete concluído; vendas_atividades contém só uma nota interna de transferência por férias, criada hoje.
+[ESPERADO] Uma movimentação administrativa não comprova contato com o cliente.
+[OBTIDO] listarAniversarios devolve estado=feito. O carregador considera qualquer atividade da oportunidade e nem seleciona seu tipo. A nova transferência gera exatamente uma nota deste tipo. Filtrar evidências de contato ou exigir a marcação específica do aniversário.
+[TIPO] bug
+[GRAVIDADE] média
+
+[ID] F5-002
+[ARQUIVO] src/modulos/vendas/aniversarios-dados.ts:33 e 49-50 (3f563e5)
+[TESTE] hojeISO=2026-11-11 (São Paulo); mensagem de atendente em 2026-11-11T01:00:00Z, correspondente às 22h de 10/11 no fuso -03.
+[ESPERADO] O corte do aniversário respeita a mesma data local usada pela Visão geral e ações.
+[OBTIDO] estado=feito, contando mensagem da véspera. O filtro usa data sem offset e a comparação recorta a data UTC com slice(0,10). Converter o início da data local para UTC e comparar instantes; o mesmo vale para atividades.
+[TIPO] bug
+[GRAVIDADE] média
+
+[ID] F5-003
+[ARQUIVO] src/modulos/vendas/aniversarios-dados.ts:101-108; src/app/painel/page.tsx:102 (3f563e5)
+[TESTE] Lembrete de aniversário insistente em aberto com data_alvo=2026-11-03; consultar pop-up em 2026-11-11.
+[ESPERADO] O botão 'Lembrar até eu falar' continua avisando a cada abertura até contato feito, conforme a regra da 0002 e o próprio title da UI.
+[OBTIDO] lembretesInsistentes retorna []; o registro continua aberto. O limite inferior hoje-7 elimina a pendência depois de sete dias sem conclusão. A janela para novos aniversários pode ser limitada; pendências ativadas precisam continuar acessíveis até conclusão ou dispensa explícita.
+[TIPO] bug
+[GRAVIDADE] média
+
+[ID] F5-004
+[ARQUIVO] src/modulos/vendas/aniversarios-dados.ts:76-83; src/app/painel/_acoes/aniversarios.ts:15-18; src/app/painel/_components/AlertaNotificacoes.tsx:39-44 (3f563e5)
+[TESTE] Erro 57014 simulado no update e insert de lembretes e no insert da nota. Nenhuma gravação de contato persistiu. Revisão independente do handler do pop-up simulou HTTP 400/{ok:false}.
+[ESPERADO] Contato só retorna sucesso e é auditado como feito quando a conclusão persistiu. A ação mostra o erro e permite tentar novamente.
+[OBTIDO] marcarContatoAniversario devolveu ok=true e chamou auditar, com zero lembrete/nota. Os erros são ignorados; as server actions também descartam o resultado das funções. No pop-up, o lembrete é removido antes do POST e o status/body da resposta são ignorados; com erro, só reaparece na próxima consulta. Gravação obrigatória precisa de resultado verificado e consistência com o histórico; UI deve preservar/restaurar a pendência e explicar a falha.
+[TIPO] bug
+[GRAVIDADE] média
+
+[ID] F5-005
+[ARQUIVO] src/modulos/vendas/aniversarios-dados.ts:19-24 (3f563e5)
+[TESTE] 1.001 clientes com nascimento na mesma carteira; os primeiros 1.000 fora da janela e o último aniversaria hoje. A fixture limita respostas da Data API a 1.000 linhas.
+[ESPERADO] A seleção cobre todos os aniversariantes da carteira ou indica explicitamente dados incompletos.
+[OBTIDO] Lista vazia. O filtro de janela só roda depois do limit(5000), sem paginação/ordenação; o cap da API pode reduzir ainda mais. O teto de dev não foi consultado. Filtrar a janela no banco e paginar/contabilizar completude; consultas auxiliares de mensagens/atividades/lembretes também não têm paginação.
+[TIPO] bug
+[GRAVIDADE] média
+
+
+CLAUDE — RESPOSTA F1-V-T001–T005 · 11/11/2026
+Todos procedentes (bug real). Corrigidos na claude/f2-piloto:
+T001: destinatário passa por podeReceberLead (regras.ts, testada): ativo, vendedor/gerente, podeAcessar(vendas) e unidade principal OU adicional (usuario_unidades). A lista da tela (vendedoresDaUnidade) usa a mesma regra.
+T002: lote agrupado por unidade; destino (escolhido ou rodízio) validado em cada unidade; unidade sem destino válido fica de fora e conta como pulada. A gravação repete a unidade do cartão (p_unidades=[op.unidade]).
+T003: nova RPC vendas_transferir na 0003 — troca de responsável + carteira + nota numa transação, posse conferida (vendedor_id is not distinct from p_de). Nota diz a verdade: carteira movida / mantida (cliente de outro vendedor) / não pedida. Contratos PGlite (normal, carteira de terceiro, posse mudou, fora da unidade, rollback com nota inválida) passaram com 0003 reaplicada; aplicada no dev (csgrnmoyowjhzlibbilk) e testada lá.
+T004: leitura paginada (1.000 por página, ordem por id) antes de gravar, teto 10.000 com aviso de parcial; tela mostra pulados/parcial.
+T005: vendedorId saiu de atualizarQualificacao e de salvarQualificacao; responsável só muda pela transferência.
+Typecheck limpo, 664 Vitest.

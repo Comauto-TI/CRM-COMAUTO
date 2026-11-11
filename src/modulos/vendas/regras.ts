@@ -1,7 +1,7 @@
 /**
  * Setor Vendas — regras puras (sem I/O). Testadas em tests/vendas.test.ts.
  */
-import type { Papel } from "@/lib/permissoes";
+import { podeAcessar, type Papel, type Setor } from "@/lib/permissoes";
 
 export const PAGAMENTOS = { a_vista: "À vista", financiamento: "Financiamento", consorcio: "Consórcio", indefinido: "A definir" } as const;
 export const PRAZOS = { imediato: "Imediato", ate_30_dias: "Até 30 dias", ate_90_dias: "Até 90 dias", sem_prazo: "Sem prazo", indefinido: "A definir" } as const;
@@ -214,6 +214,19 @@ export type MotivoTransferencia = keyof typeof MOTIVOS_TRANSFERENCIA;
 export function podeTransferir(u: { id: string; papel: Papel }, op: { vendedor_id: string | null }): boolean {
   if (veTodasOportunidades(u)) return true;
   return op.vendedor_id !== null && op.vendedor_id === u.id;
+}
+
+/**
+ * F1-V-T001: quem pode RECEBER um lead transferido — ativo, vendedor ou gerente, com acesso atual à área Vendas
+ * (gerente de outro setor não abre Vendas) e à unidade do cartão (principal ou adicional).
+ */
+export function podeReceberLead(
+  p: { papel: string; setor: string; ativo: boolean; unidade: string; extras: readonly string[] },
+  unidade: string,
+): boolean {
+  if (!p.ativo || (p.papel !== "vendedor" && p.papel !== "gerente")) return false;
+  if (!podeAcessar({ papel: p.papel as Papel, setor: p.setor as Setor }, "vendas")) return false;
+  return p.unidade === unidade || p.extras.includes(unidade);
 }
 
 /**

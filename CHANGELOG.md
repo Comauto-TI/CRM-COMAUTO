@@ -20,6 +20,7 @@ Versionamento semântico a partir de **0.0.1** (decisão do Simão, 10/11/2026).
 - Painel sem animações contínuas nem desfoque.
 ### Corrigido
 - Rótulos do funil de Vendas não quebram mais no meio da palavra.
+- Transferências (revisão do Codex, F1-V-T001–T005): destino precisa ter acesso a Vendas e à unidade (inclusive adicional); lote valida cada unidade; troca de responsável, carteira e nota gravadas juntas (RPC `vendas_transferir`); lote grande lido em páginas com aviso de parcial; responsável não muda mais pelo formulário de qualificação.
 
 ## [0.0.3] — 11/11/2026 — Setor Peças (PR #3, Codex; revisado pelo Claude)
 ### Adicionado

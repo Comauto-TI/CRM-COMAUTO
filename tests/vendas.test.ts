@@ -168,7 +168,7 @@ describe("quadro estilo referência — tempo e ordenação", () => {
   });
 });
 
-import { podeTransferir, distribuirRodizio } from "@/modulos/vendas/regras";
+import { podeTransferir, distribuirRodizio, podeReceberLead } from "@/modulos/vendas/regras";
 describe("transferência de leads", () => {
   it("dono ou supervisor transfere; colega não; lead sem dono só o supervisor", () => {
     expect(podeTransferir({ id: "v1", papel: "vendedor" }, { vendedor_id: "v1" })).toBe(true);
@@ -181,5 +181,23 @@ describe("transferência de leads", () => {
     expect(r).toEqual(["b", "b", "b", "a", "b"]); // b vai de 0 a 3 empatando com a; depois alterna
     expect(r.filter((x) => x === "a").length + r.filter((x) => x === "b").length).toBe(5);
     expect(distribuirRodizio(3, [])).toEqual([]);
+  });
+});
+
+describe("podeReceberLead (F1-V-T001)", () => {
+  const base = { papel: "vendedor", setor: "vendas", ativo: true, unidade: "comauto", extras: [] as string[] };
+  it("vendedor ativo da unidade recebe", () => expect(podeReceberLead(base, "comauto")).toBe(true));
+  it("inativo não recebe", () => expect(podeReceberLead({ ...base, ativo: false }, "comauto")).toBe(false));
+  it("gerente de Oficina não recebe lead de Vendas", () => expect(podeReceberLead({ ...base, papel: "gerente", setor: "oficina" }, "comauto")).toBe(false));
+  it("gerente de Vendas e gerente da administração recebem", () => {
+    expect(podeReceberLead({ ...base, papel: "gerente", setor: "vendas" }, "comauto")).toBe(true);
+    expect(podeReceberLead({ ...base, papel: "gerente", setor: "administracao" }, "comauto")).toBe(true);
+  });
+  it("papéis fora de vendedor/gerente não recebem", () => {
+    for (const papel of ["admin", "recepcao", "pecas", "financeiro"]) expect(podeReceberLead({ ...base, papel }, "comauto")).toBe(false);
+  });
+  it("outra unidade só com acesso adicional", () => {
+    expect(podeReceberLead(base, "motomecanica")).toBe(false);
+    expect(podeReceberLead({ ...base, extras: ["motomecanica"] }, "motomecanica")).toBe(true);
   });
 });
