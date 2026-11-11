@@ -39,7 +39,7 @@ export default async function PainelLayout({ children }: { children: React.React
         <div className="lateral-rodape">
           <div className="avatar">{u.nome.slice(0, 1).toUpperCase()}</div>
           <div className="lateral-usuario">
-            <div>{u.nome}</div>
+            <div><Link href="/painel/conta" title="Minha conta: trocar senha" className="link-conta">{u.nome}</Link></div>
             <span className="mudo" title={`${ROTULO_PAPEL[u.papel]} · ${ROTULO_SETOR[u.setor]}`}>{ROTULO_PAPEL[u.papel]}</span>
           </div>
           <Link href="/painel/notificacoes" className="sino" title="Notificações" aria-label={`Notificações${naoLidas ? ` (${naoLidas} não lidas)` : ""}`}>
