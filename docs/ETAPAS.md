@@ -268,3 +268,32 @@ Simão informou o retorno do Claude. Codex registrou repasse da ref local codex/
 Claude confirmou no chat: Codex continua A1.3 isolada; Claude assume revisão da base claude/f2-piloto/PR, revisão do conjunto codex/atendimento-modulos e integração de dev com migrations/custos/contexto validados. Fundação das telas vem após fechar os controles e caminhos legados necessários ao fluxo piloto. Codex concordou com timestamps da CLI nas próximas migrations, preservando os arquivos e histórico já existentes; Claude atualizará AGENTS.
 
 Prioridade acordada para a próxima fatia: primeiro fluxo de Peças com lista, detalhe e resposta. Implementar e revisar a posse/versionamento/liberação e a autorização nos caminhos que esse fluxo atravessa antes de expor a UI; manter Oficina e transferências avançadas em fatias posteriores. Não considerar todo A1 concluído nem banco dev validado. Demais setores e restrições permanecem no plano. Nenhum código foi integrado ou banco alterado por esta coordenação.
+
+
+## Conversa no cartão de Vendas — implementação local · 11/11/2026
+
+Recorte confirmado pelo Claude após a integração de Peças: vendedor atende a própria oportunidade;
+gerente de Vendas/admin pode assumir temporariamente a conversa sem trocar vendedor_id. Nota na timeline,
+aviso ao responsável, posse/versionamento e reserva física fazem parte da mesma transação. Transferência
+permanente continua no domínio existente. Plano concreto em docs/VENDAS-CONVERSA-CONTRATO.md.
+
+Codex prepara SQL separado em 0006 (sem migration avulsa), adaptadores Vendas e interface compartilhada com
+Peças. A mensagem inicial fica congelada na primeira abertura; não se importa todo o histórico do cliente.
+A resposta reutiliza o outbound oficial, consentimento/opt-out/janela de 24h e a mesma tentativa UUID.
+SQL, UI e revisão ainda em validação nesta seção; integração no dev e login de Vendas permanecem pendentes.
+
+QA real de Peças: login confirmado, 3 casos de entrada/menu e recusas por URL/API passaram; 3 casos de
+cartões ficaram skip por falta de fixtures autorizadas existentes (quadro retornou 0 cotações autorizadas).
+Nenhuma conta/dado criado nem posse/envio executado. Evidências em docs/QA-PECAS-READONLY-2026-11-11.md.
+Claude informou revisar/aplicar CR-PEC-002 no dev após d0b7bba; a rodada de QA sem cotações não comprova esse fluxo.
+
+Revisão do fix 58327bb encontrou risco residual de sobrescrita de ids_externos na importação. Claude corrigiu
+em 8e34a99, removendo alteração do JSON das fichas existentes; revalidação do PR #6 pin 279f553 em andamento.
+O PR #6 substitui #4/#5; não declarar merge/tag até evidência remota.
+
+
+**Atualização de base:** Claude lançou v0.0.4; PR #6 confirmado merged na API do GitHub em
+11/11/2026 às 19:42:06 UTC, main 5e73115c5dc77394966b38f738c0453693f55feb. A aprovação Codex foi
+sobre 279f553 (runtime); os commits posteriores da versão são package/CHANGELOG. A continuidade de Vendas
+será rebaseada nessa main, mantendo a próxima entrega em Não lançado até novo merge real. CR-PEC-002
+já foi revisada/aplicada no dev pelo Claude; evidência de navegador desse fluxo ainda depende de fixtures.
