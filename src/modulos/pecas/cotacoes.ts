@@ -1,7 +1,7 @@
 import "server-only";
 import type { Usuario } from "@/lib/auth";
 import { db } from "@/lib/supabase/admin";
-import type { DadosCotacao, DadosEdicaoItem, DadosItem } from "./dados-cotacao";
+import type { AcaoAtendimento, DadosCotacao, DadosEdicaoItem, DadosItem, TipoPreparo } from "./dados-cotacao";
 
 type Cotacao = {
   id: string;
@@ -9,6 +9,7 @@ type Cotacao = {
   origem: "balcao" | "oficina" | "whatsapp";
   descricao: string;
   status: string;
+  tipo_preparo: TipoPreparo | null;
   criado_em: string;
   clientes: { nome: string | null } | null;
   veiculos: { placa: string | null } | null;
@@ -30,7 +31,7 @@ type CotacaoDetalhada = Cotacao & {
   itens: ItemCotacao[];
 };
 
-const RESUMO_COTACAO = "id, unidade, origem, descricao, status, criado_em, clientes(nome), veiculos(placa), responsavel:usuarios!pecas_cotacoes_responsavel_id_fkey(nome)";
+const RESUMO_COTACAO = "id, unidade, origem, descricao, status, tipo_preparo, criado_em, clientes(nome), veiculos(placa), responsavel:usuarios!pecas_cotacoes_responsavel_id_fkey(nome)";
 
 function tabelaPendente(codigo: string) {
   return codigo === "PGRST205" || codigo === "42P01";
@@ -175,6 +176,20 @@ export async function marcarVendaConfirmada(u: Usuario, id: string): Promise<Res
   });
   if (error) return tabelaPendente(error.code) || error.code === "PGRST202" ? "pendente" : "erro_venda";
   return data === true ? "venda_confirmada" : "indisponivel";
+}
+
+type ResultadoAtendimento = "preparo_registrado" | "entrega_registrada" | "indisponivel" | "pendente" | "erro_atendimento";
+
+export async function avancarAtendimento(u: Usuario, id: string, acao: AcaoAtendimento): Promise<ResultadoAtendimento> {
+  const { data, error } = await db().rpc("pecas_avancar_atendimento", {
+    p_id: id,
+    p_unidades: u.unidades,
+    p_ator: u.id,
+    p_acao: acao,
+  });
+  if (error) return tabelaPendente(error.code) || error.code === "PGRST202" ? "pendente" : "erro_atendimento";
+  if (data !== true) return "indisponivel";
+  return acao === "entrega" ? "entrega_registrada" : "preparo_registrado";
 }
 
 export async function registrarCotacao(u: Usuario, dados: DadosCotacao): Promise<ResultadoCotacao> {

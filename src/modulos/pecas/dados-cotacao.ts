@@ -68,6 +68,14 @@ export function lerDadosEdicaoItem(form: FormData) {
 
 export type DadosEdicaoItem = NonNullable<ReturnType<typeof lerDadosEdicaoItem>>;
 
+export type TipoPreparo = "separacao" | "encomenda";
+export type AcaoAtendimento = TipoPreparo | "entrega";
+
+export function etapaCotacao(status: string, tipoPreparo: TipoPreparo | null): string {
+  if (status !== "em_separacao") return status;
+  return tipoPreparo === "encomenda" ? "em encomenda" : "em separação";
+}
+
 type ItemParaTotal = {
   quantidade: number;
   preco_unitario_centavos: number;

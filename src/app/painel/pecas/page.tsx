@@ -2,6 +2,7 @@ import { randomUUID } from "node:crypto";
 import Link from "next/link";
 import { exigirAcesso } from "@/lib/auth";
 import { listarCotacoes } from "@/modulos/pecas/cotacoes";
+import { etapaCotacao } from "@/modulos/pecas/dados-cotacao";
 import { Cabecalho, Status, Vazio } from "../_components/ui";
 import { assumirCotacao, criarCotacao } from "./actions";
 
@@ -60,7 +61,7 @@ export default async function PecasPage({ searchParams }: { searchParams: Promis
                       <td>{c.descricao}</td>
                       <td>{c.unidade}</td>
                       <td>{ORIGENS[c.origem]}</td>
-                      <td><Status valor={c.status} /></td>
+                      <td><Status valor={etapaCotacao(c.status, c.tipo_preparo)} /></td>
                       <td>{c.responsavel?.nome ?? "—"}</td>
                       <td>
                         <div className="acoes">

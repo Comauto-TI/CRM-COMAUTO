@@ -29,6 +29,8 @@ alter table public.pecas_cotacoes_historico add constraint fixture_rejeita_apres
   check (cotacao_id <> '00000000-0000-4000-8000-000000000058' or para_status <> 'aguardando_cliente');
 alter table public.pecas_cotacoes_historico add constraint fixture_rejeita_aprovacao
   check (cotacao_id <> '00000000-0000-4000-8000-000000000058' or para_status <> 'aprovado');
+alter table public.pecas_cotacoes_historico add constraint fixture_rejeita_entrega
+  check (cotacao_id <> '00000000-0000-4000-8000-000000000063' or para_status <> 'entregue');
 
 set local role service_role;
 
@@ -334,6 +336,10 @@ begin
   ) then
     raise exception 'A aprovação comercial deve deixar a confirmação de venda pendente.';
   end if;
+  if public.pecas_avancar_atendimento(cotacao_fixture, unidades_fixture, ator_fixture, 'separacao') is distinct from false
+    or public.pecas_avancar_atendimento(cotacao_fixture, unidades_fixture, ator_fixture, 'encomenda') is distinct from false then
+    raise exception 'A confirmação de venda deve preceder o preparo.';
+  end if;
 
   if public.pecas_adicionar_item(cotacao_vazia, gen_random_uuid(), unidades_fixture, ator_fixture, 'Peça única', 1, 100, null) is distinct from 'adicionado' then
     raise exception 'Não criou o item para testar a falha no histórico da apresentação.';
@@ -476,6 +482,87 @@ begin
   end if;
 end $$;
 
+do $$
+declare
+  cotacao_fixture constant uuid := '00000000-0000-4000-8000-000000000054';
+  cotacao_encomenda constant uuid := '00000000-0000-4000-8000-000000000060';
+  cotacao_sem_tipo constant uuid := '00000000-0000-4000-8000-000000000061';
+  cotacao_sem_venda constant uuid := '00000000-0000-4000-8000-000000000062';
+  cotacao_falha constant uuid := '00000000-0000-4000-8000-000000000063';
+  cliente_fixture constant uuid := '00000000-0000-4000-8000-000000000052';
+  ator_fixture constant uuid := '00000000-0000-4000-8000-000000000051';
+  outro_ator constant uuid := '00000000-0000-4000-8000-000000000055';
+  unidades_fixture constant text[] := array['comauto'];
+  restricao text;
+begin
+  insert into public.pecas_cotacoes (
+    id, cliente_id, descricao, status, responsavel_id, venda_confirmada_em, venda_confirmada_por, tipo_preparo
+  ) values
+    (cotacao_encomenda, cliente_fixture, 'Peça sob encomenda', 'aprovado', ator_fixture, now(), ator_fixture, null),
+    (cotacao_sem_tipo, cliente_fixture, 'Fixture de preparo incompleto', 'em_separacao', ator_fixture, now(), ator_fixture, null),
+    (cotacao_sem_venda, cliente_fixture, 'Fixture sem confirmação', 'em_separacao', ator_fixture, null, null, 'separacao'),
+    (cotacao_falha, cliente_fixture, 'Fixture de falha no histórico', 'em_separacao', ator_fixture, now(), ator_fixture, 'encomenda');
+
+  if public.pecas_avancar_atendimento(cotacao_fixture, unidades_fixture, ator_fixture, 'entrega') is distinct from false
+    or public.pecas_avancar_atendimento(cotacao_sem_tipo, unidades_fixture, ator_fixture, 'entrega') is distinct from false
+    or public.pecas_avancar_atendimento(cotacao_sem_venda, unidades_fixture, ator_fixture, 'entrega') is distinct from false then
+    raise exception 'A entrega exige preparo com tipo registrado e venda confirmada.';
+  end if;
+  if public.pecas_avancar_atendimento(cotacao_fixture, array['santaluzia'], ator_fixture, 'separacao') is distinct from false
+    or public.pecas_avancar_atendimento(cotacao_fixture, unidades_fixture, outro_ator, 'encomenda') is distinct from false
+    or public.pecas_avancar_atendimento(cotacao_fixture, unidades_fixture, ator_fixture, 'invalida') is distinct from false then
+    raise exception 'O preparo exige ação válida, unidade e responsável corretos.';
+  end if;
+
+  begin
+    update public.pecas_cotacoes set tipo_preparo = 'invalido' where id = cotacao_fixture;
+    raise exception 'O tipo de preparo exige separação ou encomenda.';
+  exception when check_violation then null;
+  end;
+
+  if public.pecas_avancar_atendimento(cotacao_fixture, unidades_fixture, ator_fixture, 'separacao') is distinct from true
+    or public.pecas_avancar_atendimento(cotacao_fixture, unidades_fixture, ator_fixture, 'separacao') is distinct from true
+    or public.pecas_avancar_atendimento(cotacao_fixture, unidades_fixture, ator_fixture, 'encomenda') is distinct from false then
+    raise exception 'A separação deve aceitar reenvio e preservar o tipo escolhido.';
+  end if;
+  if public.pecas_avancar_atendimento(cotacao_encomenda, unidades_fixture, ator_fixture, 'encomenda') is distinct from true
+    or public.pecas_avancar_atendimento(cotacao_encomenda, unidades_fixture, ator_fixture, 'encomenda') is distinct from true
+    or public.pecas_avancar_atendimento(cotacao_encomenda, unidades_fixture, ator_fixture, 'separacao') is distinct from false then
+    raise exception 'A encomenda deve aceitar reenvio e preservar o tipo escolhido.';
+  end if;
+  if not exists (select 1 from public.pecas_cotacoes where id = cotacao_fixture and status = 'em_separacao' and tipo_preparo = 'separacao')
+    or not exists (select 1 from public.pecas_cotacoes where id = cotacao_encomenda and status = 'em_separacao' and tipo_preparo = 'encomenda') then
+    raise exception 'Separação e encomenda devem usar a mesma etapa com tipos distintos.';
+  end if;
+
+  if public.pecas_avancar_atendimento(cotacao_fixture, array['santaluzia'], ator_fixture, 'entrega') is distinct from false
+    or public.pecas_avancar_atendimento(cotacao_fixture, unidades_fixture, outro_ator, 'entrega') is distinct from false
+    or public.pecas_avancar_atendimento(cotacao_fixture, unidades_fixture, ator_fixture, 'entrega') is distinct from true
+    or public.pecas_avancar_atendimento(cotacao_fixture, unidades_fixture, ator_fixture, 'entrega') is distinct from true
+    or public.pecas_avancar_atendimento(cotacao_encomenda, unidades_fixture, ator_fixture, 'entrega') is distinct from true then
+    raise exception 'A entrega deve respeitar unidade e responsável e aceitar reenvio.';
+  end if;
+  if public.pecas_avancar_atendimento(cotacao_fixture, unidades_fixture, ator_fixture, 'separacao') is distinct from false
+    or not exists (select 1 from public.pecas_cotacoes where id = cotacao_fixture and status = 'entregue' and tipo_preparo = 'separacao')
+    or not exists (select 1 from public.pecas_cotacoes where id = cotacao_encomenda and status = 'entregue' and tipo_preparo = 'encomenda') then
+    raise exception 'A entrega deve preservar o tipo e encerrar o preparo.';
+  end if;
+
+  begin
+    perform public.pecas_avancar_atendimento(cotacao_falha, unidades_fixture, ator_fixture, 'entrega');
+    raise exception 'O evento de entrega deveria ter falhado.';
+  exception when check_violation then
+    get stacked diagnostics restricao = constraint_name;
+    if restricao is distinct from 'fixture_rejeita_entrega' then raise; end if;
+  end;
+  if not exists (
+    select 1 from public.pecas_cotacoes
+    where id = cotacao_falha and status = 'em_separacao' and tipo_preparo = 'encomenda'
+  ) then
+    raise exception 'Falha no histórico deve reverter a entrega.';
+  end if;
+end $$;
+
 reset role;
 
 do $$
@@ -492,6 +579,7 @@ begin
     or not has_column_privilege('service_role', 'public.pecas_cotacoes', 'responsavel_id', 'UPDATE')
     or not has_column_privilege('service_role', 'public.pecas_cotacoes', 'venda_confirmada_em', 'UPDATE')
     or not has_column_privilege('service_role', 'public.pecas_cotacoes', 'venda_confirmada_por', 'UPDATE')
+    or not has_column_privilege('service_role', 'public.pecas_cotacoes', 'tipo_preparo', 'UPDATE')
     or has_column_privilege('service_role', 'public.pecas_cotacoes', 'descricao', 'UPDATE')
     or has_table_privilege('service_role', 'public.pecas_cotacoes_historico', 'SELECT, UPDATE, DELETE')
     or has_function_privilege('anon', 'public.pecas_assumir_cotacao(uuid,text[],uuid)', 'EXECUTE')
@@ -502,12 +590,14 @@ begin
     or has_function_privilege('authenticated', 'public.pecas_registrar_aprovacao(uuid,text[],uuid)', 'EXECUTE')
     or has_function_privilege('anon', 'public.pecas_confirmar_venda(uuid,text[],uuid)', 'EXECUTE')
     or has_function_privilege('authenticated', 'public.pecas_confirmar_venda(uuid,text[],uuid)', 'EXECUTE')
+    or has_function_privilege('anon', 'public.pecas_avancar_atendimento(uuid,text[],uuid,text)', 'EXECUTE')
+    or has_function_privilege('authenticated', 'public.pecas_avancar_atendimento(uuid,text[],uuid,text)', 'EXECUTE')
     or has_function_privilege('anon', 'public.pecas_registrar_cotacao_bot(uuid,text,text,text)', 'EXECUTE')
     or has_function_privilege('authenticated', 'public.pecas_registrar_cotacao_bot(uuid,text,text,text)', 'EXECUTE') then
     raise exception 'A cotação e seu histórico devem manter RLS fechada e os grants mínimos do servidor.';
   end if;
 
-  if (select count(*) from public.pecas_cotacoes_historico) <> 3 or not exists (
+  if (select count(*) from public.pecas_cotacoes_historico) <> 7 or not exists (
     select 1 from public.pecas_cotacoes_historico
     where cotacao_id = '00000000-0000-4000-8000-000000000054'
       and unidade = 'comauto' and de_status = 'novo' and para_status = 'em_cotacao'
@@ -532,6 +622,19 @@ begin
       and ocorrido_em between transaction_timestamp() and clock_timestamp()
   ) then
     raise exception 'Aprovar e repetir deve produzir um único evento com unidade, etapa, autor e horário corretos.';
+  end if;
+  if (
+    select count(*) from (
+      select cotacao_id from public.pecas_cotacoes_historico
+      where cotacao_id in ('00000000-0000-4000-8000-000000000054', '00000000-0000-4000-8000-000000000060')
+        and unidade = 'comauto' and ator_id = '00000000-0000-4000-8000-000000000051'
+        and ocorrido_em between transaction_timestamp() and clock_timestamp()
+      group by cotacao_id
+      having count(*) filter (where de_status = 'aprovado' and para_status = 'em_separacao') = 1
+        and count(*) filter (where de_status = 'em_separacao' and para_status = 'entregue') = 1
+    ) cotacoes_com_historico
+  ) <> 2 then
+    raise exception 'Cada cotação deve guardar um evento de preparo e um de entrega.';
   end if;
 
   if not (select relrowsecurity from pg_class where oid = 'public.pecas_cotacao_itens'::regclass)

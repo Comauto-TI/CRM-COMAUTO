@@ -4,9 +4,9 @@ import { notFound } from "next/navigation";
 import { exigirAcesso } from "@/lib/auth";
 import { formatarBRL } from "@/lib/time";
 import { obterCotacao } from "@/modulos/pecas/cotacoes";
-import { centavosParaCampo, totalizarCotacao, uuidV4Valido } from "@/modulos/pecas/dados-cotacao";
+import { centavosParaCampo, etapaCotacao, totalizarCotacao, uuidV4Valido } from "@/modulos/pecas/dados-cotacao";
 import { Cabecalho, Status, Vazio } from "../../_components/ui";
-import { adicionarItemCotacao, confirmarVenda, editarItemCotacao, registrarApresentacao, registrarAprovacao } from "../actions";
+import { adicionarItemCotacao, confirmarVenda, editarItemCotacao, registrarApresentacao, registrarAtendimento, registrarAprovacao } from "../actions";
 
 const MENSAGENS: Record<string, string> = {
   adicionado: "Item incluído na cotação.",
@@ -20,6 +20,9 @@ const MENSAGENS: Record<string, string> = {
   erro_aprovacao: "Não foi possível registrar a aprovação. Tente novamente.",
   venda_confirmada: "Venda confirmada.",
   erro_venda: "Não foi possível confirmar a venda. Tente novamente.",
+  preparo_registrado: "Preparo do pedido registrado.",
+  entrega_registrada: "Entrega registrada.",
+  erro_atendimento: "Não foi possível atualizar o pedido. Tente novamente.",
   sem_itens: "Inclua pelo menos um item para registrar a apresentação.",
   desatualizada: "Os itens da cotação mudaram. Confira o total atual antes de registrar a apresentação.",
   erro_apresentacao: "Não foi possível registrar a apresentação. Tente novamente.",
@@ -51,7 +54,8 @@ export default async function DetalheCotacaoPage({ params, searchParams }: {
 
   const sub = [cotacao.clientes?.nome ?? "Cliente cadastrado", cotacao.veiculos?.placa, cotacao.unidade]
     .filter(Boolean).join(" · ");
-  const podeEditarItens = cotacao.status === "em_cotacao" && cotacao.responsavel_id === u.id;
+  const responsavel = cotacao.responsavel_id === u.id;
+  const podeEditarItens = cotacao.status === "em_cotacao" && responsavel;
   const itemEmEdicao = podeEditarItens && typeof idItem === "string"
     ? cotacao.itens.find((item) => item.id === idItem)
     : undefined;
@@ -69,7 +73,7 @@ export default async function DetalheCotacaoPage({ params, searchParams }: {
         <h2>Solicitação</h2>
         <p>{cotacao.descricao}</p>
         <div className="acoes">
-          <Status valor={cotacao.status} />
+          <Status valor={etapaCotacao(cotacao.status, cotacao.tipo_preparo)} />
           {vendaConfirmada && <span>Venda confirmada</span>}
           <span className="mudo">Responsável · {cotacao.responsavel?.nome ?? "A definir"}</span>
         </div>
@@ -160,7 +164,7 @@ export default async function DetalheCotacaoPage({ params, searchParams }: {
           </form>
         </section>
       )}
-      {cotacao.status === "aguardando_cliente" && cotacao.responsavel_id === u.id && (
+      {cotacao.status === "aguardando_cliente" && responsavel && (
         <section className="card secao">
           <h2>Aprovação da cotação</h2>
           <p className="mudo">Registre quando o cliente aprovar os itens e valores. A confirmação da venda é uma etapa separada.</p>
@@ -169,12 +173,37 @@ export default async function DetalheCotacaoPage({ params, searchParams }: {
           </form>
         </section>
       )}
-      {cotacao.status === "aprovado" && !vendaConfirmada && cotacao.responsavel_id === u.id && cotacao.itens.length > 0 && (
+      {cotacao.status === "aprovado" && !vendaConfirmada && responsavel && cotacao.itens.length > 0 && (
         <section className="card secao">
           <h2>Confirmação da venda</h2>
           <p className="mudo">Registre após confirmar a venda no sistema atual.</p>
           <form action={confirmarVenda.bind(null, cotacao.id)}>
             <button className="btn primario" type="submit">Confirmar venda</button>
+          </form>
+        </section>
+      )}
+      {cotacao.status === "aprovado" && vendaConfirmada && responsavel && (
+        <section className="card secao">
+          <h2>Preparo do pedido</h2>
+          <form action={registrarAtendimento.bind(null, cotacao.id)} className="linha-form">
+            <label>
+              Tipo de preparo
+              <select name="acao" defaultValue="" required>
+                <option value="" disabled>Selecione</option>
+                <option value="separacao">Separação</option>
+                <option value="encomenda">Encomenda</option>
+              </select>
+            </label>
+            <button className="btn primario" type="submit">Registrar preparo</button>
+          </form>
+        </section>
+      )}
+      {cotacao.status === "em_separacao" && cotacao.tipo_preparo && vendaConfirmada && responsavel && (
+        <section className="card secao">
+          <h2>Entrega do pedido</h2>
+          <form action={registrarAtendimento.bind(null, cotacao.id)}>
+            <input type="hidden" name="acao" value="entrega" />
+            <button className="btn primario" type="submit">Registrar entrega</button>
           </form>
         </section>
       )}

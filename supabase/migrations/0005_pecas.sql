@@ -20,6 +20,7 @@ create table public.pecas_cotacoes (
   venda_confirmada_em timestamptz,
   -- Preserva o autor da confirmação mesmo depois de remover o usuário.
   venda_confirmada_por uuid,
+  tipo_preparo text check (tipo_preparo in ('separacao', 'encomenda')),
   constraint pecas_cotacoes_confirmacao_venda_check check (
     (venda_confirmada_em is null) = (venda_confirmada_por is null)
   ),
@@ -42,7 +43,7 @@ create unique index pecas_cotacoes_referencia_whatsapp_idx
 alter table public.pecas_cotacoes enable row level security;
 revoke all on table public.pecas_cotacoes from public, anon, authenticated, service_role;
 grant select, insert on table public.pecas_cotacoes to service_role;
-grant update (status, responsavel_id, venda_confirmada_em, venda_confirmada_por)
+grant update (status, responsavel_id, venda_confirmada_em, venda_confirmada_por, tipo_preparo)
   on table public.pecas_cotacoes to service_role;
 
 create table public.pecas_cotacoes_historico (
@@ -384,6 +385,61 @@ end $$;
 revoke all on function public.pecas_confirmar_venda(uuid, text[], uuid)
   from public, anon, authenticated, service_role;
 grant execute on function public.pecas_confirmar_venda(uuid, text[], uuid) to service_role;
+
+create function public.pecas_avancar_atendimento(p_id uuid, p_unidades text[], p_ator uuid, p_acao text)
+returns boolean
+language plpgsql
+security invoker
+set search_path = ''
+as $$
+declare
+  etapa_origem text;
+  etapa_destino text;
+  tipo_desejado text;
+  unidade_atual text;
+begin
+  if p_acao in ('separacao', 'encomenda') then
+    etapa_origem := 'aprovado';
+    etapa_destino := 'em_separacao';
+    tipo_desejado := p_acao;
+  elsif p_acao = 'entrega' then
+    etapa_origem := 'em_separacao';
+    etapa_destino := 'entregue';
+  else
+    return false;
+  end if;
+
+  update public.pecas_cotacoes c
+  set status = etapa_destino, tipo_preparo = coalesce(tipo_desejado, c.tipo_preparo)
+  where c.id = p_id
+    and c.unidade = any (p_unidades)
+    and c.responsavel_id = p_ator
+    and c.venda_confirmada_em is not null
+    and c.status = etapa_origem
+    and (tipo_desejado is not null or c.tipo_preparo is not null)
+  returning c.unidade into unidade_atual;
+
+  if found then
+    insert into public.pecas_cotacoes_historico (cotacao_id, unidade, de_status, para_status, ator_id)
+    values (p_id, unidade_atual, etapa_origem, etapa_destino, p_ator);
+    return true;
+  end if;
+
+  return exists (
+    select 1 from public.pecas_cotacoes c
+    where c.id = p_id
+      and c.unidade = any (p_unidades)
+      and c.responsavel_id = p_ator
+      and c.venda_confirmada_em is not null
+      and c.status = etapa_destino
+      and c.tipo_preparo is not null
+      and (tipo_desejado is null or c.tipo_preparo = tipo_desejado)
+  );
+end $$;
+
+revoke all on function public.pecas_avancar_atendimento(uuid, text[], uuid, text)
+  from public, anon, authenticated, service_role;
+grant execute on function public.pecas_avancar_atendimento(uuid, text[], uuid, text) to service_role;
 
 create function public.pecas_registrar_cotacao_bot(
   p_cliente_id uuid, p_unidade text, p_referencia text, p_descricao text

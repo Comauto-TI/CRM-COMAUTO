@@ -40,6 +40,7 @@ Versionamento semântico a partir de **0.0.1** (decisão do Simão, 10/11/2026).
 - Peças (`codex/pecas`): registro da aprovação do cliente com histórico da etapa, separado da confirmação de venda.
 - Peças (`codex/pecas`): entrada de pedidos do WhatsApp na fila, com identificação da origem e uma cotação por mensagem.
 - Peças (`codex/pecas`): confirmação de venda separada da aprovação, com total e margem bruta quando todos os itens têm custo.
+- Peças (`codex/pecas`): registro de separação ou encomenda após confirmar a venda, seguido de entrega com histórico das etapas.
 ### Corrigido (revisão do Codex)
 - Agenda respeita a unidade no banco (FK composta) e no servidor; pg_trgm independe do search_path.
 - Exportação integral do cliente só com permissão LGPD; início mostra só o que o perfil pode ver.
