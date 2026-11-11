@@ -1418,3 +1418,12 @@ Integração: banco primeiro (0005/0006 sobre a consolidação2006bf2), núcleo 
 [OBTIDO] Revisão do Claude confirmou bloqueio histórico permanente no núcleo7c44e9c. Correção local centraliza ATIVO em view servidor (negócio aberto OU reserva), usada por leitura legada e outbound. Mensagens associadas continuam fora do histórico geral. RPC notifica pela central existente e audita atomicamente; tools/handler verificam retorno, não anunciam transferência em erro e não copiam trecho bruto do cliente.
 [TIPO] bug corrigido localmente, aguardando revisão/aplicação de dev
 [GRAVIDADE] alta
+
+[ID] CR-PEC-001
+[ARQUIVO] supabase/migrations/0006_atendimento.sql (view conversas_legadas) + src/lib/messaging/outbound.ts possuiAtendimentoModular (7c44e9c)
+[TESTE] Cliente com UMA cotação de Peças já encerrada (entregue/perdida) volta meses depois pelo WhatsApp e pede atendente sobre a oficina.
+[ESPERADO] Bot transfere para a recepção, alerta dispara, conversa aparece na fila geral, recepção responde.
+[OBTIDO] conversas_legadas exclui a conversa se existir QUALQUER linha em atendimentos_modulares (não há status/encerramento na tabela); transferirParaHumano lê da view → "conversa_inexistente" → handoff falha calado, sem alerta e sem fila; SLA ignora; responderLivre de atendente sem contexto recusa "atendimento_modular"; template retomada também. O cliente fica órfão para sempre. Vale igual para Vendas (atendimento aberto por oportunidade).
+[CORREÇÃO] Exclusão só enquanto o atendimento estiver ATIVO (cotação em ETAPAS_ABERTAS / oportunidade com fechado_em null, ou reserva vigente). E quando o canal estiver mesmo com um setor, transferirParaHumano não pode falhar calado: avisa o responsável do setor (ou a recepção como fallback) e registra.
+[TIPO] bug
+[GRAVIDADE] alta — bloqueia merge
