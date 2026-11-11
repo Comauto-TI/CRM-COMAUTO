@@ -297,3 +297,21 @@ O PR #6 substitui #4/#5; não declarar merge/tag até evidência remota.
 sobre 279f553 (runtime); os commits posteriores da versão são package/CHANGELOG. A continuidade de Vendas
 será rebaseada nessa main, mantendo a próxima entrega em Não lançado até novo merge real. CR-PEC-002
 já foi revisada/aplicada no dev pelo Claude; evidência de navegador desse fluxo ainda depende de fixtures.
+
+
+## Oficina — primeira fatia isolada · 11/11/2026
+
+Após Vendas/PR #7, Claude liberou Oficina. Branch codex/oficina-fila no checkout Codex existente,
+recuperando pontualmente 35d56b2: 0004, validadores e contratos. Agenda continua principal; Nav/Resumo
+atuais preservados. Claude confirmou triagem como domínio, vínculo opcional verificável ao agendamento,
+recepção na fila coletiva com filtro minhas, consultor próprias+sem dono, gestão unidades autorizadas.
+
+Em andamento: 0004 reaplicável, grants reais, perfil/ator/unidade atual e revalidação de cliente/veículo;
+fila paginada por política no banco e adaptador server-only com DTO mínimo. SQL/contrato e adaptação serão
+commits separados. Ainda não há telas de Oficina restauradas nem conversa/0006 expandida. Próximo aceite:
+SQL em dois modos/reapply/rollback e revisão independente; Claude revisa/aplica antes da UI. Recuperação
+explícita de triagem órfã em alinhamento, sem transferência de dono vigente. Plano docs/OFICINA-MVP-PILOTO.md.
+
+Base remota v0.0.5 confirmada via PR #7 (main 16b873b); clone compartilhado main ainda 5e73115.
+Rebase somente após congelar arquivos dos subagentes, preservando hashes e trabalho em andamento.
+
