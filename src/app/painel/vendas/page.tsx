@@ -12,6 +12,7 @@ import {
 } from "@/modulos/vendas/regras";
 import { Cabecalho, Vazio } from "../_components/ui";
 import Quadro from "./Quadro";
+import ConversaVendas from "./ConversaVendas";
 import { novaOportunidade, assumir, salvarQualificacao, novaAtividade, novaTarefa, concluir, moverPeloFormulario, agendarNoCartao, vincular, desvincular, transferir, transferirCarteiraAction } from "./actions";
 import Icone from "../_components/Icone";
 import { lerVinculos, linkProcessoVendas, linkAvaliex } from "@/modulos/vendas/vinculos";
@@ -223,6 +224,12 @@ export default async function Vendas({ searchParams }: { searchParams: Promise<S
               )}
             </div>
             <div className="mudo">{op.cliente?.telefone}{op.cliente?.cidade ? ` · ${op.cliente.cidade}` : ""}</div>
+            {op.fechado_em ? <p className="mudo">Oportunidade encerrada. O atendimento está indisponível.</p> : (
+              <section className="vendas-conversa" aria-label="Atendimento da oportunidade">
+                <h3>Atendimento WhatsApp</h3>
+                <ConversaVendas oportunidadeId={op.id} />
+              </section>
+            )}
             {sp.erro && <div className="alerta erro">{sp.erro}</div>}
             {sp.ok === "salvo" && <div className="alerta ok">Salvo.</div>}
             {sp.ok === "agendado" && <div className="alerta ok">Agendado. Acompanhe em <Link href="/painel/lembretes">Meus lembretes</Link>.</div>}
