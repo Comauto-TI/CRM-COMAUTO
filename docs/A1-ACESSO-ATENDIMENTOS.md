@@ -1,6 +1,6 @@
 # A1 — Plano de acesso aos atendimentos por módulo
 
-Status: A1 em andamento. As fatias A1.1a a A1.1d e A1.2a têm código local isolado, descrito abaixo.
+Status: A1 em andamento. As fatias A1.1a a A1.1d, A1.2a e A1.2b têm código local isolado, descrito abaixo.
 As demais fatias continuam propostas; não houve integração de UI, teste de login, E2E
 nem aplicação de migrations em dev/produção.
 
@@ -262,6 +262,62 @@ pendentes de integração no dev; rotas legadas não foram liberadas por essa en
 a mesma política antes da paginação. Leitura individual, mensagens seguintes, ambiguidades,
 Oficina/triagem, filas sem dono, lifecycle/posse/transferência, envio e fechamento do legado
 continuam necessários antes da interface por setor.
+
+## A1.2b — Lista, prévias e totais por setor
+
+Migration `20261111154525_lista_atendimentos.sql`, após A1.2a. A RPC
+`listar_atendimentos` recebe ator autenticado no servidor, setor e opções de paginação;
+não recebe cliente, unidade ou responsável como autoridade do navegador.
+
+- `atendimentos_legiveis` é a fonte SQL `STABLE` comum da política para lista e detalhe.
+  Exige ator ativo, papel/setor, unidade ativa e principal/adicional (admin global),
+  negócio aberto e atribuído, responsável atual ou supervisão, cliente não anonimizado
+  e snapshots exatos de negócio, cliente, conversa e unidade. Não acrescenta exigência
+  de posse de envio, canal humano ou responsável ativo à política de leitura existente.
+- `associacoes_mensagens_atendimento` centraliza as associações exatas e a prova de
+  origem. Não autoriza um ator isoladamente. Lista e detalhe aplicam primeiro o escopo
+  legível e consultam os vínculos, o corpo e as contagens na mesma instrução/snapshot.
+  O detalhe preserva seus locks e também recusa se o gate final não contiver o atendimento.
+- Cada linha contém atendimento, setor, referência do negócio, unidade, nome do cliente,
+  criação, total de mensagens autorizadas, sinal de revisão e prévia nullable. Não inclui
+  telefone, metadata, posse de terceiros nem o histórico global do cliente. Nome e conteúdo
+  usam o mascaramento existente de CPF/cartão no servidor; só então a prévia é cortada
+  em 160 caracteres. O helper não promete anonimizar todo dado pessoal em texto livre.
+- Atendimentos autorizados com zero mensagens permanecem na lista, com prévia nula.
+  A prévia é a última mensagem autorizada, ordenada por data/ID. Mensagem mais recente
+  sem associação ou com origem ambígua não vira prévia e não entra no total.
+- `totalAtendimentos` e `totalMensagens` correspondem ao escopo inteiro autorizado do
+  setor, antes do cursor. O sinal de revisão só indica associações próprias indisponíveis;
+  não revela os itens omitidos. As contagens são de registros e mensagens, **não de não lidas**.
+- A lista ordena pela criação do atendimento e ID, ambos decrescentes. Não usa a data da
+  última mensagem como cursor mutável. Aceita de 1 a 100 linhas e cursor com tupla exata
+  de atendimento ainda legível; cursor alheio, revogado ou divergente é recusado sem totais.
+  O wrapper compartilha a validação temporal/UUID e preserva microssegundos.
+- Para calcular totais e selecionar prévias, a lista materializa IDs/datas das mensagens
+  autorizadas; busca o corpo somente das prévias da página, dentro da mesma consulta.
+  O total global ainda exige examinar o conjunto autorizado: sem promessa de custo
+  constante ou benchmark de produção.
+- Nenhuma leitura altera `nao_lidas`, marcas por usuário, posse, auditoria ou negócio.
+  A lista usa o snapshot de seu SELECT, sem travar cada atendimento. Transferência ou
+  revogação posterior exige nova autorização na próxima consulta/ação; cursor não concede
+  acesso entre requisições. Não há garantia de snapshot único entre páginas separadas.
+
+Validação local: 1.322 Vitest em 29 arquivos, typecheck e diffcheck passaram. A rodada
+incluiu 90 testes novos da lista e os 128 de regressão do detalhe. Oito contratos SQL
+passaram na base completa com e sem defaults permissivos, incluindo 1.005 atendimentos,
+1.001 datas empatadas, microssegundos, expectativas explícitas de escopo, diferencial
+com o contexto anterior, revogações, prévias após ambiguidade e reaplicação populada.
+A revisão independente comparou 154 combinações com 11 perfis entre contexto, helper,
+lista e detalhe; verificou ACL e leitura sem mutação em 17 tabelas. SQL e wrappers sem
+achados bloqueantes no recorte. Migration revisada: SHA256
+`56bd1145d69075fdd0aed307e8a62a850e8410e78e42d67f62a6bafd9b3e231f`.
+
+**Próxima parte:** A1.2c, leitura/não lidas por atendimento e usuário, com operações
+explícitas e autorizadas, sem zerar o canal físico nem marcar mensagens omitidas como lidas.
+Mensagens seguintes/roteamento, ambiguidades, Oficina/triagem, filas sem dono, lifecycle,
+transferências, envio e adaptadores legados seguem pendentes antes da UI por setor.
+Código e migrations aguardam integração no dev; login real/E2E, concorrência multissessão
+e validação de volume/índices no ambiente de destino ainda não foram executados.
 
 ## Problema e limites atuais
 
