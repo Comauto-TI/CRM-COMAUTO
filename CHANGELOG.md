@@ -8,6 +8,7 @@ Versionamento semântico a partir de **0.0.1** (decisão do Simão, 10/11/2026).
 
 ## [Não lançado] — branch `claude/f2-piloto`
 ### Adicionado
+- Matriz de testes por perfil, com rodadas de subagentes, logins/sessões isolados e cobertura das telas e acessos proibidos.
 - F5 Aniversários: semáforo 🟡 próximo / 🟢 hoje / 🔴 passou sem contato na Visão geral (carteira do vendedor; gerente vê todas); "Contato feito" e lembrete insistente em pop-up até registrar o contato.
 - Ficha do cliente: editar nome, e-mail, cidade, CPF/CNPJ (validado, mascarado, sem duplicar ficha) e data de nascimento.
 - Transferir lead (botão de setas no cartão e no painel): dono ou gerente passa para outro vendedor com motivo; registra na linha do tempo, avisa o novo vendedor e pode mover a carteira do cliente.
@@ -20,6 +21,7 @@ Versionamento semântico a partir de **0.0.1** (decisão do Simão, 10/11/2026).
 - Troca de vendedor só pela transferência (registrada e avisada); saiu o campo solto do formulário de qualificação.
 - Painel sem animações contínuas nem desfoque.
 ### Corrigido
+- Meus lembretes orienta para a ficha do cliente e respeita o acesso do perfil nos links, inclusive Peças e Financeiro. Smoke de navegador atualizado para os seletores da central de atendimento atual.
 - Cadastro da equipe: origem do login validada em metadados controlados pelo servidor, retomada de cadastro parcial com senha provisória, busca de contas sem corte nas primeiras 20 páginas e proteção do próprio administrador contra desativação pelo formulário.
 - Encaminhamento interno de Peças/triagem: confirma registro apenas após gravar pedido, nota e avisos na mesma transação; repetição da mensagem preserva os efeitos únicos e destinatários incluem unidades adicionais. Contexto da conversa acompanha o `wamid`; requer a migration `20261111130139_encaminhamentos_bot`.
 - Rótulos do funil de Vendas não quebram mais no meio da palavra.

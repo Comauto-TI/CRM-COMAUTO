@@ -18,6 +18,12 @@ secrets/
 Thumbs.db
 .vercel
 
+# relatórios e sessões locais dos testes de navegador
+playwright-report/
+test-results/
+playwright/.auth/
+tests/e2e/.auth/
+
 # scaffold paralelo antigo (não usar)
 comauto-whatsapp/
 

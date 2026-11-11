@@ -21,3 +21,9 @@ intercepta o transporte do Graph e só aceita respostas a números da
 demo. O fluxo cobre login, popup da fila, assumir, responder, devolver
 ao bot e abrir o financeiro.
 
+O plano de rodadas com logins distintos e a matriz de todas as telas estão em
+[`docs/TESTES-POR-PERFIL.md`](../../docs/TESTES-POR-PERFIL.md). A configuração atual
+ainda é um único smoke de administrador: não iniciar uma instância dela por
+subagente na mesma porta nem apresentar essa execução como cobertura de todos
+os perfis. Cada rodada usará sessões e fixtures independentes.
+
