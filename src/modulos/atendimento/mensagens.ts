@@ -11,7 +11,7 @@ export type ResultadoAutorizacaoMensagem = ({ ok: true; setor: SetorMensagem } &
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const objeto = (v: unknown): v is Record<string, unknown> => typeof v === "object" && v !== null && !Array.isArray(v);
-const uuid = (v: unknown): v is string => typeof v === "string" && UUID.test(v);
+const uuid = (v: unknown): v is string => typeof v === "string" && v.length === 36 && UUID.test(v);
 const referenciaValida = (v: unknown): v is string => typeof v === "string" && v.length >= 1 && v.length <= 512 && v.trim() === v;
 
 const setorValido = (v: unknown): v is SetorMensagem => v === "pecas" || v === "vendas";

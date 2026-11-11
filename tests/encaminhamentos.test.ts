@@ -74,4 +74,13 @@ describe("encaminhamento persistido do bot", () => {
     fixture.rpc.mockResolvedValue({ data: { ok: true, cotacao_id: null, ja_registrado: false }, error: null });
     expect(await rotearLead({ ...lead, interesse: "indefinido" })).toEqual({ ok: true, destino: "triagem" });
   });
+  it("UUID com newline é recusado na entrada antes do RPC e no retorno de cotação", async () => {
+    expect((await encaminharLeadBot({ ...pedido, conversaId: conversaId + "\n" })).ok).toBe(false);
+    expect((await encaminharLeadBot({ ...pedido, clienteId: clienteId + "\n" })).ok).toBe(false);
+    expect(fixture.rpc).not.toHaveBeenCalled();
+    fixture.rpc.mockResolvedValue({ data: { ok: true, cotacao_id: cotacaoId + "\n" }, error: null });
+    expect((await encaminharLeadBot(pedido)).ok).toBe(false);
+    expect(fixture.notificar).not.toHaveBeenCalled();
+    expect(fixture.auditar).not.toHaveBeenCalled();
+  });
 });

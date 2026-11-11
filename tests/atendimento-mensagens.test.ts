@@ -78,11 +78,11 @@ describe("A1.1b perfis permitidos apenas como pré-filtro", () => {
 });
 
 describe("A1.1b validação de entradas em runtime", () => {
-  it.each([null, undefined, 1, {}, [], "", " " + atendimentoId, atendimentoId + " ", atendimentoId.replaceAll("-", ""), "50000000-0000-4000-8000-00000000010z"])("recusa atendimento UUID inválido %j", async valor => {
+  it.each([null, undefined, 1, {}, [], "", " " + atendimentoId, atendimentoId + " ", atendimentoId + "\n", atendimentoId.replaceAll("-", ""), "50000000-0000-4000-8000-00000000010z"])("recusa atendimento UUID inválido %j", async valor => {
     expect(await vincularMensagemEncaminhada(pecas, valor as string, referencia)).toMatchObject({ ok: false, status: 400 });
     expect(fixture.db).not.toHaveBeenCalled();
   });
-  it.each([null, undefined, {}, { ...pecas, id: "" }, { ...pecas, id: 1 }, { ...pecas, id: ator.replaceAll("-", "") }])("recusa ator inválido %j", async valor => {
+  it.each([null, undefined, {}, { ...pecas, id: "" }, { ...pecas, id: 1 }, { ...pecas, id: ator.replaceAll("-", "") }, { ...pecas, id: ator + "\n" }])("recusa ator inválido %j", async valor => {
     expect(await vincularMensagemEncaminhada(valor as Usuario, atendimentoId, referencia)).toMatchObject({ ok: false, status: 400 });
     expect(fixture.db).not.toHaveBeenCalled();
   });
@@ -123,6 +123,7 @@ describe("A1.1b erros e correlação da resposta", () => {
     null, [], "fixture_interno", {}, { ...sucesso, ok: "true" }, { ...sucesso, atendimentoId: null },
     { ...sucesso, atendimentoId: atendimentoId.replaceAll("-", "") }, { ...sucesso, mensagemId: null },
     { ...sucesso, mensagemId: mensagemId.replaceAll("-", "") }, { ...sucesso, referencia: null },
+    { ...sucesso, atendimentoId: atendimentoId + "\n" }, { ...sucesso, mensagemId: mensagemId + "\n" },
     { ...sucesso, jaVinculado: "false" }, { ...sucesso, jaVinculado: 0 }, { ...sucesso, jaVinculado: null },
   ])("recusa sucesso malformado %j", async data => {
     fixture.rpc.mockResolvedValue({ data, error: null });

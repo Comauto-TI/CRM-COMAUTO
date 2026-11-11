@@ -281,6 +281,16 @@ describe("F5 lembrete insistente antigo", () => {
 });
 
 describe("F5 mutações atômicas", () => {
+  it.each(["cliente", "ator"])("UUID de%s com newline falha antes de acessar DB/RPC", async campo => {
+    const c = cliente();
+    const id = campo === "cliente" ? c.id + "\n" : c.id;
+    const u = campo === "ator" ? { ...admin, id: admin.id + "\n" } : admin;
+    expect((await marcarContatoAniversario(u, id, hoje)).ok).toBe(false);
+    expect((await ativarLembreteAniversario(u, id, hoje)).ok).toBe(false);
+    expect(fixture.from).not.toHaveBeenCalled();
+    expect(fixture.rpc).not.toHaveBeenCalled();
+    expect(fixture.auditar).not.toHaveBeenCalled();
+  });
   it("marca contato da data antiga exata pelo RPC, sem notas ou auditoria separadas", async () => {
     const c = cliente(101, { data_nascimento: "1990-11-03" });
     expect((await marcarContatoAniversario(admin, c.id, hoje, "2026-11-03")).ok).toBe(true);

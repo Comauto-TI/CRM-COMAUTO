@@ -141,9 +141,9 @@ describe("A1.1c entradas inválidas falham antes do RPC", () => {
   });
   it.each([
     { conversaId: null }, { conversaId: undefined }, { conversaId: {} }, { conversaId: "" },
-    { conversaId: conversaId.replaceAll("-", "") }, { conversaId: " " + conversaId },
+    { conversaId: conversaId.replaceAll("-", "") }, { conversaId: " " + conversaId }, { conversaId: conversaId + "\n" },
     { clienteId: null }, { clienteId: undefined }, { clienteId: 2 }, { clienteId: "" },
-    { clienteId: clienteId + " " }, { clienteId: "60000000-0000-4000-8000-00000000000z" },
+    { clienteId: clienteId + " " }, { clienteId: clienteId + "\n" }, { clienteId: "60000000-0000-4000-8000-00000000000z" },
     { referencia: null }, { referencia: undefined }, { referencia: 2 }, { referencia: {} }, { referencia: "" },
     { referencia: "x".repeat(513) }, { referencia: " " + lead.referencia }, { referencia: lead.referencia + "\t" },
     { modelo: 2 }, { modelo: undefined }, { trocaDescricao: 2 }, { trocaDescricao: undefined },
@@ -173,7 +173,7 @@ describe("A1.1c resposta negativa ou incompleta não confirma ao agente", () => 
   it.each([
     null, [], "fixture_interno", {}, { ...sucesso, ok: "true" }, { ...sucesso, ok: false, motivo: "fixture_interno" },
     { ...sucesso, oportunidade_id: null }, { ...sucesso, oportunidade_id: 2 },
-    { ...sucesso, oportunidade_id: oportunidadeId.replaceAll("-", "") },
+    { ...sucesso, oportunidade_id: oportunidadeId.replaceAll("-", "") }, { ...sucesso, oportunidade_id: oportunidadeId + "\n" },
     { ...sucesso, novo: null }, { ...sucesso, novo: "true" }, { ...sucesso, novo: 1 },
     { ...sucesso, ja_registrado: undefined }, { ...sucesso, ja_registrado: "false" }, { ...sucesso, ja_registrado: 0 },
   ])("retorno malformado %j vira falha genérica sem efeito lateral JS", async data => {

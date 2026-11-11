@@ -6,7 +6,7 @@ import { ehChave, PAGAMENTOS, PRAZOS } from "./regras";
 type Resultado = { ok: true; novo: boolean } | { ok: false; motivo: string };
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const objeto = (v: unknown): v is Record<string, unknown> => typeof v === "object" && v !== null && !Array.isArray(v);
-const uuid = (v: unknown): v is string => typeof v === "string" && UUID.test(v);
+const uuid = (v: unknown): v is string => typeof v === "string" && v.length === 36 && UUID.test(v);
 const textoOuNulo = (v: unknown): v is string | null => v === null || typeof v === "string";
 const referenciaValida = (v: unknown): v is string => typeof v === "string" && v.length >= 1 && v.length <= 512 && v.trim() === v;
 

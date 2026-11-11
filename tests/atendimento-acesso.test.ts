@@ -87,12 +87,12 @@ describe("A1.1a pré-filtro por setor", () => {
 });
 
 describe("A1.1a validação em runtime antes do RPC", () => {
-  it.each([null, undefined, 7, {}, [], { id: ator }, "", " " + registroId, registroId + " ", registroId.replaceAll("-", ""), "40000000-0000-4000-8000-00000000010z"])("recusa referência UUID não canônica %j", async valor => {
+  it.each([null, undefined, 7, {}, [], { id: ator }, "", " " + registroId, registroId + " ", registroId + "\n", registroId.replaceAll("-", ""), "40000000-0000-4000-8000-00000000010z"])("recusa referência UUID não canônica %j", async valor => {
     expect(await abrirAtendimento(pecas, "pecas", valor as string)).toMatchObject({ ok: false, status: 400 });
     expect(await assumirAtendimento(pecas, valor as string, 3)).toMatchObject({ ok: false, status: 400 });
     expect(fixture.db).not.toHaveBeenCalled();
   });
-  it.each([null, undefined, {}, { ...pecas, id: "" }, { ...pecas, id: 2 }])("recusa ator inválido %j", async valor => {
+  it.each([null, undefined, {}, { ...pecas, id: "" }, { ...pecas, id: 2 }, { ...pecas, id: ator + "\n" }])("recusa ator inválido %j", async valor => {
     expect(await abrirAtendimento(valor as Usuario, "pecas", registroId)).toMatchObject({ ok: false, status: 400 });
     expect(await assumirAtendimento(valor as Usuario, atendimentoId, 3)).toMatchObject({ ok: false, status: 400 });
     expect(fixture.db).not.toHaveBeenCalled();
@@ -139,6 +139,7 @@ describe("A1.1a falhas de RPC não vazam dados", () => {
   it.each([
     null, [], "fixture_interno", {}, { ...sucesso, ok: "true" }, { ...sucesso, id: null },
     { ...sucesso, id: atendimentoId.replaceAll("-", "") }, { ...sucesso, registroId: 1 },
+    { ...sucesso, id: atendimentoId + "\n" }, { ...sucesso, registroId: registroId + "\n" },
     { ...sucesso, setor: "oficina" }, { ...sucesso, versao: "4" }, { ...sucesso, versao: -1 },
     { ...sucesso, versao: 0.5 }, { ...sucesso, versao: 2_147_483_647 }, { ...sucesso, versao: Infinity },
   ])("não aceita sucesso malformado %j", async data => {

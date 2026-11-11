@@ -11,7 +11,7 @@ export type ResultadoAtendimento =
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const LIMITE_VERSAO = 2_147_483_647;
 const objeto = (v: unknown): v is Record<string, unknown> => typeof v === "object" && v !== null && !Array.isArray(v);
-const uuid = (v: unknown): v is string => typeof v === "string" && UUID.test(v);
+const uuid = (v: unknown): v is string => typeof v === "string" && v.length === 36 && UUID.test(v);
 const setorValido = (v: unknown): v is SetorAtendimento => v === "vendas" || v === "pecas";
 const versaoValida = (v: unknown): v is number => typeof v === "number" && Number.isSafeInteger(v) && v >= 0 && v < LIMITE_VERSAO;
 

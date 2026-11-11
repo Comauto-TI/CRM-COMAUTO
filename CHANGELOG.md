@@ -26,6 +26,7 @@ Versionamento semântico a partir de **0.0.1** (decisão do Simão, 10/11/2026).
 - Troca de vendedor só pela transferência (registrada e avisada); saiu o campo solto do formulário de qualificação.
 - Painel sem animações contínuas nem desfoque.
 ### Corrigido
+- Validação de UUID dos wrappers recusa caracteres extras, inclusive quebra de linha no fim, antes de consultar ou alterar dados. IDs retornados por RPC também exigem o formato canônico; referências de mensagens permanecem opacas.
 - Bot de Vendas: criação/atualização, atividade, aviso, auditoria e carteira são atômicos e reprocessamento da mensagem não duplica efeitos. Mantém responsável existente e decisões de qualificação da equipe; novo lead considera vendedores com unidade adicional, com supervisão elegível quando necessário. Falha da transação não confirma sucesso.
 - Aniversários: notas internas e mensagens com falha não contam como contato; datas respeitam o fuso configurado, a carteira é lida em páginas e lembretes pendentes não expiram depois de sete dias. Registro de contato, nota, auditoria e conclusão são atômicos; o pop-up só remove após sucesso e informa falhas. Administrador pode atuar nas unidades ativas; demais perfis mantêm carteira/unidade. Requer a migration `20261111134242_aniversarios_contatos`.
 - Meus lembretes orienta para a ficha do cliente e respeita o acesso do perfil nos links, inclusive Peças e Financeiro. Smoke de navegador atualizado para os seletores da central de atendimento atual.

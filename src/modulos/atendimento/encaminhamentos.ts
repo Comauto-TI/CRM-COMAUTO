@@ -10,13 +10,14 @@ type PedidoEncaminhamento = {
 };
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+const uuid = (v: unknown): v is string => typeof v === "string" && v.length === 36 && UUID.test(v);
 type Resultado = { ok: true } | { ok: false; motivo: string };
 
 /** A RPC grava pedido, nota, avisos e identidade da mensagem juntos, ou desfaz tudo. */
 export async function encaminharLeadBot(pedido: PedidoEncaminhamento): Promise<Resultado> {
   const referencia = pedido.referencia.trim();
   const resumo = pedido.resumo.trim().slice(0, 300);
-  if (!UUID.test(pedido.conversaId) || !UUID.test(pedido.clienteId) || !referencia || referencia.length > 512 || !resumo) {
+  if (!uuid(pedido.conversaId) || !uuid(pedido.clienteId) || !referencia || referencia.length > 512 || !resumo) {
     return { ok: false, motivo: "contexto_encaminhamento_invalido" };
   }
   try {
@@ -28,7 +29,7 @@ export async function encaminharLeadBot(pedido: PedidoEncaminhamento): Promise<R
       p_resumo: resumo,
     });
     if (error || !data || typeof data !== "object" || data.ok !== true ||
-      (pedido.destino === "pecas" && (typeof data.cotacao_id !== "string" || !UUID.test(data.cotacao_id)))) {
+      (pedido.destino === "pecas" && !uuid(data.cotacao_id))) {
       return { ok: false, motivo: "encaminhamento_indisponivel" };
     }
     return { ok: true };

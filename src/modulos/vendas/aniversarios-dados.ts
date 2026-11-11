@@ -19,6 +19,7 @@ type Pagina = { data: unknown[] | null; error: unknown; count: number | null };
 const COLUNAS_CLIENTE = "id, nome, telefone, data_nascimento, vendedor_id, unidade_origem, anonimizado";
 const COLUNAS_LEMBRETE = "id, cliente_id, data_alvo, concluido_em, insistente, usuario_id, unidade";
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+const uuid = (v: unknown): v is string => typeof v === "string" && v.length === 36 && UUID.test(v);
 
 /** A contagem evita tratar o limite da Data API ou uma falha como uma carteira completa. */
 async function todas<T>(consultar: (de: number, ate: number) => PromiseLike<Pagina>): Promise<T[]> {
@@ -118,7 +119,7 @@ export async function listarAniversarios(u: Usuario, hojeISO: string, antecedenc
 }
 
 async function podeNoCliente(u: Usuario, clienteId: string) {
-  if (!UUID.test(clienteId) || !podeAcessar(u, "vendas")) return null;
+  if (!uuid(clienteId) || !uuid(u?.id) || !podeAcessar(u, "vendas")) return null;
   const { data, error } = await db().from("clientes").select(COLUNAS_CLIENTE).eq("id", clienteId).maybeSingle();
   if (error) throw new Error("Não foi possível consultar o cliente.");
   if (!data) return null;
