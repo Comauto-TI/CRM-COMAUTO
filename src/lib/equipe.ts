@@ -28,7 +28,7 @@ export function gerarSenhaProvisoria(tamanho = 8): string {
   return s.join("");
 }
 
-async function acharNoAuthPorEmail(email: string): Promise<{ id: string; origem: string | null } | null> {
+export async function acharNoAuthPorEmail(email: string): Promise<{ id: string; origem: string | null } | null> {
   // A listagem admin é paginada: só termina depois de conferir a última página.
   for (let page = 1; ; page++) {
     const { data, error } = await db().auth.admin.listUsers({ page, perPage: 200 });

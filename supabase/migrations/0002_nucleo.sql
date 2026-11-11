@@ -211,3 +211,57 @@ begin
     end if;
   end loop;
 end $$;
+
+-- ---------------------------------------------------------------------
+-- Links de cadastro da equipe (pedido do Simão, 11/11): o admin gera um link por tipo
+-- (vendas / pecas / agendamento) e a pessoa se cadastra já com papel, setor e unidade.
+-- NÃO usar o nome "convites": já existe no banco compartilhado (processo-vendas-teste).
+-- Só o HASH do token é guardado; o link aparece uma única vez para o admin.
+-- ---------------------------------------------------------------------
+create table if not exists plataforma_convites (
+  id          uuid primary key default gen_random_uuid(),
+  token_hash  text not null unique check (token_hash ~ '^[0-9a-f]{64}$'),
+  tipo        text not null check (tipo in ('vendas', 'pecas', 'agendamento')),
+  papel       text not null,
+  setor       text not null,
+  unidade     text not null references unidades (chave),
+  criado_por  uuid references usuarios (user_id) on delete set null,
+  criado_em   timestamptz not null default now(),
+  expira_em   timestamptz not null,
+  max_usos    int not null default 1 check (max_usos between 1 and 50),
+  usos        int not null default 0 check (usos >= 0),
+  revogado_em timestamptz,
+  check (usos <= max_usos)
+);
+create index if not exists plataforma_convites_ativos_idx on plataforma_convites (criado_em desc) where revogado_em is null;
+
+-- reserva atômica de um uso (dois cadastros simultâneos não passam do limite)
+create or replace function reservar_convite(p_hash text) returns jsonb
+language plpgsql set search_path = public as $$
+declare c plataforma_convites;
+begin
+  update plataforma_convites set usos = usos + 1
+   where token_hash = p_hash and revogado_em is null and expira_em > now() and usos < max_usos
+  returning * into c;
+  if c.id is null then return jsonb_build_object('ok', false); end if;
+  return jsonb_build_object('ok', true, 'id', c.id, 'papel', c.papel, 'setor', c.setor, 'unidade', c.unidade, 'criado_por', c.criado_por, 'tipo', c.tipo);
+end $$;
+
+-- devolve o uso quando o cadastro falhar depois da reserva
+create or replace function devolver_convite(p_id uuid) returns void
+language sql set search_path = public as $$
+  update plataforma_convites set usos = greatest(usos - 1, 0) where id = p_id;
+$$;
+
+alter table plataforma_convites enable row level security;
+revoke all on plataforma_convites from anon, authenticated;
+revoke all on function reservar_convite(text) from public, anon, authenticated;
+revoke all on function devolver_convite(uuid) from public, anon, authenticated;
+do $$
+begin
+  if exists (select 1 from pg_roles where rolname = 'service_role') then
+    grant select, insert, update on plataforma_convites to service_role;
+    grant execute on function reservar_convite(text) to service_role;
+    grant execute on function devolver_convite(uuid) to service_role;
+  end if;
+end $$;

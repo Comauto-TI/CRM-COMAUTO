@@ -47,6 +47,7 @@ export async function salvarFinanceiro(formData: FormData) {
   }
   await auditar(u.email, "precos_meta", "precos_meta", null);
   revalidatePath("/painel/configuracoes");
+  revalidatePath("/painel/usuarios");
 }
 
 export async function salvarCustoFixo(formData: FormData) {
@@ -63,6 +64,7 @@ export async function salvarCustoFixo(formData: FormData) {
   else await db().from("custos_fixos").insert(dados);
   await auditar(u.email, "custo_fixo", "custos_fixos", id || null, dados);
   revalidatePath("/painel/configuracoes");
+  revalidatePath("/painel/usuarios");
 }
 
 export async function salvarTemplate(formData: FormData) {
@@ -73,6 +75,7 @@ export async function salvarTemplate(formData: FormData) {
   await db().from("templates").update({ status_aprovacao: status, ativo: formData.get("ativo") === "on" }).eq("id", id);
   await auditar(u.email, "template_status", "template", id, { status });
   revalidatePath("/painel/configuracoes");
+  revalidatePath("/painel/usuarios");
 }
 
 export async function salvarServico(formData: FormData) {
@@ -90,6 +93,7 @@ export async function salvarServico(formData: FormData) {
   else await db().from("servicos").insert(dados);
   await auditar(u.email, "servico", "servicos", id || null, dados);
   revalidatePath("/painel/configuracoes");
+  revalidatePath("/painel/usuarios");
 }
 
 export async function adicionarBloqueio(formData: FormData) {
@@ -102,6 +106,7 @@ export async function adicionarBloqueio(formData: FormData) {
   await db().from("bloqueios").insert({ recurso_id: recurso, inicio: ini.toISOString(), fim: fim.toISOString(), motivo: String(formData.get("motivo") || "") || null });
   await auditar(u.email, "bloqueio_agenda", "bloqueios", null, { recurso, ini, fim });
   revalidatePath("/painel/configuracoes");
+  revalidatePath("/painel/usuarios");
 }
 
 export async function removerBloqueio(formData: FormData) {
@@ -110,6 +115,7 @@ export async function removerBloqueio(formData: FormData) {
   await db().from("bloqueios").delete().eq("id", id);
   await auditar(u.email, "remover_bloqueio", "bloqueios", id);
   revalidatePath("/painel/configuracoes");
+  revalidatePath("/painel/usuarios");
 }
 
 /** Equipe: telefone de alerta e consentimento para receber alertas de atendimento no WhatsApp. */
@@ -141,6 +147,7 @@ export async function salvarEquipe(formData: FormData) {
   if (error) return; // só audita o que de fato foi gravado
   await auditar(u.email, "equipe", "usuarios", userId, { papel, setor });
   revalidatePath("/painel/configuracoes");
+  revalidatePath("/painel/usuarios");
 }
 
 // ---------------------------------------------------------------------------
@@ -156,6 +163,7 @@ export async function criarMembroAction(_prev: ResultadoEquipe | null, formData:
     unidade: String(formData.get("unidade") ?? ""),
   });
   revalidatePath("/painel/configuracoes");
+  revalidatePath("/painel/usuarios");
   return r;
 }
 
@@ -168,4 +176,5 @@ export async function definirAtivoAction(formData: FormData) {
   const u = await exigirAcesso("configuracoes");
   await definirAtivo(u, String(formData.get("user_id") ?? ""), formData.get("ativo") === "1");
   revalidatePath("/painel/configuracoes");
+  revalidatePath("/painel/usuarios");
 }

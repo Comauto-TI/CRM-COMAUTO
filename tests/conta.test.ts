@@ -12,3 +12,14 @@ describe("troca da própria senha — regra leve", () => {
     expect(validarNovaSenha("", "123456", "123456")).toMatch(/atual/);
   });
 });
+
+import { validarCadastro } from "@/lib/convites";
+describe("cadastro pelo link", () => {
+  it("valida nome, e-mail, senha leve e confirmação", () => {
+    expect(validarCadastro("Ana", "ana@comauto.com", "abc123", "abc123")).toBeNull();
+    expect(validarCadastro("A", "ana@comauto.com", "abc123", "abc123")).toMatch(/nome/);
+    expect(validarCadastro("Ana", "ana@", "abc123", "abc123")).toMatch(/E-mail/);
+    expect(validarCadastro("Ana", "ana@comauto.com", "abc12", "abc12")).toMatch(/6 caracteres/);
+    expect(validarCadastro("Ana", "ana@comauto.com", "abc123", "abc124")).toMatch(/confirmação/);
+  });
+});
