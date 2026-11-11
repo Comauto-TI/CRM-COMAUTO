@@ -20,6 +20,7 @@ Versionamento semântico a partir de **0.0.1** (decisão do Simão, 10/11/2026).
 - Troca de vendedor só pela transferência (registrada e avisada); saiu o campo solto do formulário de qualificação.
 - Painel sem animações contínuas nem desfoque.
 ### Corrigido
+- Encaminhamento interno de Peças/triagem: confirma registro apenas após gravar pedido, nota e avisos na mesma transação; repetição da mensagem preserva os efeitos únicos e destinatários incluem unidades adicionais. Contexto da conversa acompanha o `wamid`; requer a migration `20261111130139_encaminhamentos_bot`.
 - Rótulos do funil de Vendas não quebram mais no meio da palavra.
 - Transferências (revisão do Codex, F1-V-T001–T005): destino precisa ter acesso a Vendas e à unidade (inclusive adicional); lote valida cada unidade; troca de responsável, carteira e nota gravadas juntas (RPC `vendas_transferir`); lote grande lido em páginas com aviso de parcial; responsável não muda mais pelo formulário de qualificação.
 

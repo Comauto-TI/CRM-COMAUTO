@@ -3,7 +3,7 @@ import { db } from "@/lib/supabase/admin";
 import { auditar } from "@/lib/audit";
 import { notificar } from "@/lib/notificacoes";
 import { nucleoAplicado } from "@/lib/usuarios";
-import { registrarCotacaoDoBot } from "@/modulos/pecas/cotacoes";
+import { encaminharLeadBot } from "@/modulos/atendimento/encaminhamentos";
 import { destinoDoLead, escolherVendedor, temperaturaInicial, completarQualificacao, type Interesse, type Pagamento, type Prazo } from "./regras";
 
 /**
@@ -27,6 +27,7 @@ export type DadosLead = {
   clienteConfirmou: boolean;
   /** wamid da mensagem: referência estável (a mesma mensagem nunca cria duas cotações de peças). */
   referencia?: string | null;
+  conversaId?: string | null;
 };
 
 export type ResultadoLead =
@@ -77,7 +78,6 @@ export async function rotearLead(d: DadosLead): Promise<ResultadoLead> {
   if (destino.tipo === "agenda") return { ok: true, destino: "agenda" };
   if (!(await nucleoAplicado())) return { ok: false, motivo: "crm_indisponivel" };
 
-  const unidade = await unidadeDoCliente(d.clienteId);
   const { data: cliente } = await db()
     .from("clientes")
     .select("id, nome, vendedor_id, anonimizado, link_origem_id, links_rastreados(codigo, canal)")
@@ -87,40 +87,20 @@ export async function rotearLead(d: DadosLead): Promise<ResultadoLead> {
   const nome = (cliente.nome as string | null) ?? "Cliente";
   const resumo = d.resumo.slice(0, 300);
 
-  // Peças: o pedido entra na FILA DE COTAÇÕES do setor (módulo do Codex), sem duplicar pela mesma mensagem.
-  let cotacaoId: string | null = null;
-  if (destino.tipo === "pecas") {
-    const r = await registrarCotacaoDoBot({
-      clienteId: d.clienteId,
-      unidade,
-      referencia: d.referencia || `bot:${d.clienteId}:${new Date().toISOString().slice(0, 16)}`,
-      descricao: resumo.slice(0, 1000),
-    });
-    if (r.ok) cotacaoId = r.id; // se a fila ainda não existir no banco, cai no aviso + nota abaixo
-  }
-
   if (destino.tipo === "pecas" || destino.tipo === "triagem") {
-    // F2-1-001: encaminhamento é INTERNO — nota na ficha + aviso à equipe. Nunca vira follow-up
-    // (o cron de follow-up manda template de marketing ao cliente; o resumo é texto interno).
-    await db().from("notas_cliente").insert({
-      cliente_id: d.clienteId,
-      autor: "assistente",
-      texto: `[${destino.tipo === "pecas" ? "Peças" : "Triagem"}] ${resumo}`.slice(0, 500),
+    // Só confirma após persistir os efeitos internos. A mesma mensagem não duplica avisos.
+    const r = await encaminharLeadBot({
+      conversaId: d.conversaId ?? "",
+      clienteId: d.clienteId,
+      referencia: d.referencia ?? "",
+      destino: destino.tipo,
+      resumo,
     });
-    await avisarEquipe(
-      unidade,
-      destino.tipo === "pecas" ? { papeis: ["pecas"], gerenteDoSetor: "pecas" } : { papeis: ["recepcao", "atendente"] },
-      {
-        tipo: destino.tipo === "pecas" ? "pecas" : "lead",
-        titulo: destino.tipo === "pecas" ? `Pedido de peças pelo WhatsApp: ${nome}` : `Lead para triagem: ${nome}`,
-        corpo: resumo,
-        link: cotacaoId ? `/painel/pecas/${cotacaoId}` : `/painel/clientes?q=${encodeURIComponent(nome)}`,
-      },
-    );
-    return { ok: true, destino: destino.tipo };
+    return r.ok ? { ok: true, destino: destino.tipo } : r;
   }
 
   // ---- Vendas: cartão no funil certo ----
+  const unidade = await unidadeDoCliente(d.clienteId);
   const { data: funil } = await db().from("vendas_funis").select("id, chave").eq("unidade", unidade).eq("chave", destino.funil).eq("ativo", true).maybeSingle();
   if (!funil) return { ok: false, motivo: "funil_inexistente" };
 

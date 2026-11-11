@@ -24,7 +24,7 @@ import { ehChave, INTERESSES, PAGAMENTOS, PRAZOS, type Interesse } from "@/modul
  */
 
 /** wamid = id da mensagem que disparou o agente (referência estável para ações idempotentes, ex.: cotação de peças). */
-export type ContextoTool = { clienteId: string; telefone: string; nomeCliente: string | null; wamid?: string };
+export type ContextoTool = { clienteId: string; telefone: string; nomeCliente: string | null; wamid?: string; conversaId?: string };
 
 const s = (props: Record<string, unknown>, required: string[]): Anthropic.Tool["input_schema"] => ({
   type: "object",
@@ -340,6 +340,7 @@ export async function executarTool(nome: string, input: In, ctx: ContextoTool): 
         resumo: String(input.resumo ?? "").slice(0, 300) || "Interesse registrado pelo assistente",
         clienteConfirmou: input.cliente_confirmou_dados === true,
         referencia: ctx.wamid ?? null,
+        conversaId: ctx.conversaId ?? null,
       });
       if (!r.ok) return { resultado: erro("nao_registrado", { instrucao: "ofereça falar com um atendente (transferir_humano)" }) };
       const instrucao = {

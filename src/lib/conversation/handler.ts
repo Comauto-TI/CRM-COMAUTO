@@ -382,7 +382,7 @@ async function tratarMensagem(args: {
     agendamentosDoCliente(cliente.id),
   ]);
   const r = await rodarAgente({
-    ctx: { clienteId: cliente.id, telefone, nomeCliente: cliente.nome, wamid: m.wamid },
+    ctx: { clienteId: cliente.id, telefone, nomeCliente: cliente.nome, wamid: m.wamid, conversaId: conv.id },
     historico: hist,
     mensagem: textoParaAgente,
     contexto: {
