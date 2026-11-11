@@ -334,3 +334,25 @@ adaptador 22D64066/testes0680C26B ainda não executados. Branch rebaseada no pin
 Fila atual do Simão via Claude: QA por perfil → Oficina somente agenda existente + fila/triagem essencial
 (0004 separado → telas) → E2E do bot com simulador e relatório funciona/quebra/depende de chave. Recursos
 novos e vínculo Revisão F2-3 congelados; publicar na Vercel fica por último. Sem alterar Auth/dados externos.
+
+
+## QA ampliado e vendedor adicional — pedido direto do Simão · 11/11/2026
+
+Executado com três subagentes mais coordenador: inventário de 21 páginas reais do painel, incluindo
+Minha conta/Usuários adicionadas ao runtime. Vendedor QA 2 criado explicitamente a pedido do Simão
+(vendedor/Vendas/Comauto), origem Auth do CRM e perfil confirmados; credencial somente no env ignorado.
+A conta adicional foi testada em sessão isolada: 25 verificações aprovadas, Minhas métricas sem globais,
+10 URLs recusadas; quantitativo/carteira estrangeira continua sem fixture comparável. Contas antigas
+preservadas. A antiga pendência de senha não impede validar o perfil novo; não alegar teste da conta antiga.
+
+Resultados e limites em docs/QA-TODAS-TELAS-CONSOLIDADO.md e relatórios específicos de Vendas, Peças,
+Recepção/Consultor. Correções pequenas de UI em commit isolado 0fb2a00 (filtros da Agenda até560px e
+atalho Busca condicionado à permissão). Typecheck/revisão independente aprovados; CSS foi comprovado
+em memória, falta integração do Claude. Campanhas GET/prefetch ainda grava estimativa e foi bloqueado
+no QA: apontamento de núcleo para correção, sem executar o detalhe. A carteira própria Peças sem cartão
+mantém seu positivo pendente. Não tratar navegação como envio/CRUD/concorrência. Runtime estava em
+trabalho do Claude no checkout573bfa2/package0.0.5; seletores foram adaptados ao DOM conferido.
+
+Oficina WIP permanece intacto: SQL A210A0A9 com contratos locais, revisão independente pendente;
+adaptador/testes ainda não executados funcionalmente. O typecheck global passou durante validação dos
+ajustes UI, sem ativar o módulo. Continuar só a fila essencial após repasses/integração; sem extras/F2-3.

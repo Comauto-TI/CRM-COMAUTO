@@ -46,9 +46,9 @@ export async function executarPerfil({ perfil, email, senha, baseURL = 'http://l
     try { await page.getByLabel('E-mail',{exact:true}).fill(email); await page.getByLabel('Senha',{exact:true}).fill(senha); }
     catch { throw Error('formulario_login_indisponivel'); }
     loginPermitido = true;
-    try { await page.getByRole('button',{name:'Entrar no painel',exact:true}).click(); await expect(page).toHaveURL(u=>u.pathname==='/painel',{timeout:20000}); }
+    try { await page.getByRole('button',{name:/^(Entrar|Entrar no painel)$/,exact:true}).click(); await expect(page).toHaveURL(u=>u.pathname==='/painel',{timeout:20000}); }
     finally { loginPermitido = false; }
-    await expect(page.locator('.lateral-usuario [title]').filter({hasText: cfg.titulo.split(' · ')[0]})).toHaveAttribute('title',cfg.titulo,{timeout:10000});
+    await expect(page.locator('.lateral-usuario > span[title]')).toHaveAttribute('title',cfg.titulo,{timeout:10000});
     casos.push({tela:'Login e identidade do perfil',resultado:'passou',observacao:null});
     await caso('Menu esperado e URLs proibidas', async () => {
       const menu = page.getByRole('navigation',{name:'Menu principal'});
@@ -96,7 +96,7 @@ export async function executarPerfil({ perfil, email, senha, baseURL = 'http://l
     for (const area of ['metricas','importar','agenda','financeiro']) if (cfg.areas.includes(area)) {
       await caso(ROTAS[area][1],async()=>{
         await page.goto(base.origin+ROTAS[area][0],{waitUntil:'domcontentloaded'});
-        await expect(page.getByRole('heading',{name:area==='metricas'?/^Métricas/:ROTAS[area][1],exact:area!=='metricas'})).toBeVisible();
+        await expect(page.getByRole('heading',{name:area==='metricas'?/^(Métricas|Minhas métricas)/:ROTAS[area][1],exact:area!=='metricas'})).toBeVisible();
         if(area==='metricas'&&perfil==='vendedor') {
           await expect(page.locator('select[name="vendedor"]')).toHaveCount(0);
           await expect(page.getByText(/só seus resultados|suas oportunidades|Sua carteira|Seus resultados/i).first()).toBeVisible();
