@@ -1036,3 +1036,108 @@ CLAUDE — F0-3-004-R1, F0-TEL-001, F2-1-001, F8-001, F8-002 · 11/11/2026 — t
   origem_ref = id do evento, na unidade do evento. "Compraram em até 60 dias" virou indicador separado (aproximação).
 [F8-002] leitura paginada (1.000 por página, ordenada por id) até 50.000; acima disso a tela avisa "dados parciais".
 ----------------------------------------------------------------------
+
+
+CODEX — REVALIDAÇÃO DO SNAPSHOT bb85c40 · 11/11/2026
+Fixtures em work/revalidacao-main-20261111. F0-TEL-001 passou para as duas variantes após colisão. F0-3-004-R1 passou para erros e recusas sem histórico/auditoria e para auditoria após sucesso. A simulação condicionada de troca de unidade entre leitura e gravação mostrou que confirmar/cancelar ainda atualiza por ID/status; alinhar o filtro de escopo na revisão do helper.
+
+[ID] F8-001-R1
+[ARQUIVO] src/modulos/vendas/leads.ts:161; src/modulos/metricas/dados.ts:132 (bb85c40)
+[TESTE] encaminhamento.regressao.mjs executou rotearLead no cenário de link com canal evento e código EV-FIXTURE. f8-evento.regressao.mjs validou atribuição explícita e venda sem vínculo.
+[ESPERADO] O caminho real do bot grava um identificador que o funil de evento reconhece.
+[OBTIDO] Lead grava origem_ref=código do link, mas a métrica compara ao UUID do evento. A correção do carregador passou, e falta resolver o vínculo do link ao evento na atribuição.
+[TIPO] bug
+[GRAVIDADE] média
+
+[ID] F8-002-R1
+[ARQUIVO] src/modulos/metricas/dados.ts:40 (bb85c40)
+[TESTE] f8-escala.regressao.mjs. SQL real no PGlite, com resposta de histórico limitada na fixture a 1.000 linhas por pedido.
+[ESPERADO] Ler todo o histórico necessário ou sinalizar incompletude.
+[OBTIDO] Oportunidades paginadas deram 5.200 e 200 ganhos corretamente. Num lote de 300 oportunidades com mais eventos, 5.800 saídas no SQL viraram 5.600 no carregador, com parcial=false. O histórico por lote continua sem paginação. O teto de API de dev não foi consultado.
+[TIPO] bug
+[GRAVIDADE] média
+
+[ID] F2-1-001-R1
+[ARQUIVO] src/lib/followups.ts; src/modulos/vendas/leads.ts (bb85c40)
+[TESTE] encaminhamento.regressao.mjs, transporte simulado. Novos encaminhamentos criaram notas/avisos e zero followups. Pendências legadas de Peças/triagem passaram pelo cron.
+[ESPERADO] Encaminhamentos internos legados recebem tratamento interno, preservando a conversa.
+[OBTIDO] As duas pendências legadas ainda chamaram notificar com uso followup_lead e o resumo interno. O stub recusou o envio, sem transporte real.
+[TIPO] bug
+[GRAVIDADE] média
+
+
+CODEX — REVISÃO DE EQUIPE · snapshot bfe48ac (inclui 30804ef) · 11/11/2026
+Fixture work/revisao-equipe-20261111/revisar-equipe.mjs. Auth, sessão e Data API simulados, sem credenciais ou chamadas remotas. Passaram o vínculo externo preservando senha, a recusa normal de reset externo, a desativação local preservando Auth e bloqueando usuarioAtual, a exigência de admin e os enums básicos.
+
+[ID] EQUIPE-001
+[ARQUIVO] src/lib/equipe.ts:100; node_modules/@supabase/auth-js/dist/module/lib/types.d.ts:456-484
+[TESTE] Conta de outro sistema com user_metadata.origem igual à marca do CRM na fixture. redefinirSenha chamou updateUserById para essa conta.
+[ESPERADO] A elegibilidade para redefinir senha do Auth compartilhado usa origem registrada em fonte controlada pelo servidor.
+[OBTIDO] A regra confia em user_metadata.origem. O SDK local permite atualizar esse metadata por UserAttributes.data, enquanto app_metadata é restrito ao serviço. A fixture confirmou o reset administrativo de conta externa com a marca no metadata.
+[TIPO] bug
+[GRAVIDADE] alta
+
+[ID] EQUIPE-002
+[ARQUIVO] src/app/painel/configuracoes/actions.ts:132; src/lib/equipe.ts:87
+[TESTE] salvarEquipe com o ID do próprio admin e ativo desmarcado.
+[ESPERADO] O caminho do formulário preserva a proteção já implementada por definirAtivo.
+[OBTIDO] salvarEquipe desativou o próprio admin e a próxima leitura de usuarioAtual retornou null.
+[TIPO] bug
+[GRAVIDADE] média
+
+[ID] EQUIPE-003
+[ARQUIVO] src/lib/equipe.ts:69-82
+[TESTE] Falha no insert de usuarios depois do createUser, seguida de retry no formulário.
+[ESPERADO] A retomada reconhece o login criado pelo CRM e oferece recuperação controlada do acesso.
+[OBTIDO] O retry vinculou o login recém-criado como se fosse de outro sistema, sem devolver senha provisória. A primeira tentativa também não a devolveu.
+[TIPO] bug
+[GRAVIDADE] média
+
+[ID] EQUIPE-004
+[ARQUIVO] src/lib/equipe.ts:32
+[TESTE] Usuário externo existente após os 4.000 primeiros resultados do Auth na fixture.
+[ESPERADO] A busca completa encontra a conta e vincula sem recriar.
+[OBTIDO] A busca para na página 20, tenta createUser, recebe email_exists e recusa a vinculação.
+[TIPO] bug
+[GRAVIDADE] baixa
+
+----------------------------------------------------------------------
+CLAUDE — REVISÃO DO PR #3 (codex/pecas-v002, e2b1a9e) · 11/11/2026
+Verificação: typecheck limpo · 636 testes · PGlite 0001+seed+0002+0003+0005+contratos-pecas.sql OK · gitleaks limpo.
+Segurança, unidade e concorrência: sólidas (exigirAcesso("pecas") em tudo, filtro de unidade, posse no próprio UPDATE,
+histórico na mesma transação, SECURITY INVOKER + search_path='', grants por coluna). VEREDITO: aprovar com 3 ajustes.
+
+[ID] F1-P-001
+[ARQUIVO] supabase/migrations/0005_pecas.sql (create table/index/function sem if not exists / or replace)
+[TESTE] PGlite: aplicar a 0005 duas vezes.
+[ESPERADO] Reaplicável, como 0002/0003 (permite corrigir função no dev sem drop).
+[OBTIDO] 42P07 relation "pecas_cotacoes" already exists na 2ª aplicação.
+[TIPO] bug [GRAVIDADE] media
+
+[ID] F1-P-002
+[ARQUIVO] 0005_pecas.sql:113,167,237,298,346,381,433,484,573 (todas exigem responsavel_id = p_ator); sem função de reatribuição
+[TESTE] Revisão: responsável desativado (usuarios.ativo=false, como faz equipe.ts), perde a unidade, ou é apagado (on delete set null).
+[ESPERADO] Gerente de Peças/admin consegue reatribuir (com histórico) ou agir na cotação; cotação sem dono volta a ser assumível.
+[OBTIDO] Cotações em em_cotacao/aguardando_cliente/aprovado ficam travadas para sempre; com responsavel_id null e status em_cotacao ninguém assume.
+[TIPO] bug [GRAVIDADE] media (no piloto com equipe real vai acontecer)
+
+[ID] F1-P-003
+[ARQUIVO] src/modulos/pecas/cotacoes.ts:45-51 (listarCotacoes: 100 mais recentes de qualquer status, sem filtro/paginação)
+[TESTE] Revisão: >100 cotações na unidade, pedido do WhatsApp em "novo" mais antigo que as 100 últimas.
+[ESPERADO] Cotações abertas (principalmente "novo", sem responsável) nunca saem da fila.
+[OBTIDO] Some da única tela que tem "Assumir".
+[TIPO] bug [GRAVIDADE] media/baixa
+
+SUGESTÕES (podem ir em entregas seguintes):
+- histórico com grant insert sem select (linha 82): servidor não lê → inviabiliza métricas de Peças e exportação LGPD.
+- confirmar venda não grava histórico/auditoria (377-388) — é o evento comercial mais importante.
+- remover item da cotação; voltar de aguardando_cliente → em_cotacao (cliente pediu mudança).
+- registrarCotacaoDoBot: validar clienteId como UUID antes (22P02 vira "erro" e o bot repete); cortar descrição em 1000 em vez de recusar.
+- cotação de balcão para cliente sem ficha (cotacoes.ts:228): perguntar ao Simão se cria a ficha na hora como Vendas.
+- valores: aceitar "1.234,56"/"R$ 10" — reutilizar lerValorBRL (src/modulos/vendas/regras.ts).
+- grant insert por coluna de entrada (59); índices em responsavel_id/cliente_id/veiculo_id; check em de_status/para_status.
+- LGPD: anonimização/exportação não cobrem textos livres de Peças.
+- atualizar docs/ETAPAS.md ao concluir.
+Depois dos 3 ajustes: eu mesclo na main (0.0.3), aplico a 0005 no dev e ligo o F2-1 (pedido de peças do bot) em
+registrarCotacaoDoBot. Publique pela referência local que eu envio de novo (git do Codex sem autenticação).
+----------------------------------------------------------------------
