@@ -32,6 +32,7 @@ Versionamento semântico a partir de **0.0.1** (decisão do Simão, 10/11/2026).
 - Permissões por área (`src/lib/permissoes.ts`) e `exigirAcesso(area)` / `usuarioApi(area)` no lugar de `exigirPapel`.
 - Menu por permissão, busca global (`/painel/busca`: CPF/CNPJ, telefone, placa, nome), central de notificações e sino.
 - PWA instalável (manifest + ícones).
+- Peças (`codex/pecas`): primeira fila por unidade e cadastro de cotação de balcão, com vínculo a cliente e veículo quando informado.
 ### Corrigido (revisão do Codex)
 - Agenda respeita a unidade no banco (FK composta) e no servidor; pg_trgm independe do search_path.
 - Exportação integral do cliente só com permissão LGPD; início mostra só o que o perfil pode ver.

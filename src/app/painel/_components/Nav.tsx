@@ -33,7 +33,11 @@ const GRUPOS: Grupo[] = [
       { href: "/painel/agendamentos", rotulo: "Agendamentos", icone: "agenda", area: "agenda" },
     ],
   },
-  { chave: "pecas", rotulo: "Peças", icone: "pecas", itens: [] },
+  {
+    chave: "pecas", rotulo: "Peças", icone: "pecas", itens: [
+      { href: "/painel/pecas", rotulo: "Cotações", icone: "pecas", area: "pecas" },
+    ],
+  },
   {
     chave: "marketing", rotulo: "Marketing", icone: "campanhas", itens: [
       { href: "/painel/campanhas", rotulo: "Campanhas e eventos", icone: "campanhas", area: "campanhas" },
