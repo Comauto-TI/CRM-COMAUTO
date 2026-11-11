@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "Comauto — Painel do Assistente",
+  title: "ShiftUP · Comauto",
   description: "Painel de controle do assistente de WhatsApp da Comauto",
   robots: { index: false, follow: false },
 };

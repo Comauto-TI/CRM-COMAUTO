@@ -34,7 +34,7 @@ export default async function PainelLayout({ children }: { children: React.React
   return (
     <div className="app">
       <aside className="lateral">
-        <Marca nome={cfg.empresa.nome} logoUrl={cfg.empresa.logo_url} />
+        <Marca nome="ShiftUP" sub={cfg.empresa.nome} />
         <Nav papel={u.papel} setor={u.setor} fila={count ?? 0} />
         <div className="lateral-rodape">
           <div className="avatar">{u.nome.slice(0, 1).toUpperCase()}</div>

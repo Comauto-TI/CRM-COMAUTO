@@ -14,13 +14,13 @@ export default async function Cadastro({ params, searchParams }: { params: Promi
     <main className="acesso">
       <section className="acesso-foto" aria-hidden="true">
         <div className="acesso-foto-texto">
-          <span className="acesso-selo">Plataforma Comauto</span>
+          <span className="acesso-selo">ShiftUP · Comauto</span>
           <p>Bem-vindo à equipe.</p>
         </div>
       </section>
       <section className="acesso-painel">
         <div className="acesso-form">
-          <Marca nome="Comauto" sub="Plataforma" grande />
+          <Marca nome="ShiftUP" sub="Comauto" grande />
           {sp.ok ? (
             <>
               <h1>Cadastro feito!</h1>

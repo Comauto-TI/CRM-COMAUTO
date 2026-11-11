@@ -22,13 +22,13 @@ export default async function Login({ searchParams }: { searchParams: Promise<{ 
     <main className="acesso">
       <section className="acesso-foto" aria-hidden="true">
         <div className="acesso-foto-texto">
-          <span className="acesso-selo">Plataforma Comauto</span>
+          <span className="acesso-selo">ShiftUP · Comauto</span>
           <p>Vendas, Oficina e Peças com a mesma ficha do cliente.</p>
         </div>
       </section>
       <section className="acesso-painel">
         <form action={entrar} className="acesso-form">
-          <Marca nome="Comauto" sub="Plataforma" grande />
+          <Marca nome="ShiftUP" sub="Comauto" grande />
           <div className="acesso-titulo">
             <h1>Acesse sua conta</h1>
             <p>Use o e-mail e a senha cadastrados pela administração.</p>

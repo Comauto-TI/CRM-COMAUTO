@@ -9,9 +9,9 @@ import type { MetadataRoute } from "next";
 export default function manifest(): MetadataRoute.Manifest {
   return {
     id: "/painel",
-    name: "Plataforma Comauto",
-    short_name: "Comauto",
-    description: "Painel interno da Comauto: atendimento, vendas, oficina e peças.",
+    name: "ShiftUP",
+    short_name: "ShiftUP",
+    description: "ShiftUP — sistema da Comauto: atendimento, vendas, oficina e peças.",
     lang: "pt-BR",
     start_url: "/painel",
     scope: "/",
