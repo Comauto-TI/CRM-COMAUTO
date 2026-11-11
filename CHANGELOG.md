@@ -6,7 +6,7 @@ Versionamento semântico a partir de **0.0.1** (decisão do Simão, 10/11/2026).
 - Toda versão mesclada ganha **tag git** `vX.Y.Z` e uma seção aqui. O que está numa branch e ainda não foi mesclado fica em "Não lançado".
 - Quem mescla na `main` (Claude ou Codex) atualiza `package.json`, este arquivo e cria a tag.
 
-## [Não lançado] — Peças
+## [0.0.3] — 11/11/2026 — Setor Peças (PR #3, Codex; revisado pelo Claude)
 ### Adicionado
 - Fila de cotações por unidade, com responsável, origem, próxima ação e prazo.
 - Itens e valores com controle de versão, apresentação ao cliente e aprovação.
