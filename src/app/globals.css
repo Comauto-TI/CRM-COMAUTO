@@ -1185,3 +1185,10 @@ a { color: var(--vw-azul); }
 .importar-mapa label > span, .importar-opcoes label > span { font-weight: 600; font-size: 13px; }
 .importar-opcoes { display: grid; gap: 12px; margin-top: 16px; max-width: 520px; }
 .linha-check { display: flex; align-items: center; gap: 8px; margin: 6px 0; }
+
+/* "Meu dia" do vendedor */
+.meu-dia-grade { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 16px; }
+.meu-dia h3 { font-size: 13.5px; margin: 0 0 6px; }
+.meu-dia h3.texto-erro { display: block; margin-top: 0; }
+.meu-dia ul { list-style: none; margin: 0 0 4px; padding: 0; display: grid; gap: 6px; }
+.meu-dia li { line-height: 1.35; }

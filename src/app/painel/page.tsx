@@ -10,6 +10,7 @@ import { listarAniversarios } from "@/modulos/vendas/aniversarios-dados";
 import { quandoAniversario } from "@/modulos/vendas/aniversarios";
 import { contatoAniversarioAction, lembrarAniversarioAction } from "./_acoes/aniversarios";
 import ResumoSetores from "./_components/ResumoSetores";
+import MeuDia from "./_components/MeuDia";
 
 export default async function VisaoGeral({ searchParams }: { searchParams: Promise<{ erro?: string }> }) {
   const u = await exigirAcesso();
@@ -72,6 +73,8 @@ export default async function VisaoGeral({ searchParams }: { searchParams: Promi
           <Kpi rotulo="Bloqueios de segurança hoje" valor={bloqueios.count ?? 0} />
         ) : null}
       </div>
+
+      {multi && verAniversarios && (u.papel === "vendedor" || u.papel === "gerente") && <MeuDia u={u} fimDoDia={new Date(fimHoje)} fuso={off} />}
 
       {multi && <ResumoSetores u={u} iniHoje={iniHoje} fimHoje={fimHoje} iniMes={iniMes} />}
 

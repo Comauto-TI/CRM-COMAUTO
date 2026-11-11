@@ -12,6 +12,7 @@ Versionamento semântico a partir de **0.0.1** (decisão do Simão, 10/11/2026).
 - Visão geral por setor: cartão de Vendas, Peças e Oficina conforme o perfil (admin vê todos; vendedor/peças só o que é deles + sem dono).
 - Métricas por pessoa: vendedor vê “Minhas métricas”; gerente filtra por vendedor.
 - Menu separado por setor (Vendas, Oficina, Peças, Marketing, Administração), sem barra de rolagem visível.
+- "Meu dia" na Visão geral (vendedor e gerente de Vendas): tarefas atrasadas e de hoje, leads novos sem primeiro contato há mais de 2 h e cartões parados além do prazo da etapa, com link direto para o cartão.
 - Ao arrastar para Ganho, o quadro pede o valor da venda (opcional, já preenchido com a estimativa) — métricas e previsão ficam com valor real.
 - Quadro Kanban comum a todos os setores (`_components/quadro`), Vendas migrado; base para o quadro de Peças.
 - F5 Aniversários: semáforo 🟡 próximo / 🟢 hoje / 🔴 passou sem contato na Visão geral (carteira do vendedor; gerente vê todas); "Contato feito" e lembrete insistente em pop-up até registrar o contato.
