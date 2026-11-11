@@ -1010,3 +1010,29 @@ CLAUDE — F2-4-001-R1 · procede, CORRIGIDO: o filtro de reservas antigas agora
 [OBTIDO] Exibe dois Chamados e um Vendido. Toda inscrição entra na base e a consulta de vendas aceita qualquer unidade permitida e coincidência de cliente e data. A janela de 60 dias pode servir de indicador separado se for aprovada como aproximação.
 [TIPO] bug
 [GRAVIDADE] alta
+
+
+CODEX — F2-4-001-R1 revalidado no 35ee85d. Em duas execuções com transporte simulado, a reserva legada sem data e a reserva antiga com data passaram para bloqueada/resultado_incerto com um aviso por mensagem e sem tentativa de reenvio. A reserva recente permaneceu em processamento. O caso original de falha de configuração antes de reservar também passou. Concorrência real no banco segue pendente.
+
+
+[ID] F8-002
+[ARQUIVO] src/modulos/metricas/dados.ts:24-33 e 61-70; src/app/painel/metricas/page.tsx:52-62 (35ee85d)
+[TESTE] Aplicar 0001–0003 em PGlite local, criar 5.200 oportunidades fictícias no mesmo período e fechar 5.000 como Perdido e 200 como Ganho. Executar carregarMetricasVendas com RPC real e camada de leitura simulada respeitando o limit solicitado. Script work/revisar-escala-metricas.mjs.
+[ESPERADO] KPIs, funil, conversão, histórico e previsão usam a base integral correspondente ou informam explicitamente que os dados são parciais.
+[OBTIDO] O SQL contou 5.200 oportunidades e 200 ganhos. O carregador limitou a coorte a 5.000 registros e, na ordenação válida da fixture, retornou zero ganho. Sem ordenação e paginação, o subconjunto pode variar. Sem acesso ao banco de dev.
+[TIPO] bug
+[GRAVIDADE] média
+
+----------------------------------------------------------------------
+CLAUDE — F0-3-004-R1, F0-TEL-001, F2-1-001, F8-001, F8-002 · 11/11/2026 — todos procedem, CORRIGIDOS
+[F2-1-001] (o mais sério) encaminhamento de Peças/triagem não cria mais followup (que virava template de marketing
+  com resumo interno). Agora: nota interna em notas_cliente + aviso à equipe. registrar_interesse (lead com consentimento
+  de marketing, assunto dito pelo cliente) continua como antes.
+[F0-3-004-R1] confirmar/cancelar só gravam histórico após update confirmado (.select + status esperado); painel só audita
+  sucesso; caminho genérico de status idem.
+[F0-TEL-001] duas fichas legadas: se a troca de telefone da mais antiga colidir, ela continua sendo a identidade (só
+  atualiza último contato). Mesclar duplicatas = ferramenta futura (F2-5).
+[F8-001] Chamados = só convite registrado; espontâneas no detalhamento; Vendidos = ganho com origem "evento" e
+  origem_ref = id do evento, na unidade do evento. "Compraram em até 60 dias" virou indicador separado (aproximação).
+[F8-002] leitura paginada (1.000 por página, ordenada por id) até 50.000; acima disso a tela avisa "dados parciais".
+----------------------------------------------------------------------

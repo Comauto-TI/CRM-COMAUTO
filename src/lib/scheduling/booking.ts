@@ -201,10 +201,14 @@ export async function confirmarAgendamento(agendamentoId: string, por: string, c
   if (!["pendente", "confirmado"].includes(ag.status)) return { ok: false as const, motivo: `status_${ag.status}` };
 
   if (ag.status === "pendente") {
-    await db()
+    // F0-3-004-R1: só registra histórico depois de confirmar que a linha foi gravada (e ainda estava pendente)
+    const { data: gravou, error } = await db()
       .from("agendamentos")
       .update({ status: "confirmado", confirmado_em: new Date().toISOString(), confirmado_por: por, confirmado_canal: canal })
-      .eq("id", agendamentoId);
+      .eq("id", agendamentoId)
+      .eq("status", "pendente")
+      .select("id");
+    if (error || !gravou?.length) return { ok: false as const, motivo: error ? "falha_ao_gravar" : "status_alterado" };
     await historico(agendamentoId, "confirmado", ator, "pendente", "confirmado", { canal, por });
   } else {
     // já confirmado: registra a reconfirmação de presença (ex.: botão do lembrete)
@@ -217,7 +221,13 @@ export async function cancelarAgendamento(agendamentoId: string, motivo: string 
   const ag = await lerAgendamento<{ status: string }>("status", agendamentoId, unidades);
   if (!ag) return { ok: false as const, motivo: "agendamento_inexistente" };
   if (!["pendente", "confirmado"].includes(ag.status)) return { ok: false as const, motivo: `status_${ag.status}` };
-  await db().from("agendamentos").update({ status: "cancelado", motivo_cancelamento: motivo }).eq("id", agendamentoId);
+  const { data: gravou, error } = await db()
+    .from("agendamentos")
+    .update({ status: "cancelado", motivo_cancelamento: motivo })
+    .eq("id", agendamentoId)
+    .in("status", ["pendente", "confirmado"])
+    .select("id");
+  if (error || !gravou?.length) return { ok: false as const, motivo: error ? "falha_ao_gravar" : "status_alterado" }; // F0-3-004-R1
   await historico(agendamentoId, "cancelado", ator, ag.status, "cancelado", { motivo });
   await db().from("followups").update({ status: "cancelado" }).eq("agendamento_id", agendamentoId).eq("status", "pendente");
   return { ok: true as const };

@@ -44,6 +44,15 @@ async function upsertCliente(telefone: string, nomePerfil: string | null, quando
       }
       return atualizado as Cliente;
     }
+    // F0-TEL-001: há DUAS fichas legadas (uma por formato) e a troca colidiu. A identidade continua sendo a
+    // ficha mais antiga — só atualiza o último contato; juntar as duplicatas é tarefa da ferramenta de mesclagem.
+    const { data: antiga } = await db()
+      .from("clientes")
+      .update({ ultimo_contato_em: quando.toISOString() })
+      .eq("id", existente.id)
+      .select("id, telefone, nome")
+      .single();
+    if (antiga) return antiga as Cliente;
   }
   const { data, error } = await db()
     .from("clientes")

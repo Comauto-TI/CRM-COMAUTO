@@ -23,9 +23,12 @@ export async function mudarStatus(formData: FormData) {
   const ator = `painel:${u.email}`;
 
   const multi = await nucleoAplicado();
-  if (status === "confirmado") await confirmarAgendamento(id, u.email, "painel", ator, u.unidades);
-  else if (status === "cancelado") await cancelarAgendamento(id, String(formData.get("motivo") || "cancelado pela recepção"), ator, u.unidades);
-  else {
+  if (status === "confirmado" || status === "cancelado") {
+    const r = status === "confirmado"
+      ? await confirmarAgendamento(id, u.email, "painel", ator, u.unidades)
+      : await cancelarAgendamento(id, String(formData.get("motivo") || "cancelado pela recepção"), ator, u.unidades);
+    if (!r.ok) return; // F0-3-004-R1: recusado/falhou → sem auditoria de alteração
+  } else {
     // F0-3-004: leitura e gravação presas às unidades do operador
     let leitura = db().from("agendamentos").select("status, veiculo_id, servicos!agendamentos_servico_id_fkey(nome)").eq("id", id);
     if (multi) leitura = leitura.in("unidade", u.unidades);
@@ -33,7 +36,8 @@ export async function mudarStatus(formData: FormData) {
     if (!ag) return;
     let gravacao = db().from("agendamentos").update({ status }).eq("id", id);
     if (multi) gravacao = gravacao.in("unidade", u.unidades);
-    await gravacao;
+    const { data: gravou, error } = await gravacao.select("id");
+    if (error || !gravou?.length) return; // F0-3-004-R1: não gravou → sem histórico nem auditoria
     await db().from("agendamento_historico").insert({ agendamento_id: id, acao: "status_alterado", de_status: ag?.status, para_status: status, ator });
     // Compareceu em revisão => atualiza o veículo e alimenta o lembrete de revisão periódica
     const nomeServico = (ag as unknown as { servicos: { nome: string } | null })?.servicos?.nome ?? "";

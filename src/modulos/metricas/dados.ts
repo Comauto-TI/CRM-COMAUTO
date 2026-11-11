@@ -21,20 +21,16 @@ export async function carregarMetricasVendas(u: Usuario, funilChave: string | un
   const agora = new Date();
   const inicioMes = new Date(agora.getFullYear(), agora.getMonth(), 1).toISOString();
 
-  const [{ data: etapas }, resumo, { data: ops }, { data: vendedores }] = await Promise.all([
+  const [{ data: etapas }, resumo, ops, { data: vendedores }] = await Promise.all([
     db().from("vendas_etapas").select("id, nome, ordem, tipo").eq("funil_id", funil.id).eq("ativo", true).order("ordem"),
     db().rpc("vendas_funil_resumo", { p_funil: funil.id, p_desde: desde }),
-    // coorte do período + fechadas no último ano (base das chances por etapa)
-    db().from("vendas_oportunidades")
-      .select("id, vendedor_id, origem, valor_estimado, criado_em, fechado_em, motivo_perda, etapa_id")
-      .eq("funil_id", funil.id).in("unidade", u.unidades)
-      .or(`criado_em.gte.${desde},fechado_em.gte.${umAno},fechado_em.is.null`)
-      .limit(5000),
+    // coorte do período + fechadas no último ano (base das chances por etapa) — F8-002: paginado
+    lerTodas(funil.id, u.unidades, desde, umAno),
     db().from("usuarios").select("user_id, nome").in("unidade", u.unidades),
   ]);
   const listaEtapas = (etapas ?? []) as { id: string; nome: string; ordem: number; tipo: "aberta" | "ganho" | "perdido" }[];
   const etapaPorId = new Map(listaEtapas.map((e) => [e.id, e]));
-  const listaOps = (ops ?? []) as { id: string; vendedor_id: string | null; origem: string; valor_estimado: number | null; criado_em: string; fechado_em: string | null; motivo_perda: string | null; etapa_id: string }[];
+  const listaOps = ops.linhas as { id: string; vendedor_id: string | null; origem: string; valor_estimado: number | null; criado_em: string; fechado_em: string | null; motivo_perda: string | null; etapa_id: string }[];
 
   // maior etapa não-perdida alcançada por oportunidade (pelo histórico) + tempos de saída por etapa
   const maiorOrdem = new Map<string, number>();
@@ -72,7 +68,27 @@ export async function carregarMetricasVendas(u: Usuario, funilChave: string | un
     coorte, fechadasAno, abertasAgora, ganhosNoMes, saidas,
     nomesVendedores: Object.fromEntries((vendedores ?? []).map((v) => [v.user_id as string, v.nome as string])),
     desde,
+    parcial: ops.parcial, // F8-002: true = passou do teto de leitura; a tela avisa que os números são parciais
   };
+}
+
+const PAGINA = 1000;
+const TETO_LEITURA = 50_000;
+/** F8-002: lê TODAS as oportunidades do recorte em páginas ordenadas; acima do teto devolve parcial = true. */
+async function lerTodas(funilId: string, unidades: string[], desde: string, umAno: string) {
+  const linhas: Record<string, unknown>[] = [];
+  for (let de = 0; de < TETO_LEITURA; de += PAGINA) {
+    const { data, error } = await db().from("vendas_oportunidades")
+      .select("id, vendedor_id, origem, valor_estimado, criado_em, fechado_em, motivo_perda, etapa_id")
+      .eq("funil_id", funilId).in("unidade", unidades)
+      .or(`criado_em.gte.${desde},fechado_em.gte.${umAno},fechado_em.is.null`)
+      .order("id")
+      .range(de, de + PAGINA - 1);
+    if (error) throw error;
+    linhas.push(...(data ?? []));
+    if (!data || data.length < PAGINA) return { linhas, parcial: false };
+  }
+  return { linhas, parcial: true };
 }
 
 export async function listarEventos(u: Usuario) {
@@ -83,7 +99,7 @@ export async function listarEventos(u: Usuario) {
 /** Pessoas únicas por etapa do evento. Vendidos = presentes com venda GANHA até 60 dias após o evento. */
 export async function carregarFunilEvento(u: Usuario, eventoId: string) {
   if (!/^[0-9a-f-]{36}$/i.test(eventoId)) return null;
-  const { data: ev } = await db().from("eventos").select("id, nome, inicio").eq("id", eventoId).in("unidade", u.unidades).maybeSingle();
+  const { data: ev } = await db().from("eventos").select("id, nome, inicio, unidade").eq("id", eventoId).in("unidade", u.unidades).maybeSingle();
   if (!ev) return null;
   const [{ data: insc }, { data: camps }] = await Promise.all([
     db().from("inscricoes_evento").select("cliente_id, status").eq("evento_id", ev.id),
@@ -96,21 +112,25 @@ export async function carregarFunilEvento(u: Usuario, eventoId: string) {
 
   const chamados = new Set<string>();
   for (const e of envios ?? []) if (!["fila", "falhou", "ignorado"].includes(e.status as string)) chamados.add(e.cliente_id as string);
-  for (const i of insc ?? []) chamados.add(i.cliente_id as string); // inscrição (inclusive espontânea) também é "chamado"
+  // F8-001: Chamados = só convite registrado (envio da campanha do evento). Inscrição espontânea vai ao detalhamento.
   const confirmados = new Set((insc ?? []).filter((i) => ["confirmado", "compareceu"].includes(i.status as string)).map((i) => i.cliente_id as string));
   const presentes = new Set((insc ?? []).filter((i) => i.status === "compareceu").map((i) => i.cliente_id as string));
 
+  // F8-001: Vendidos = venda GANHA atribuída a ESTE evento (origem "evento" + origem_ref = id do evento), na unidade do evento.
+  // Indicador separado (aproximação, sem atribuição): presentes que compraram até 60 dias depois.
   const vendidos = new Set<string>();
+  let compraramJanela = 0;
   if (presentes.size) {
     const ate = new Date(new Date(ev.inicio as string).getTime() + JANELA_VENDA_EVENTO_DIAS * 86_400_000).toISOString();
     const { data: ganhas } = await db()
       .from("vendas_oportunidades")
-      .select("cliente_id, fechado_em, etapa:vendas_etapas(tipo)")
+      .select("cliente_id, origem, origem_ref, fechado_em, etapa:vendas_etapas(tipo)")
       .in("cliente_id", [...presentes])
-      .in("unidade", u.unidades)
-      .gte("fechado_em", ev.inicio as string)
-      .lte("fechado_em", ate);
-    for (const g of (ganhas ?? []) as unknown as { cliente_id: string; etapa: { tipo: string } | null }[]) if (g.etapa?.tipo === "ganho") vendidos.add(g.cliente_id);
+      .eq("unidade", ev.unidade as string)
+      .gte("fechado_em", ev.inicio as string);
+    const lista = ((ganhas ?? []) as unknown as { cliente_id: string; origem: string; origem_ref: string | null; fechado_em: string; etapa: { tipo: string } | null }[]).filter((g) => g.etapa?.tipo === "ganho");
+    for (const g of lista) if (g.origem === "evento" && g.origem_ref === ev.id) vendidos.add(g.cliente_id);
+    compraramJanela = new Set(lista.filter((g) => g.fechado_em <= ate).map((g) => g.cliente_id)).size;
   }
   return {
     evento: ev as { id: string; nome: string; inicio: string },
@@ -118,7 +138,8 @@ export async function carregarFunilEvento(u: Usuario, eventoId: string) {
     detalhe: {
       recusaram: (insc ?? []).filter((i) => i.status === "recusado").length,
       listaEspera: (insc ?? []).filter((i) => i.status === "lista_espera").length,
-      espontaneas: (insc ?? []).filter((i) => !(envios ?? []).some((e) => e.cliente_id === i.cliente_id)).length,
+      espontaneas: (insc ?? []).filter((i) => !chamados.has(i.cliente_id as string)).length,
+      compraramJanela,
       lidos: (envios ?? []).filter((e) => ["lido", "respondido"].includes(e.status as string)).length,
       responderam: (envios ?? []).filter((e) => e.status === "respondido").length,
     },

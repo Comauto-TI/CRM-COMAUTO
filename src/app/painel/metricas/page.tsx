@@ -91,6 +91,7 @@ export default async function Metricas({ searchParams }: { searchParams: Promise
         </form>
       </Cabecalho>
 
+      {m.parcial && <div className="alerta aviso">Volume muito grande: estes números usam as primeiras 50.000 oportunidades do recorte e estão PARCIAIS. Reduza o período.</div>}
       <div className="grade g4">
         <Kpi rotulo={`Oportunidades (${m.funil.nome})`} valor={m.coorte.length} sub={`entraram nos ${rotuloPeriodo.toLowerCase()}`} />
         <Kpi rotulo="Conversão" valor={conversao === null ? "—" : `${conversao}%`} sub={`${ganhos.length} ganhas de ${fechados} fechadas`} />
@@ -178,9 +179,10 @@ export default async function Metricas({ searchParams }: { searchParams: Promise
                 <li><span>Responderam</span><strong>{ev.detalhe.responderam}</strong></li>
                 <li><span>Recusaram</span><strong>{ev.detalhe.recusaram}</strong></li>
                 <li><span>Lista de espera</span><strong>{ev.detalhe.listaEspera}</strong></li>
-                <li><span>Inscrições espontâneas</span><strong>{ev.detalhe.espontaneas}</strong></li>
+                <li><span>Inscrições espontâneas (fora dos chamados)</span><strong>{ev.detalhe.espontaneas}</strong></li>
+                <li><span>Presentes que compraram em até {ev.janelaDias} dias (aproximação)</span><strong>{ev.detalhe.compraramJanela}</strong></li>
               </ul>
-              <p className="mudo mt-nota">Vendidos = presentes com venda ganha até {ev.janelaDias} dias depois do evento. Chamados = convite entregue pela campanha do evento ou inscrição registrada.</p>
+              <p className="mudo mt-nota">Chamados = convite entregue pela campanha do evento. Vendidos = venda ganha atribuída a este evento. A compra em até {ev.janelaDias} dias é só indicador, sem atribuição.</p>
             </section>
           </div>
         )}

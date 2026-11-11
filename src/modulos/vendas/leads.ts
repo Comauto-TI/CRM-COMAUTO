@@ -85,11 +85,12 @@ export async function rotearLead(d: DadosLead): Promise<ResultadoLead> {
   const resumo = d.resumo.slice(0, 300);
 
   if (destino.tipo === "pecas" || destino.tipo === "triagem") {
-    await db().from("followups").insert({
+    // F2-1-001: encaminhamento é INTERNO — nota na ficha + aviso à equipe. Nunca vira follow-up
+    // (o cron de follow-up manda template de marketing ao cliente; o resumo é texto interno).
+    await db().from("notas_cliente").insert({
       cliente_id: d.clienteId,
-      tipo: "lead_sem_agendamento",
-      agendar_para: new Date().toISOString(),
-      resultado: `[${destino.tipo}] ${resumo}`.slice(0, 200),
+      autor: "assistente",
+      texto: `[${destino.tipo === "pecas" ? "Peças" : "Triagem"}] ${resumo}`.slice(0, 500),
     });
     await avisarEquipe(
       unidade,
