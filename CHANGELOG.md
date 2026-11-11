@@ -6,6 +6,17 @@ Versionamento semântico a partir de **0.0.1** (decisão do Simão, 10/11/2026).
 - Toda versão mesclada ganha **tag git** `vX.Y.Z` e uma seção aqui. O que está numa branch e ainda não foi mesclado fica em "Não lançado".
 - Quem mescla na `main` (Claude ou Codex) atualiza `package.json`, este arquivo e cria a tag.
 
+## [Não lançado] — Peças
+### Adicionado
+- Fila de cotações por unidade, com responsável, origem, próxima ação e prazo.
+- Itens e valores com controle de versão, apresentação ao cliente e aprovação.
+- Registro comercial da venda, total e margem bruta quando os custos estão completos.
+- Encerramento por perda ou cancelamento com motivo e histórico.
+- Entrada de pedidos do WhatsApp com proteção contra duplicação por mensagem.
+- Menu de Peças no grupo próprio e busca da ficha pelos dois formatos do celular.
+### Alterado
+- A tela acompanha o fluxo comercial até a venda confirmada, conforme o escopo definido pelo Simão.
+
 ## [0.0.2] — 11/11/2026 — Vendas, chatbot→CRM, lembretes, Clientes, Métricas (PR #2)
 ### Adicionado
 - F8 (v1): aba Métricas — KPIs, funil contínuo de Vendas (desenho do Codex), previsão do mês com nível de confiança, conversão por vendedor e origem, tempo por etapa, motivos de perda e funil de eventos.
@@ -32,23 +43,11 @@ Versionamento semântico a partir de **0.0.1** (decisão do Simão, 10/11/2026).
 - Permissões por área (`src/lib/permissoes.ts`) e `exigirAcesso(area)` / `usuarioApi(area)` no lugar de `exigirPapel`.
 - Menu por permissão, busca global (`/painel/busca`: CPF/CNPJ, telefone, placa, nome), central de notificações e sino.
 - PWA instalável (manifest + ícones).
-- Peças (`codex/pecas`): primeira fila por unidade e cadastro de cotação de balcão, com vínculo a cliente e veículo quando informado.
-- Peças (`codex/pecas`): assumir a cotação atribui o responsável e registra a mudança de etapa no histórico.
-- Peças (`codex/pecas`): detalhe da cotação com inclusão de itens pelo responsável, quantidade, preço, custo opcional e total cotado.
-- Peças (`codex/pecas`): edição dos itens em cotação com verificação de versão para preservar alterações recentes.
-- Peças (`codex/pecas`): registro da apresentação leva a Aguardando cliente, confirma a versão dos itens e guarda a mudança no histórico.
-- Peças (`codex/pecas`): registro da aprovação do cliente com histórico da etapa, separado da confirmação de venda.
-- Peças (`codex/pecas`): entrada de pedidos do WhatsApp na fila, com identificação da origem e uma cotação por mensagem.
-- Peças (`codex/pecas`): confirmação de venda separada da aprovação, com total e margem bruta quando todos os itens têm custo.
-- Peças (`codex/pecas`): registro de separação ou encomenda após confirmar a venda, seguido de entrega com histórico das etapas.
-- Peças (`codex/pecas`): encerramento por perda ou cancelamento com motivo obrigatório e histórico, preservando os registros da venda cancelada.
-- Peças (`codex/pecas`): próxima ação e prazo na fila, com edição pelo responsável e verificação de versão para preservar alterações recentes.
 ### Corrigido (revisão do Codex)
 - Agenda respeita a unidade no banco (FK composta) e no servidor; pg_trgm independe do search_path.
 - Exportação integral do cliente só com permissão LGPD; início mostra só o que o perfil pode ver.
 - Equipe: papéis compatíveis com a tabela antiga e auditoria só após gravar.
 ### Alterado
-- Peças (`codex/pecas`): foco no acompanhamento comercial, com venda confirmada na fila e retirada dos controles de preparo e entrega da tela.
 - Caixa de busca da lateral removida (busca pelo menu "Buscar cliente").
 - Gerente também supervisiona conversas (pode intervir na posse), como o admin.
 - Retirada a caixa de busca da lateral. Buscar cliente continua acessível pelo menu.

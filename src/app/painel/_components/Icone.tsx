@@ -16,7 +16,6 @@ const P: Record<string, React.ReactNode> = {
   relogio: <><circle cx="12" cy="13" r="8" /><path d="M12 9v4l2.5 2.5M9 2.5h6" /></>,
   vendas: <><path d="M3 4h18l-7 8.5V19l-4 2v-8.5z" /></>,
   busca: <><circle cx="11" cy="11" r="7" /><path d="m20 20-3.5-3.5" /></>,
-  pecas: <><path d="m3 7 9-4 9 4v10l-9 4-9-4V7Z" /><path d="m3 7 9 4 9-4M12 11v10" /></>,
   sino: <><path d="M6 8a6 6 0 1 1 12 0c0 7 3 8 3 8H3s3-1 3-8" /><path d="M10 20a2 2 0 0 0 4 0" /></>,
 };
 

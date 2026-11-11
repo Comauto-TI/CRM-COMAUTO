@@ -1,6 +1,7 @@
 import "server-only";
 import type { Usuario } from "@/lib/auth";
 import { db } from "@/lib/supabase/admin";
+import { buscarClientePorTelefone } from "@/lib/clientes-telefone";
 import type { DadosAcompanhamento, DadosCotacao, DadosEdicaoItem, DadosEncerramento, DadosItem, TipoPreparo } from "./dados-cotacao";
 
 type Cotacao = {
@@ -218,14 +219,13 @@ export async function registrarCotacao(u: Usuario, dados: DadosCotacao): Promise
   if (!u.unidades.includes(u.unidade)) return "unidade";
 
   const client = db();
-  const [{ data: unidade, error: erroUnidade }, { data: cliente, error: erroCliente }] = await Promise.all([
+  const [{ data: unidade, error: erroUnidade }, cliente] = await Promise.all([
     client.from("unidades").select("chave").eq("chave", u.unidade).eq("ativa", true).maybeSingle(),
-    client.from("clientes").select("id").eq("telefone", dados.telefone).eq("anonimizado", false).maybeSingle(),
+    buscarClientePorTelefone<{ anonimizado: boolean }>(dados.telefone, "anonimizado"),
   ]);
   if (erroUnidade) return tabelaPendente(erroUnidade.code) ? "pendente" : "erro";
-  if (erroCliente) return "erro";
   if (!unidade) return "unidade";
-  if (!cliente) return "cliente";
+  if (!cliente || cliente.anonimizado) return "cliente";
 
   let veiculoId: string | null = null;
   if (dados.placa) {
