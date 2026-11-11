@@ -43,30 +43,29 @@ function tabelaPendente(codigo: string) {
   return codigo === "PGRST205" || codigo === "42P01";
 }
 
-export async function listarCotacoes(unidades: string[], filtros: { pagina: number; fila: FilaCotacoes } = { pagina: 1, fila: "abertas" }) {
+export async function listarCotacoes(u: Usuario, filtros: { pagina: number; fila: FilaCotacoes } = { pagina: 1, fila: "abertas" }) {
   const inicio = (filtros.pagina - 1) * COTACOES_POR_PAGINA;
   const { data, error } = await db()
-    .from("pecas_cotacoes")
+    .rpc("pecas_cotacoes_visiveis", { p_ator: u.id })
     .select(RESUMO_COTACAO)
-    .in("unidade", unidades)
     .in("status", filtros.fila === "abertas" ? ETAPAS_ABERTAS : ETAPAS_ENCERRADAS)
     .order("criado_em", { ascending: false })
     .order("id")
     .range(inicio, inicio + COTACOES_POR_PAGINA);
 
   if (error) return { ok: false as const, pendente: tabelaPendente(error.code) };
+  if (!Array.isArray(data)) return { ok: false as const, pendente: false };
   return {
     ok: true as const,
-    cotacoes: (data ?? []).slice(0, COTACOES_POR_PAGINA) as unknown as Cotacao[],
-    temMais: (data?.length ?? 0) > COTACOES_POR_PAGINA,
+    cotacoes: data.slice(0, COTACOES_POR_PAGINA) as unknown as Cotacao[],
+    temMais: data.length > COTACOES_POR_PAGINA,
   };
 }
 
-export async function obterCotacao(unidades: string[], id: string) {
+export async function obterCotacao(u: Usuario, id: string) {
   const { data, error } = await db()
-    .from("pecas_cotacoes")
+    .rpc("pecas_cotacoes_visiveis", { p_ator: u.id })
     .select(`${RESUMO_COTACAO}, motivo_encerramento, acompanhamento_versao, itens:pecas_cotacao_itens(id, versao, descricao, quantidade, preco_unitario_centavos, custo_unitario_centavos)`)
-    .in("unidade", unidades)
     .eq("id", id)
     .order("criado_em", { referencedTable: "itens" })
     .order("id", { referencedTable: "itens" })

@@ -49,7 +49,7 @@ export default async function DetalheCotacaoPage({ params, searchParams }: {
   const [{ id }, { msg, item: idItem }] = await Promise.all([params, searchParams]);
   if (!uuidV4Valido(id)) notFound();
 
-  const consulta = await obterCotacao(u.unidades, id);
+  const consulta = await obterCotacao(u, id);
   const voltar = <Link className="btn" href="/painel/pecas">Voltar para Peças</Link>;
   if (!consulta.ok) {
     return (

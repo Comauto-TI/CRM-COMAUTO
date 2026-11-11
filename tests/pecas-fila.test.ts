@@ -1,15 +1,19 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { listarCotacoes } from "@/modulos/pecas/cotacoes";
 import { lerFiltrosFila } from "@/modulos/pecas/dados-cotacao";
+import type { Usuario } from "@/lib/auth";
 
 type Linha = { id: string; unidade: string; status: string; criado_em: string };
 const fixture = vi.hoisted(() => ({ linhas: [] as Linha[] }));
+const usuario: Usuario = { id: "10000000-0000-4000-8000-000000000001", email: "pecas@exemplo.invalid", nome: "Peças", papel: "pecas", setor: "pecas", unidade: "comauto", unidades: ["comauto"] };
 
 vi.mock("@/lib/supabase/admin", () => ({
   db: () => ({
-    from(tabela: string) {
-      expect(tabela).toBe("pecas_cotacoes");
-      const filtros: ((linha: Linha) => boolean)[] = [];
+    rpc(funcao: string, parametros: { p_ator: string }) {
+      expect(funcao).toBe("pecas_cotacoes_visiveis");
+      expect(parametros).toEqual({ p_ator: usuario.id });
+      // A política real de carteira/unidade é coberta no contrato SQL; aqui só a paginação do conjunto autorizado.
+      const filtros: ((linha: Linha) => boolean)[] = [(linha) => linha.unidade === "comauto"];
       const ordens: { campo: keyof Linha; crescente: boolean }[] = [];
       return {
         select() { return this; },
@@ -51,7 +55,7 @@ describe("fila paginada de Peças", () => {
   it("mantém todas as 121 cotações abertas acessíveis apesar de encerradas mais recentes", async () => {
     const ids: string[] = [];
     for (const pagina of [1, 2, 3]) {
-      const fila = await listarCotacoes(["comauto"], { pagina, fila: "abertas" });
+      const fila = await listarCotacoes(usuario, { pagina, fila: "abertas" });
       expect(fila.ok).toBe(true);
       if (!fila.ok) throw new Error("Falha na fixture");
       expect(fila.cotacoes).toHaveLength(pagina < 3 ? 50 : 21);
@@ -65,7 +69,7 @@ describe("fila paginada de Peças", () => {
   });
 
   it("permite consultar as encerradas separadamente", async () => {
-    const fila = await listarCotacoes(["comauto"], { pagina: 1, fila: "encerradas" });
+    const fila = await listarCotacoes(usuario, { pagina: 1, fila: "encerradas" });
     expect(fila.ok).toBe(true);
     if (!fila.ok) throw new Error("Falha na fixture");
     expect(fila.cotacoes).toHaveLength(50);
