@@ -4,6 +4,32 @@ Pedido do Simão em 11/11/2026: usar subagentes com logins diferentes para verif
 
 ## Estado da preparação
 
+### Atualização após a integração de Peças — 11/11/2026
+
+Claude registrou a aprovação de CR-PEC-001 e aplicação de 0002/0003/0005/0006 no commit
+`9adcfd43e69250d4b3dad5287cde33d96da8e49b`. O runtime dessa integração é idêntico a `dc8247e`;
+as diferenças são apenas dois documentos. O coordenador confirmou HTTP 200 em `localhost:3000/login`
+e presença das dez rotas/RPCs/views esperadas de Peças no OpenAPI do dev `csgrnmoyowjhzlibbilk`.
+Isso confirma disponibilidade do contrato HTTP, sem certificar sua execução, login ou concorrência.
+
+Foi preparada uma rodada separada de **acesso somente de leitura**:
+`tests/e2e/playwright.pecas-readonly.config.mjs` + `pecas-acesso.spec.mjs`, com seis casos.
+Ela não inicia servidor, não compartilha storage state e bloqueia ações de escrita após login;
+traces, vídeos e screenshots ficam desligados. O ambiente usa uma conta própria de Peças e
+credenciais em configuração local ignorada. A cotação própria só é exigida no teste do cartão;
+cada negativa de carteira/unidade exige uma fixture existente e controle positivo em outra sessão.
+Requisitos ausentes ficam explicitamente como skip, sem substituí-los por IDs inexistentes.
+
+Sintaxe e descoberta dos seis casos passaram. **Navegador/E2E real ainda não executado:** a tentativa
+de confirmar a credencial local da conta demo não autenticou; não houve tentativa de outras senhas,
+reset ou alteração de Auth. Conferir a configuração local antes de executar. Nenhum dado de domínio
+foi criado/alterado e nenhuma mensagem foi enviada nesta preparação.
+
+O smoke mutável abaixo continua restrito ao Supabase local dedicado; esta rodada nova não remove
+essa proteção nem autoriza executar o smoke antigo no dev compartilhado.
+
+### Levantamento inicial preservado
+
 Três subagentes levantaram Administrador, Vendedor e Peças na base `f6370a1`. A cobertura abaixo está **planejada**; nenhum login de navegador foi executado nesta rodada. A suíte existente é um smoke de administrador, não uma certificação de todos os perfis.
 
 No inventário local desta rodada, não foram identificados servidor do painel ativo, `.env.local` no checkout, Docker ou Chromium do Playwright. Preparar ambiente e contas fictícias antes da execução. Os testes de unidade já aprovados não substituem o login e a navegação reais.

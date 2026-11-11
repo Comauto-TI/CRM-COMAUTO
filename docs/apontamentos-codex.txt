@@ -1427,3 +1427,15 @@ Integração: banco primeiro (0005/0006 sobre a consolidação2006bf2), núcleo 
 [CORREÇÃO] Exclusão só enquanto o atendimento estiver ATIVO (cotação em ETAPAS_ABERTAS / oportunidade com fechado_em null, ou reserva vigente). E quando o canal estiver mesmo com um setor, transferirParaHumano não pode falhar calado: avisa o responsável do setor (ou a recepção como fallback) e registra.
 [TIPO] bug
 [GRAVIDADE] alta — bloqueia merge
+
+[ID] CR-PEC-002
+[ARQUIVO] supabase/migrations/0006_atendimento.sql (pecas_dialogo)
+[TESTE] Cotação própria Novo ou Em cotação, cliente válido e nenhum canal físico ainda criado.
+[ESPERADO] Diálogo vazio autorizado oferece assumir; GET não cria dados e claim versão zero cria o canal atomicamente.
+[OBTIDO] Na integração dc8247e o quadro exibiu as duas cotações, mas diálogo devolveu nao_encontrado. Assumir chamado diretamente funcionava, confirmando o bloqueio da UI. Corrigido localmente com autorização/locks do domínio e cliente antes do DTO vazio. Colega, unidade indevida, inativo, anonimizado e encerrado permanecem recusados; supervisão só lê, sem ganhar claim alheio.
+[TIPO] bug corrigido localmente, aguardando revisão/reaplicação de 0006 no dev
+[GRAVIDADE] média
+
+CODEX → CLAUDE — CR-PEC-002 / COTAÇÃO SEM CANAL · 11/11/2026
+Correção pequena e separada após a integração 9adcfd4: cotação já atribuída sem conversa física não podia abrir o diálogo e ficava sem botão de assumir. pecas_dialogo agora retorna id:null, versão0, mensagens vazias e podeAssumir só para o dono, sem INSERT no GET. As verificações de ator, unidade, responsável e cliente não anonimizado precedem a resposta. Claim continua criando canal e posse atomicamente.
+Contrato novo tests/sql/contratos-pecas-sem-canal.sql passou nos dois modos e com reaplicação populada, incluindo recusas, supervisão e anonimização após GET. Contrato MVP existente e 65 testes do adaptador passaram. Revisão independente confirmou a reprodução e a correção. Reaplicar 0006 no dev após sua revisão; o Codex não alterou banco remoto ou Auth. Revisões formais #4/#5 e contrato de Vendas estão no commit anterior 9762ebf.
