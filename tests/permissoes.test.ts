@@ -90,3 +90,13 @@ describe("permissões por área (F0-3)", () => {
     expect(setorValido("rh")).toBe(false);
   });
 });
+
+describe("métricas de vendas por setor", () => {
+  it("gerente de Vendas e da administração veem; gerente de Peças/Oficina não", () => {
+    expect(podeAcessar({ papel: "gerente", setor: "vendas" }, "metricas")).toBe(true);
+    expect(podeAcessar({ papel: "gerente", setor: "administracao" }, "metricas")).toBe(true);
+    expect(podeAcessar({ papel: "gerente", setor: "pecas" }, "metricas")).toBe(false);
+    expect(podeAcessar({ papel: "gerente", setor: "oficina" }, "metricas")).toBe(false);
+    expect(podeAcessar({ papel: "financeiro", setor: "administracao" }, "metricas")).toBe(true);
+  });
+});

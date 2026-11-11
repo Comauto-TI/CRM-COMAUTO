@@ -66,7 +66,8 @@ export const AREAS = {
 } satisfies Record<string, Papel[]>;
 export type Area = keyof typeof AREAS;
 
-const SETOR_DA_AREA: Partial<Record<Area, Setor>> = { vendas: "vendas", oficina: "oficina", pecas: "pecas" };
+// métricas de hoje são as de Vendas (funil/eventos); gerente de outro setor não vê. Métricas por setor vêm depois (A4).
+const SETOR_DA_AREA: Partial<Record<Area, Setor>> = { vendas: "vendas", metricas: "vendas", oficina: "oficina", pecas: "pecas" };
 
 export type QuemAcessa = { papel: Papel; setor: Setor };
 
