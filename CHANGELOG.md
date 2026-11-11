@@ -8,6 +8,7 @@ Versionamento semântico a partir de **0.0.1** (decisão do Simão, 10/11/2026).
 
 ## [Não lançado] — branch `claude/f2-piloto`
 ### Adicionado
+- A1.1c, proveniência da qualificação de Vendas por mensagem real do WhatsApp, separada do código de marketing. Registro de origem e efeitos do lead são persistidos juntos; requer `20261111144252_origem_bot_vendas`. Associação ao atendimento e mensagens seguintes continuam pendentes.
 - A1.1b, vínculo da mensagem inicial de Peças com prova do encaminhamento do bot, cotação e atendimento. FKs preservam a origem e impedem reclassificar a mensagem vinculada como interna; auditoria e associação são atômicas. Sem importar histórico, integrar telas ou liberar envio. Requer `20261111142602_mensagens_atendimento`; proveniência de Vendas e mensagens seguintes permanecem pendentes.
 - A1.1a, base local de atendimentos por oportunidade/cotação atribuída: contexto de acesso derivado no banco, abertura idempotente e posse com versão, reserva única por canal modular e auditoria atômica. Wrappers apenas no servidor, sem liberar interface, envio ou rotas legadas. Requer `20261111140755_atendimentos_modulares`; demais partes de A1 seguem pendentes.
 - Plano técnico A1 por fatias para autorizar atendimentos por setor, vínculo de negócio, unidade e posse antes de compartilhar a interface WhatsApp; implementação e testes de login seguem pendentes.
@@ -24,6 +25,7 @@ Versionamento semântico a partir de **0.0.1** (decisão do Simão, 10/11/2026).
 - Troca de vendedor só pela transferência (registrada e avisada); saiu o campo solto do formulário de qualificação.
 - Painel sem animações contínuas nem desfoque.
 ### Corrigido
+- Bot de Vendas: criação/atualização, atividade, aviso, auditoria e carteira são atômicos e reprocessamento da mensagem não duplica efeitos. Mantém responsável existente e decisões de qualificação da equipe; novo lead considera vendedores com unidade adicional, com supervisão elegível quando necessário. Falha da transação não confirma sucesso.
 - Aniversários: notas internas e mensagens com falha não contam como contato; datas respeitam o fuso configurado, a carteira é lida em páginas e lembretes pendentes não expiram depois de sete dias. Registro de contato, nota, auditoria e conclusão são atômicos; o pop-up só remove após sucesso e informa falhas. Administrador pode atuar nas unidades ativas; demais perfis mantêm carteira/unidade. Requer a migration `20261111134242_aniversarios_contatos`.
 - Meus lembretes orienta para a ficha do cliente e respeita o acesso do perfil nos links, inclusive Peças e Financeiro. Smoke de navegador atualizado para os seletores da central de atendimento atual.
 - Cadastro da equipe: origem do login validada em metadados controlados pelo servidor, retomada de cadastro parcial com senha provisória, busca de contas sem corte nas primeiras 20 páginas e proteção do próprio administrador contra desativação pelo formulário.

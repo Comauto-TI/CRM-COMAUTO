@@ -1,6 +1,6 @@
 # A1 — Plano de acesso aos atendimentos por módulo
 
-Status: A1 em andamento. As fatias A1.1a e A1.1b têm código local isolado, descrito abaixo.
+Status: A1 em andamento. As fatias A1.1a, A1.1b e A1.1c têm código local isolado, descrito abaixo.
 As demais fatias continuam propostas; não houve integração de UI, teste de login, E2E
 nem aplicação de migrations em dev/produção.
 
@@ -92,10 +92,10 @@ Esta migration acrescenta uma coluna gerada armazenada e índices nas fontes exi
 Antes de aplicar no dev, avaliar tamanho de `mensagens`, custo da reescrita e criação de
 índices e a compatibilidade conjunta das migrations. Ainda não foi aplicada remotamente.
 
-**Vendas continua pendente:** seu roteamento atual não registra a referência da mensagem
+**Pendência identificada após A1.1b:** o roteamento de Vendas não registrava a referência da mensagem
 em um ledger equivalente; `vendas_oportunidades.origem_ref` pode ser código de link/QR.
 Não é uma prova para associar a conversa inteira ou escolher uma mensagem do histórico.
-O vínculo de Vendas exige registrar sua proveniência na criação/atualização do lead.
+Essa proveniência é tratada na A1.1c abaixo; o vínculo com o atendimento ainda fica pendente.
 
 **Próximas partes:** roteamento das novas mensagens com contexto comprovado, proveniência
 de Vendas, Oficina/triagem, leitura e contadores por atendimento, lifecycle/transferência/posse,
@@ -109,6 +109,58 @@ permissivos. Processamento/status, redação de conteúdo e limpeza de metadata 
 conferidos sem desfazer a associação. SQL e wrapper tiveram revisão independente.
 Migration revisada: SHA256 `762aae646a114fd58d1c9aac791fa07d633b3290741156180f5053d3f0aa8d8f`.
 Não houve prova multissessão, login real, integração de runtime ou banco remoto.
+
+## A1.1c — Qualificação e proveniência do bot em Vendas
+
+Migration `20261111144252_origem_bot_vendas.sql`, dependente das tabelas de Vendas e da
+coluna gerada de A1.1b. O ramo Vendas de `rotearLead` agora usa somente o wrapper
+`src/modulos/vendas/qualificacao-bot.ts` e a RPC `registrar_lead_vendas_bot`.
+
+- A RPC comprova a mensagem recebida, cliente, conversa e unidade ativa. O funil Novos ou
+  Seminovos é resolvido na unidade da conversa; não há fallback silencioso para Comauto.
+- `vendas_encaminhamentos_bot` registra referência, mensagem, conversa, cliente, unidade,
+  oportunidade, funil e resultado original de criação. FKs compostas preservam as identidades
+  da mensagem externa e do negócio. O código de marketing continua em `origem_ref`,
+  enquanto o `wamid` fica nesse ledger separado.
+- Criação/atualização, atividade do assistente, notificações, auditoria, proveniência e eventual
+  preenchimento da carteira ficam na mesma transação. Falha em qualquer gravação desfaz
+  os efeitos; a ferramenta não confirma sucesso com erro ou resposta incompleta.
+- Repetir a referência no mesmo contexto retorna o ID e o resultado `novo` originais sem
+  duplicar efeitos. Referência reutilizada para outro funil é recusada. Nova mensagem usa
+  a oportunidade aberta mais recente do cliente no funil, quando existe.
+- A atualização mantém responsável, temperatura e carteira. Dados indefinidos não apagam
+  dados concretos; `temTroca=null` preserva e `false` limpa a descrição. As decisões
+  qualificado/desqualificado são preservadas; confirmação só promove `a_verificar`.
+- Novo lead prefere o vendedor da carteira se elegível, inclusive por unidade adicional;
+  depois usa menor carga global de oportunidades abertas, última criação e ID no desempate.
+  Chamadas deste produtor do bot compartilham a trava de rodízio entre unidades. Carteira
+  alheia é preservada; o novo dono só preenche `clientes.vendedor_id` se estiver nulo.
+- Dono elegível recebe o aviso. Caso contrário, o aviso vai à supervisão de Vendas das
+  unidades autorizadas; sem gerentes, usa administradores ativos. Sem destinatário, recusa
+  antes das gravações, sem reatribuir automaticamente um negócio existente.
+- O servidor envia contexto e dados normalizados de qualificação; o SQL deriva unidade,
+  dono, oportunidade e elegibilidade. O agente recebe somente sucesso e indicação de novo
+  cartão, sem ID interno, nome de funcionário ou detalhe do erro. Agenda e os encaminhamentos
+  já existentes de Peças/triagem mantêm seus caminhos.
+
+Validação local: typecheck e 1.022 Vitest (105 novos desta fatia) passaram. SQL executado
+como `service_role`, com e sem defaults, cobriu replay, regras de qualificação/carteira,
+rodízio, origem de marketing separada, destinatários e rollback real de auditoria, atividade,
+aviso e histórico. Reaplicação populada preservou dados e permissões. Os cinco contratos
+F2, F5, A1.1a, A1.1b e Vendas passaram juntos na base completa em ambos modos.
+SQL e wrapper/roteamento tiveram revisão independente.
+Migration revisada: SHA256 `ae07682ce23d45c0f262269eabe993d16d0dbe7175baa369d63c6b094e48f149`.
+
+**Limites:** a trava de criação cliente/funil é usada por este produtor do bot; os caminhos
+manuais antigos não compartilham esse protocolo. Não houve prova multissessão ou login
+real. Um mesmo `wamid` ainda pode ter encaminhamentos em setores distintos, caso o agente
+chame ferramentas diferentes; os ledgers não representam uma escolha exclusiva de setor.
+Não associar ambos automaticamente nem liberar o histórico por esse motivo.
+
+O código substitui o ramo local de Vendas, mas não foi integrado ao dev. Esta fatia registra
+a proveniência: ainda faltam a associação de Vendas ao atendimento, a decisão explícita em
+origens ambíguas entre setores, as mensagens seguintes, leitura/contadores, Oficina/triagem,
+lifecycle/posse, envio e fechamento dos caminhos legados. Nenhuma UI de conversa foi liberada.
 
 ## Problema e limites atuais
 
