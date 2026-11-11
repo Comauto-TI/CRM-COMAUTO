@@ -31,6 +31,9 @@ alter table public.pecas_cotacoes
   ),
   add column if not exists prazo date,
   add column if not exists acompanhamento_versao integer not null default 0 check (acompanhamento_versao >= 0),
+  -- Sem backfill com now(): registros antigos não ganham uma atualização fictícia.
+  add column if not exists atualizado_em timestamptz,
+  add column if not exists posicao numeric not null default 1000 check (posicao between -1000000000 and 1000000000),
   add column if not exists motivo_encerramento text check (
     char_length(motivo_encerramento) between 1 and 500
     and motivo_encerramento !~ '^[[:space:]]|[[:space:]]$'
@@ -73,7 +76,7 @@ revoke all on table public.pecas_cotacoes from public, anon, authenticated, serv
 grant select, insert on table public.pecas_cotacoes to service_role;
 grant update (
   status, responsavel_id, venda_confirmada_em, venda_confirmada_por, tipo_preparo, motivo_encerramento,
-  proxima_acao, prazo, acompanhamento_versao
+  proxima_acao, prazo, acompanhamento_versao, posicao, atualizado_em
 )
   on table public.pecas_cotacoes to service_role;
 
@@ -126,13 +129,13 @@ begin
     join public.unidades un on un.chave = unidade_atual and un.ativa
     where u.user_id = p_ator and u.ativo
       and (u.papel in ('admin', 'pecas') or (u.papel = 'gerente' and u.setor in ('pecas', 'administracao')))
-      and (u.unidade = unidade_atual or exists (
+      and (u.papel = 'admin' or u.unidade = unidade_atual or exists (
         select 1 from public.usuario_unidades uu where uu.user_id = u.user_id and uu.unidade = unidade_atual
       ))
   ) then
     return false;
   end if;
-  if responsavel_atual is not null then
+  if responsavel_atual is not null and (responsavel_atual <> p_ator or status_atual <> 'novo') then
     return responsavel_atual = p_ator;
   end if;
 
@@ -144,7 +147,7 @@ begin
   insert into public.pecas_cotacoes_historico (
     cotacao_id, unidade, de_status, para_status, ator_id, responsavel_anterior_id, responsavel_novo_id
   )
-  values (p_id, unidade_atual, status_atual, status_destino, p_ator, null, p_ator);
+  values (p_id, unidade_atual, status_atual, status_destino, p_ator, responsavel_atual, p_ator);
   return true;
 end $$;
 
@@ -699,3 +702,28 @@ revoke all on function public.pecas_atualizar_acompanhamento(uuid, text[], uuid,
   from public, anon, authenticated, service_role;
 grant execute on function public.pecas_atualizar_acompanhamento(uuid, text[], uuid, integer, text, date)
   to service_role;
+
+-- O quadro mostra alterações reais, inclusive itens e próxima ação, sem backfill fictício.
+create or replace function public.pecas_marcar_atualizacao()
+returns trigger language plpgsql security invoker set search_path = '' as $$
+begin
+  if new is distinct from old then new.atualizado_em := pg_catalog.clock_timestamp(); end if;
+  return new;
+end $$;
+create or replace function public.pecas_item_atualiza_cotacao()
+returns trigger language plpgsql security invoker set search_path = '' as $$
+begin
+  if tg_op = 'UPDATE' and new is not distinct from old then return new; end if;
+  update public.pecas_cotacoes set atualizado_em=pg_catalog.clock_timestamp()
+    where id=case when tg_op='DELETE' then old.cotacao_id else new.cotacao_id end;
+  return null;
+end $$;
+revoke all on function public.pecas_marcar_atualizacao(),public.pecas_item_atualiza_cotacao()
+  from public,anon,authenticated,service_role;
+grant execute on function public.pecas_marcar_atualizacao(),public.pecas_item_atualiza_cotacao() to service_role;
+drop trigger if exists pecas_marcar_atualizacao on public.pecas_cotacoes;
+create trigger pecas_marcar_atualizacao before update on public.pecas_cotacoes
+  for each row execute function public.pecas_marcar_atualizacao();
+drop trigger if exists pecas_item_atualiza_cotacao on public.pecas_cotacao_itens;
+create trigger pecas_item_atualiza_cotacao after insert or update or delete on public.pecas_cotacao_itens
+  for each row execute function public.pecas_item_atualiza_cotacao();

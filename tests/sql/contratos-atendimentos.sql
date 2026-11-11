@@ -278,18 +278,30 @@ begin
   perform pg_temp.recusar_posse_atm(id1,pg_temp.atm_uuid(5),2,'conflito');
 end $$;
 
--- Peças segue o mesmo ciclo de posse e transferência do responsável.
+-- Peças exige devolução antes de transferir o responsável (política do piloto).
 do $$
-declare r jsonb; id1 uuid;
+declare r jsonb; id1 uuid; antes jsonb; bloqueou boolean:=false;
 begin
   r:=pg_temp.abrir_atm('pecas',pg_temp.atm_uuid(402),pg_temp.atm_uuid(3)); id1:=(r->>'id')::uuid;
   r:=pg_temp.assumir_atm(id1,pg_temp.atm_uuid(3),0);
   if r->>'ok' is distinct from 'true' or (r->>'versao')::integer<>1 then raise exception 'Peças não tomou posse.'; end if;
   perform pg_temp.recusar_posse_atm(id1,pg_temp.atm_uuid(6),1,'conflito');
+  antes:=pg_temp.estado_atendimentos();
+  begin
+    update public.pecas_cotacoes set responsavel_id=pg_temp.atm_uuid(4) where id=pg_temp.atm_uuid(402);
+  exception when sqlstate '55000' then bloqueou:=true;
+  end;
+  if not bloqueou or antes is distinct from pg_temp.estado_atendimentos() then raise exception 'Reatribuição com posse ativa não foi bloqueada sem efeitos.'; end if;
+  set local role service_role;
+  r:=public.pecas_devolver_atendimento(pg_temp.atm_uuid(402),pg_temp.atm_uuid(3),1);
+  reset role;
+  if r->>'ok' is distinct from 'true' or (r->>'versao')::integer<>2 then raise exception 'Peças não devolveu antes da transferência: %.',r; end if;
   update public.pecas_cotacoes set responsavel_id=pg_temp.atm_uuid(4) where id=pg_temp.atm_uuid(402);
-  perform pg_temp.recusar_posse_atm(id1,pg_temp.atm_uuid(3),1);
-  r:=pg_temp.assumir_atm(id1,pg_temp.atm_uuid(4),1);
-  if r->>'ok' is distinct from 'true' or (r->>'versao')::integer<>2 or not exists(
+  perform pg_temp.recusar_posse_atm(id1,pg_temp.atm_uuid(3),2);
+  set local role service_role;
+  r:=public.pecas_assumir_atendimento(pg_temp.atm_uuid(402),pg_temp.atm_uuid(4),2);
+  reset role;
+  if r->>'ok' is distinct from 'true' or (r->>'versao')::integer<>3 or not exists(
     select 1 from public.atendimentos_modulares where id=id1 and assumido_por=pg_temp.atm_uuid(4) and dono_na_posse=pg_temp.atm_uuid(4)) then raise exception 'Peças não substituiu responsável antigo.'; end if;
 end $$;
 
