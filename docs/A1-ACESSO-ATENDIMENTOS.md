@@ -1,6 +1,6 @@
 # A1 — Plano de acesso aos atendimentos por módulo
 
-Status: A1 em andamento. As fatias A1.1a a A1.1d têm código local isolado, descrito abaixo.
+Status: A1 em andamento. As fatias A1.1a a A1.1d e A1.2a têm código local isolado, descrito abaixo.
 As demais fatias continuam propostas; não houve integração de UI, teste de login, E2E
 nem aplicação de migrations em dev/produção.
 
@@ -204,10 +204,64 @@ de criar um encaminhamento depois nem resolve a ambiguidade. Novas leituras prec
 revalidar o estado atual. Não houve prova multissessão, login/E2E, banco remoto, leitura de
 corpo, envio ou UI. Rotas legadas continuam pendentes; associação isolada não concede acesso.
 
-**Próxima parte:** A1.2, leitura paginada e contadores apenas de mensagens associadas e
+**Após A1.1d:** A1.2, leitura paginada e contadores apenas de mensagens associadas e
 autorizadas, com DTO mínimo e autorização/consulta na mesma transação. Mensagens seguintes,
 resolução de ambiguidade, Oficina/triagem, filas sem dono, lifecycle/transferência/posse,
 envio e fechamento dos caminhos legados permanecem no plano.
+
+## A1.2a — Leitura paginada de um atendimento
+
+Migration `20261111152147_leitura_mensagens_atendimento.sql`, após A1.1d. A RPC
+`ler_mensagens_atendimento` revalida usuário ativo, papel/setor, unidade, responsável do
+negócio, cliente, conversa e snapshots; o servidor não reutiliza uma autorização anterior.
+
+- A prova de origem foi centralizada em `prova_origem_mensagem_atendimento`, função SQL
+  `STABLE` que também serve ao resolvedor de vínculo/guarda. Ela prova a origem, sem
+  autorizar um ator isoladamente. Helpers e RPCs permanecem fechados ao navegador.
+- Corpo, total, indicação de revisão e cursor são calculados por uma única instrução SQL,
+  com o mesmo snapshot. A política é aplicada às associações exatas do atendimento antes
+  da contagem e da paginação. Não há consulta posterior separada por IDs autorizados.
+- Mensagens sem vínculo, de outro negócio no mesmo cliente/canal, internas, sem prova
+  atual ou com origem ambígua não entram no corpo nem no total. `revisaoPendente` apenas
+  sinaliza associação própria indisponível, sem retornar IDs, referências ou contagem omitida.
+  Mensagens antigas sem associação não são importadas nem sinalizadas como pendência.
+- A ordem é data de criação decrescente e ID decrescente. Cursor contém a tupla exata
+  de uma mensagem ainda autorizada desse atendimento; caso deixe de ser utilizável ou
+  pertença a outro atendimento, é recusado sem dados ou total. Cada página aceita de 1 a
+  100 mensagens; o total corresponde a todas as autorizadas, independentemente do cursor.
+- O wrapper mantém a string temporal com até seis casas, sem reduzir microssegundos
+  para milissegundos. Calendário, hora, fuso aceito pelo PostgreSQL, IDs, opções e retorno
+  são validados. Próximo cursor deve corresponder à última mensagem da página cheia.
+- O DTO contém somente identificação, tipo, data, direção/autor/status e conteúdo permitido.
+  O servidor reutiliza `mascararDadosSensiveis` para CPF/cartão antes de retornar o texto;
+  conteúdo nulo é preservado. Não retorna campos de metadata, telefone, custos ou registros
+  de outros atendimentos.
+- A operação não assume canal, não marca leitura, não zera `nao_lidas` e não grava auditoria
+  ou estado de negócio. Ler mensagens próprias não concede autorização de envio.
+
+Validação local: typecheck, 1.232 Vitest e sete contratos SQL juntos passaram com e sem
+defaults permissivos. Há 128 testes do wrapper de leitura; a rodada também incluiu 14
+regressões da correção de UUID, versionada separadamente em `d5be89c`.
+SQL verificou 1.005 mensagens no mesmo atendimento, 1.001 com data empatada, diferenças
+de microssegundos, páginas sem perdas/duplicações, cursores alheios/ocultos inválidos,
+contagem após ambiguidade, preservação dos dados e reaplicação. SQL e wrapper tiveram
+revisão independente. Migration revisada: SHA256
+`16531ab8193b934513b708f21a0a489331ad23d4cbe2daa70573aa86e4b9868e`.
+
+A correção UUID exige string com 36 caracteres antes da regex nas entradas e IDs de
+retorno dos wrappers; uma quebra de linha final não chega ao banco. Referências de mensagem
+permanecem opacas. O mascaramento do texto usa o helper existente, sem alterar a origem.
+
+**Limites:** leitura de um atendimento e suas mensagens atualmente associadas, sem inbox,
+prévias, contador de não lidas por usuário, mensagens seguintes ou UI. A política usa o estado
+visível no SELECT; outra origem pode chegar depois e deve ser revalidada na próxima leitura.
+Não houve prova multissessão, login/E2E, banco remoto ou envio. Código e migrations continuam
+pendentes de integração no dev; rotas legadas não foram liberadas por essa entrega.
+
+**Próxima parte:** A1.2b, lista/prévias e contadores dos atendimentos permitidos, reutilizando
+a mesma política antes da paginação. Leitura individual, mensagens seguintes, ambiguidades,
+Oficina/triagem, filas sem dono, lifecycle/posse/transferência, envio e fechamento do legado
+continuam necessários antes da interface por setor.
 
 ## Problema e limites atuais
 
