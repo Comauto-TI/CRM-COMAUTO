@@ -100,3 +100,14 @@ describe("métricas de vendas por setor", () => {
     expect(podeAcessar({ papel: "financeiro", setor: "administracao" }, "metricas")).toBe(true);
   });
 });
+
+describe("agenda é da Oficina", () => {
+  it("gerente de Oficina/administração vê; gerente de Vendas/Peças não; recepção e consultor veem", () => {
+    expect(podeAcessar({ papel: "gerente", setor: "oficina" }, "agenda")).toBe(true);
+    expect(podeAcessar({ papel: "gerente", setor: "administracao" }, "agenda")).toBe(true);
+    expect(podeAcessar({ papel: "gerente", setor: "vendas" }, "agenda")).toBe(false);
+    expect(podeAcessar({ papel: "gerente", setor: "pecas" }, "agenda")).toBe(false);
+    expect(podeAcessar({ papel: "recepcao", setor: "oficina" }, "agenda")).toBe(true);
+    expect(podeAcessar({ papel: "consultor_tecnico", setor: "oficina" }, "agenda")).toBe(true);
+  });
+});

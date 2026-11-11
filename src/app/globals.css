@@ -981,7 +981,8 @@ a { color: var(--vw-azul); }
 @media (max-width: 640px) { .vendas-kpis { grid-template-rows: none; } }
 
 /* ===== Menu lateral em grupos (pedido do Simão) ===== */
-.nav { gap: 2px; overflow-y: auto; min-height: 0; padding-right: 2px; }
+.nav { gap: 2px; overflow-y: auto; min-height: 0; padding-right: 2px; scrollbar-width: none; -ms-overflow-style: none; } /* rola sem mostrar a barra (Simão: "feia dms") */
+.nav::-webkit-scrollbar { display: none; }
 .nav-grupo { margin-top: 6px; }
 .nav-grupo-titulo {
   width: 100%; display: flex; align-items: center; gap: 8px; padding: 7px 12px 5px;
