@@ -80,8 +80,11 @@ no comando de validação, sem mudar a configuração do produto.
 O visual foi conferido offline em 1600 e 390 pixels com CSS/componentes reais e dados fictícios,
 sem Auth, banco ou envio. As capturas ficam em `work/qa-pecas-ui` no workspace do Codex.
 
-Ainda não comprovados: integração no Supabase/PostgREST de dev, login real, E2E com as contas e concorrência
-multissessão em PostgreSQL. Não tratar fixtures, SSR ou PGlite como essas validações. As leituras do detalhe
+Claude aprovou CR-PEC-001 e registrou a integração/recompilação no dev em `9adcfd4`; o runtime é idêntico
+a `dc8247e`. O Codex confirmou HTTP 200 no login local e presença dos dez contratos de Peças no OpenAPI
+do projeto `csgrnmoyowjhzlibbilk`, por consulta somente de leitura. Ainda não comprovados: execução do fluxo
+por login, E2E com as contas e concorrência multissessão em PostgreSQL. Não tratar disponibilidade do schema,
+fixtures, SSR ou PGlite como essas validações. As leituras do detalhe
 usam RPC SETOF com relacionamentos do PostgREST; a atualização do schema cache e esse contrato HTTP devem
 ser conferidos na integração. O quadro retorna o conjunto autorizado completo; carga/volume do dev ainda
 precisam ser medidos antes de ampliar o piloto.

@@ -115,11 +115,19 @@ Decisão do Simão repassada pelo Claude no chat: cumprir a ordem abaixo antes d
 histórico setorial preservado fora da leitura geral e pedido humano ativo com notificação/auditoria atômicas,
 sem alterar posse. Ferramenta/handler verificam falha e avisam o cliente. **1.695 Vitest / 40 arquivos**, typecheck,
 gitleaks e contrato SQL novo com/sem defaults/reaplicação passaram; revisão independente sem bloqueantes.
-Correção será disponibilizada em commit separado para o Claude revisar e aplicar `0006` antes do código.
-Dev/login real continuam pendentes; demais fatias não foram reabertas.
+Correção disponibilizada em `dc8247e` e aprovada pelo Claude na integração `9adcfd4`.
+Claude registrou aplicação de 0002/0003/0005/0006 no dev e recompilação; o Codex confirmou HTTP 200
+no login local e presença dos dez contratos de Peças no OpenAPI do projeto correto. Execução por login
+e concorrência real continuam pendentes; a credencial local de QA não foi confirmada, sem reset de Auth.
+
+**Revisões formais #4/#5:** diffs completos de `96bd090` e `92a0556` revistos com reproduções imutáveis.
+Não aprovados isoladamente: cinco riscos em #4, com correções posteriores já entregues, e quatro bugs novos
+mais F8-002-R1 preexistente afetando #5. [Achados, linhas e evidências](REVISAO-PRS-4-5.md).
+Conversa no cartão de Vendas liberada como próximo recorte pelo Claude; [contrato proposto](VENDAS-CONVERSA-CONTRATO.md)
+preparado, aguardando definir a posse temporária de supervisão. Sem transferências avançadas.
 
 1. Consolidar os nove arquivos avulsos em 0003_vendas (F5 e proveniência de Vendas) e 0006_atendimento (encaminhamentos e A1.1/A1.2), sem mudar contratos. Estado: CONCLUÍDO LOCALMENTE — instalação limpa com nove contratos, reaplicação e upgrade populado PGlite passaram com e sem defaults permissivos; dados e schema preservados. Reorganização em commit separado.
-2. MVP kanban de Peças implementado localmente: quadro comum `06b7cb5`, conversa no cartão, assumir/devolver/responder pelo outbound dentro de 24h, vínculo explícito das novas mensagens e desvios legados do piloto bloqueados. Quadro/detalhe usam política de carteira/unidade atual no banco; movimentações reaproveitam o domínio e seu histórico. SQL com/sem defaults, reaplicação populada, Vitest, typecheck e visual offline passaram. [Recorte, integração e limites](PECAS-MVP-PILOTO.md). Ainda aguarda revisão e aplicação no dev; A1 não está concluída.
+2. MVP kanban de Peças implementado e levado ao dev pelo Claude até `dc8247e`/`9adcfd4`: quadro comum `06b7cb5`, conversa no cartão, assumir/devolver/responder pelo outbound dentro de 24h, vínculo explícito das novas mensagens e desvios legados do piloto bloqueados. Quadro/detalhe usam política de carteira/unidade atual no banco; movimentações reaproveitam o domínio e seu histórico. SQL com/sem defaults, reaplicação populada, Vitest, typecheck e visual offline passaram. [Recorte, integração e limites](PECAS-MVP-PILOTO.md). Ainda aguarda validação por login; A1 não está concluída.
 3. Entregas em commits menores, conforme novo repasse do Claude: SQL `c020b63`, quadro primeiro `e250d9d`, núcleo isolado `7c44e9c` e depois conversa. Base `claude/quadro-comum` incorporada por merge `7b5c65d`. Após revisão, Claude publica o PR/aplica no dev e Simão valida por partes com a conta de teste de Peças. Conector GitHub do Codex está somente leitura; nenhum PR remoto foi declarado criado. Login/E2E, dev e produção ainda não comprovados nesta entrega.
 
 Transferências entre pessoas e outras expansões de A1 ficam congeladas. WIP anterior de liberação preservado fora da entrega em stash 6e0aa074dc35d9cec78b6c3ada484c5ccd78f518; seus testes SQL não foram executados. Não aplicar o stash inteiro sobre os módulos consolidados.
