@@ -24,7 +24,11 @@ type ItemCotacao = {
   custo_unitario_centavos: number | null;
 };
 
-type CotacaoDetalhada = Cotacao & { responsavel_id: string | null; itens: ItemCotacao[] };
+type CotacaoDetalhada = Cotacao & {
+  responsavel_id: string | null;
+  venda_confirmada_em: string | null;
+  itens: ItemCotacao[];
+};
 
 const RESUMO_COTACAO = "id, unidade, origem, descricao, status, criado_em, clientes(nome), veiculos(placa), responsavel:usuarios!pecas_cotacoes_responsavel_id_fkey(nome)";
 
@@ -47,7 +51,7 @@ export async function listarCotacoes(unidades: string[]) {
 export async function obterCotacao(unidades: string[], id: string) {
   const { data, error } = await db()
     .from("pecas_cotacoes")
-    .select(`${RESUMO_COTACAO}, responsavel_id, itens:pecas_cotacao_itens(id, versao, descricao, quantidade, preco_unitario_centavos, custo_unitario_centavos)`)
+    .select(`${RESUMO_COTACAO}, responsavel_id, venda_confirmada_em, itens:pecas_cotacao_itens(id, versao, descricao, quantidade, preco_unitario_centavos, custo_unitario_centavos)`)
     .in("unidade", unidades)
     .eq("id", id)
     .order("criado_em", { referencedTable: "itens" })
@@ -159,6 +163,18 @@ export async function marcarAprovada(u: Usuario, id: string): Promise<ResultadoA
   });
   if (error) return tabelaPendente(error.code) || error.code === "PGRST202" ? "pendente" : "erro_aprovacao";
   return data === true ? "aprovada" : "indisponivel";
+}
+
+type ResultadoVenda = "venda_confirmada" | "indisponivel" | "pendente" | "erro_venda";
+
+export async function marcarVendaConfirmada(u: Usuario, id: string): Promise<ResultadoVenda> {
+  const { data, error } = await db().rpc("pecas_confirmar_venda", {
+    p_id: id,
+    p_unidades: u.unidades,
+    p_ator: u.id,
+  });
+  if (error) return tabelaPendente(error.code) || error.code === "PGRST202" ? "pendente" : "erro_venda";
+  return data === true ? "venda_confirmada" : "indisponivel";
 }
 
 export async function registrarCotacao(u: Usuario, dados: DadosCotacao): Promise<ResultadoCotacao> {

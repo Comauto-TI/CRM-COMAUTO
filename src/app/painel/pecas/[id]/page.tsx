@@ -4,9 +4,9 @@ import { notFound } from "next/navigation";
 import { exigirAcesso } from "@/lib/auth";
 import { formatarBRL } from "@/lib/time";
 import { obterCotacao } from "@/modulos/pecas/cotacoes";
-import { centavosParaCampo, uuidV4Valido } from "@/modulos/pecas/dados-cotacao";
+import { centavosParaCampo, totalizarCotacao, uuidV4Valido } from "@/modulos/pecas/dados-cotacao";
 import { Cabecalho, Status, Vazio } from "../../_components/ui";
-import { adicionarItemCotacao, editarItemCotacao, registrarApresentacao, registrarAprovacao } from "../actions";
+import { adicionarItemCotacao, confirmarVenda, editarItemCotacao, registrarApresentacao, registrarAprovacao } from "../actions";
 
 const MENSAGENS: Record<string, string> = {
   adicionado: "Item incluído na cotação.",
@@ -18,6 +18,8 @@ const MENSAGENS: Record<string, string> = {
   apresentada: "Apresentação registrada. Aguardando resposta do cliente.",
   aprovada: "Aprovação do cliente registrada.",
   erro_aprovacao: "Não foi possível registrar a aprovação. Tente novamente.",
+  venda_confirmada: "Venda confirmada.",
+  erro_venda: "Não foi possível confirmar a venda. Tente novamente.",
   sem_itens: "Inclua pelo menos um item para registrar a apresentação.",
   desatualizada: "Os itens da cotação mudaram. Confira o total atual antes de registrar a apresentação.",
   erro_apresentacao: "Não foi possível registrar a apresentação. Tente novamente.",
@@ -55,7 +57,8 @@ export default async function DetalheCotacaoPage({ params, searchParams }: {
     : undefined;
   const acaoItem = itemEmEdicao ? editarItemCotacao : adicionarItemCotacao;
   const linkCotacao = `/painel/pecas/${cotacao.id}`;
-  const totalCentavos = cotacao.itens.reduce((total, item) => total + item.quantidade * item.preco_unitario_centavos, 0);
+  const vendaConfirmada = cotacao.venda_confirmada_em !== null;
+  const { totalCentavos, margemCentavos } = totalizarCotacao(cotacao.itens, vendaConfirmada);
   const versoesItens = Object.fromEntries(cotacao.itens.map((item) => [item.id, item.versao]));
 
   return (
@@ -67,6 +70,7 @@ export default async function DetalheCotacaoPage({ params, searchParams }: {
         <p>{cotacao.descricao}</p>
         <div className="acoes">
           <Status valor={cotacao.status} />
+          {vendaConfirmada && <span>Venda confirmada</span>}
           <span className="mudo">Responsável · {cotacao.responsavel?.nome ?? "A definir"}</span>
         </div>
       </section>
@@ -133,10 +137,16 @@ export default async function DetalheCotacaoPage({ params, searchParams }: {
             </tbody>
             <tfoot>
               <tr>
-                <th scope="row" colSpan={4}>Total cotado</th>
+                <th scope="row" colSpan={4}>{vendaConfirmada ? "Total da venda" : "Total cotado"}</th>
                 <td>{formatarBRL(totalCentavos / 100)}</td>
                 {podeEditarItens && <td />}
               </tr>
+              {margemCentavos !== null && (
+                <tr>
+                  <th scope="row" colSpan={4}>Margem bruta</th>
+                  <td>{formatarBRL(margemCentavos / 100)}</td>
+                </tr>
+              )}
             </tfoot>
           </table>
         </div>
@@ -156,6 +166,15 @@ export default async function DetalheCotacaoPage({ params, searchParams }: {
           <p className="mudo">Registre quando o cliente aprovar os itens e valores. A confirmação da venda é uma etapa separada.</p>
           <form action={registrarAprovacao.bind(null, cotacao.id)}>
             <button className="btn primario" type="submit">Registrar aprovação</button>
+          </form>
+        </section>
+      )}
+      {cotacao.status === "aprovado" && !vendaConfirmada && cotacao.responsavel_id === u.id && cotacao.itens.length > 0 && (
+        <section className="card secao">
+          <h2>Confirmação da venda</h2>
+          <p className="mudo">Registre após confirmar a venda no sistema atual.</p>
+          <form action={confirmarVenda.bind(null, cotacao.id)}>
+            <button className="btn primario" type="submit">Confirmar venda</button>
           </form>
         </section>
       )}

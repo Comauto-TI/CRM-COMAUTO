@@ -2,7 +2,7 @@
 
 import { redirect } from "next/navigation";
 import { exigirAcesso } from "@/lib/auth";
-import { atualizarItem, iniciarCotacao, marcarApresentada, marcarAprovada, registrarCotacao, registrarItem } from "@/modulos/pecas/cotacoes";
+import { atualizarItem, iniciarCotacao, marcarApresentada, marcarAprovada, marcarVendaConfirmada, registrarCotacao, registrarItem } from "@/modulos/pecas/cotacoes";
 import { lerDadosCotacao, lerDadosEdicaoItem, lerDadosItem, lerIdCotacao, uuidV4Valido } from "@/modulos/pecas/dados-cotacao";
 
 export async function criarCotacao(form: FormData) {
@@ -53,5 +53,12 @@ export async function registrarAprovacao(id: string) {
   const u = await exigirAcesso("pecas");
   if (!uuidV4Valido(id)) redirect("/painel/pecas?msg=indisponivel");
   const resultado = await marcarAprovada(u, id);
+  redirect(`/painel/pecas/${id}?msg=${resultado}`);
+}
+
+export async function confirmarVenda(id: string) {
+  const u = await exigirAcesso("pecas");
+  if (!uuidV4Valido(id)) redirect("/painel/pecas?msg=indisponivel");
+  const resultado = await marcarVendaConfirmada(u, id);
   redirect(`/painel/pecas/${id}?msg=${resultado}`);
 }

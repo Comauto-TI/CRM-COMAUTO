@@ -301,6 +301,9 @@ begin
     or public.pecas_adicionar_item(cotacao_fixture, item_fixture, unidades_fixture, ator_fixture, 'Filtro novo', 2, 120, 0) is distinct from 'indisponivel' then
     raise exception 'Após apresentar a cotação, os itens devem permanecer bloqueados.';
   end if;
+  if public.pecas_confirmar_venda(cotacao_fixture, unidades_fixture, ator_fixture) is distinct from false then
+    raise exception 'A confirmação de venda exige aprovação prévia.';
+  end if;
 
   select jsonb_agg(to_jsonb(i) order by i.id) into itens_antes_aprovacao
   from public.pecas_cotacao_itens i where i.cotacao_id = cotacao_fixture;
@@ -324,6 +327,12 @@ begin
   if (select jsonb_agg(to_jsonb(i) order by i.id)
       from public.pecas_cotacao_itens i where i.cotacao_id = cotacao_fixture) is distinct from itens_antes_aprovacao then
     raise exception 'A aprovação comercial deve preservar os itens.';
+  end if;
+  if not exists (
+    select 1 from public.pecas_cotacoes
+    where id = cotacao_fixture and venda_confirmada_em is null and venda_confirmada_por is null
+  ) then
+    raise exception 'A aprovação comercial deve deixar a confirmação de venda pendente.';
   end if;
 
   if public.pecas_adicionar_item(cotacao_vazia, gen_random_uuid(), unidades_fixture, ator_fixture, 'Peça única', 1, 100, null) is distinct from 'adicionado' then
@@ -419,6 +428,54 @@ begin
   end if;
 end $$;
 
+do $$
+declare
+  cotacao_fixture constant uuid := '00000000-0000-4000-8000-000000000054';
+  cotacao_sem_itens constant uuid := '00000000-0000-4000-8000-000000000059';
+  ator_fixture constant uuid := '00000000-0000-4000-8000-000000000051';
+  outro_ator constant uuid := '00000000-0000-4000-8000-000000000055';
+  unidades_fixture constant text[] := array['comauto'];
+  instante_venda timestamptz;
+  tupla_venda tid;
+begin
+  insert into public.pecas_cotacoes (id, cliente_id, descricao, status, responsavel_id)
+  values (cotacao_sem_itens, '00000000-0000-4000-8000-000000000052', 'Fixture sem itens', 'aprovado', ator_fixture);
+
+  if public.pecas_confirmar_venda(cotacao_sem_itens, unidades_fixture, ator_fixture) is distinct from false
+    or public.pecas_confirmar_venda(cotacao_fixture, array['santaluzia'], ator_fixture) is distinct from false
+    or public.pecas_confirmar_venda(cotacao_fixture, unidades_fixture, outro_ator) is distinct from false then
+    raise exception 'Confirmar venda exige cotação com itens, unidade e responsável corretos.';
+  end if;
+
+  begin
+    update public.pecas_cotacoes set venda_confirmada_em = now() where id = cotacao_fixture;
+    raise exception 'A confirmação exige data e autor juntos.';
+  exception when check_violation then null;
+  end;
+
+  if public.pecas_confirmar_venda(cotacao_fixture, unidades_fixture, ator_fixture) is distinct from true then
+    raise exception 'O responsável deve conseguir confirmar a venda aprovada.';
+  end if;
+
+  -- O ctid detecta uma nova gravação mesmo com now() fixo dentro da fixture.
+  select venda_confirmada_em, ctid into instante_venda, tupla_venda
+  from public.pecas_cotacoes where id = cotacao_fixture;
+
+  if public.pecas_confirmar_venda(cotacao_fixture, unidades_fixture, ator_fixture) is distinct from true
+    or public.pecas_confirmar_venda(cotacao_fixture, array['santaluzia'], ator_fixture) is distinct from false
+    or public.pecas_confirmar_venda(cotacao_fixture, unidades_fixture, outro_ator) is distinct from false then
+    raise exception 'O reenvio da confirmação deve validar o acesso.';
+  end if;
+  if not exists (
+    select 1 from public.pecas_cotacoes
+    where id = cotacao_fixture and status = 'aprovado' and venda_confirmada_por = ator_fixture
+      and venda_confirmada_em = instante_venda and ctid = tupla_venda
+      and venda_confirmada_em between transaction_timestamp() and clock_timestamp()
+  ) then
+    raise exception 'A confirmação deve preservar a etapa, a data e o autor em reenvios.';
+  end if;
+end $$;
+
 reset role;
 
 do $$
@@ -433,6 +490,8 @@ begin
     or has_table_privilege('service_role', 'public.pecas_cotacoes', 'UPDATE, DELETE')
     or not has_column_privilege('service_role', 'public.pecas_cotacoes', 'status', 'UPDATE')
     or not has_column_privilege('service_role', 'public.pecas_cotacoes', 'responsavel_id', 'UPDATE')
+    or not has_column_privilege('service_role', 'public.pecas_cotacoes', 'venda_confirmada_em', 'UPDATE')
+    or not has_column_privilege('service_role', 'public.pecas_cotacoes', 'venda_confirmada_por', 'UPDATE')
     or has_column_privilege('service_role', 'public.pecas_cotacoes', 'descricao', 'UPDATE')
     or has_table_privilege('service_role', 'public.pecas_cotacoes_historico', 'SELECT, UPDATE, DELETE')
     or has_function_privilege('anon', 'public.pecas_assumir_cotacao(uuid,text[],uuid)', 'EXECUTE')
@@ -441,6 +500,8 @@ begin
     or has_function_privilege('authenticated', 'public.pecas_registrar_apresentacao(uuid,text[],uuid,jsonb)', 'EXECUTE')
     or has_function_privilege('anon', 'public.pecas_registrar_aprovacao(uuid,text[],uuid)', 'EXECUTE')
     or has_function_privilege('authenticated', 'public.pecas_registrar_aprovacao(uuid,text[],uuid)', 'EXECUTE')
+    or has_function_privilege('anon', 'public.pecas_confirmar_venda(uuid,text[],uuid)', 'EXECUTE')
+    or has_function_privilege('authenticated', 'public.pecas_confirmar_venda(uuid,text[],uuid)', 'EXECUTE')
     or has_function_privilege('anon', 'public.pecas_registrar_cotacao_bot(uuid,text,text,text)', 'EXECUTE')
     or has_function_privilege('authenticated', 'public.pecas_registrar_cotacao_bot(uuid,text,text,text)', 'EXECUTE') then
     raise exception 'A cotação e seu histórico devem manter RLS fechada e os grants mínimos do servidor.';
@@ -497,8 +558,9 @@ begin
     select 1 from public.pecas_cotacoes
     where id = '00000000-0000-4000-8000-000000000054'
       and veiculo_id is null and criado_por is null and responsavel_id is null
+      and venda_confirmada_por = '00000000-0000-4000-8000-000000000051' and venda_confirmada_em is not null
   ) then
-    raise exception 'Remover veículo ou autor deve preservar a cotação.';
+    raise exception 'Remover veículo ou usuário deve preservar a cotação e a autoria da venda.';
   end if;
 
   begin

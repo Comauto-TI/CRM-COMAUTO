@@ -17,6 +17,12 @@ create table public.pecas_cotacoes (
   responsavel_id uuid references public.usuarios (user_id) on delete set null,
   criado_por uuid references public.usuarios (user_id) on delete set null,
   criado_em timestamptz not null default now(),
+  venda_confirmada_em timestamptz,
+  -- Preserva o autor da confirmação mesmo depois de remover o usuário.
+  venda_confirmada_por uuid,
+  constraint pecas_cotacoes_confirmacao_venda_check check (
+    (venda_confirmada_em is null) = (venda_confirmada_por is null)
+  ),
   constraint pecas_cotacoes_referencia_whatsapp_check check (
     origem <> 'whatsapp' or (
       origem_ref is not null
@@ -36,7 +42,8 @@ create unique index pecas_cotacoes_referencia_whatsapp_idx
 alter table public.pecas_cotacoes enable row level security;
 revoke all on table public.pecas_cotacoes from public, anon, authenticated, service_role;
 grant select, insert on table public.pecas_cotacoes to service_role;
-grant update (status, responsavel_id) on table public.pecas_cotacoes to service_role;
+grant update (status, responsavel_id, venda_confirmada_em, venda_confirmada_por)
+  on table public.pecas_cotacoes to service_role;
 
 create table public.pecas_cotacoes_historico (
   id uuid primary key default gen_random_uuid(),
@@ -341,6 +348,42 @@ end $$;
 revoke all on function public.pecas_registrar_aprovacao(uuid, text[], uuid)
   from public, anon, authenticated, service_role;
 grant execute on function public.pecas_registrar_aprovacao(uuid, text[], uuid) to service_role;
+
+create function public.pecas_confirmar_venda(p_id uuid, p_unidades text[], p_ator uuid)
+returns boolean
+language plpgsql
+security invoker
+set search_path = ''
+as $$
+begin
+  update public.pecas_cotacoes c
+  set venda_confirmada_em = now(), venda_confirmada_por = p_ator
+  where c.id = p_id
+    and c.unidade = any (p_unidades)
+    and c.responsavel_id = p_ator
+    and c.status = 'aprovado'
+    and c.venda_confirmada_em is null
+    and exists (select 1 from public.pecas_cotacao_itens i where i.cotacao_id = c.id);
+
+  if found then
+    return true;
+  end if;
+
+  return exists (
+    select 1 from public.pecas_cotacoes c
+    where c.id = p_id
+      and c.unidade = any (p_unidades)
+      and c.responsavel_id = p_ator
+      and c.status = 'aprovado'
+      and c.venda_confirmada_em is not null
+      and c.venda_confirmada_por = p_ator
+      and exists (select 1 from public.pecas_cotacao_itens i where i.cotacao_id = c.id)
+  );
+end $$;
+
+revoke all on function public.pecas_confirmar_venda(uuid, text[], uuid)
+  from public, anon, authenticated, service_role;
+grant execute on function public.pecas_confirmar_venda(uuid, text[], uuid) to service_role;
 
 create function public.pecas_registrar_cotacao_bot(
   p_cliente_id uuid, p_unidade text, p_referencia text, p_descricao text

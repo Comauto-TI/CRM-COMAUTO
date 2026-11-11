@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { centavosParaCampo, lerDadosCotacao, lerDadosEdicaoItem, lerDadosItem } from "@/modulos/pecas/dados-cotacao";
+import { centavosParaCampo, lerDadosCotacao, lerDadosEdicaoItem, lerDadosItem, totalizarCotacao } from "@/modulos/pecas/dados-cotacao";
 
 function pedido() {
   const form = new FormData();
@@ -8,6 +8,26 @@ function pedido() {
   form.set("descricao", "  Filtro de óleo  ");
   return form;
 }
+
+describe("total e margem da venda", () => {
+  const itens = [
+    { quantidade: 3, preco_unitario_centavos: 1907, custo_unitario_centavos: 1000 },
+    { quantidade: 2, preco_unitario_centavos: 250, custo_unitario_centavos: 0 },
+  ];
+
+  it("calcula a margem em centavos quando a venda está confirmada e o custo está completo", () => {
+    expect(totalizarCotacao(itens, true)).toEqual({ totalCentavos: 6221, margemCentavos: 3221 });
+  });
+
+  it("omite a margem antes de confirmar a venda", () => {
+    expect(totalizarCotacao(itens, false)).toEqual({ totalCentavos: 6221, margemCentavos: null });
+  });
+
+  it("mantém o total e omite a margem quando falta o custo de um item", () => {
+    const itensComCustoParcial = [itens[0], { ...itens[1], custo_unitario_centavos: null }];
+    expect(totalizarCotacao(itensComCustoParcial, true)).toEqual({ totalCentavos: 6221, margemCentavos: null });
+  });
+});
 
 describe("entrada da cotação de balcão", () => {
   it("mantém o identificador de repetição e aceita cotação sem placa", () => {

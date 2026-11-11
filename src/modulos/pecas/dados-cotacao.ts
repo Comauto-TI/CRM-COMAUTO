@@ -67,3 +67,24 @@ export function lerDadosEdicaoItem(form: FormData) {
 }
 
 export type DadosEdicaoItem = NonNullable<ReturnType<typeof lerDadosEdicaoItem>>;
+
+type ItemParaTotal = {
+  quantidade: number;
+  preco_unitario_centavos: number;
+  custo_unitario_centavos: number | null;
+};
+
+export function totalizarCotacao(itens: ItemParaTotal[], vendaConfirmada: boolean) {
+  let totalCentavos = 0;
+  let custoCentavos = 0;
+  let custoCompleto = itens.length > 0;
+  for (const item of itens) {
+    totalCentavos += item.quantidade * item.preco_unitario_centavos;
+    if (item.custo_unitario_centavos === null) custoCompleto = false;
+    else custoCentavos += item.quantidade * item.custo_unitario_centavos;
+  }
+  return {
+    totalCentavos,
+    margemCentavos: vendaConfirmada && custoCompleto ? totalCentavos - custoCentavos : null,
+  };
+}
