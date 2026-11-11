@@ -1,4 +1,4 @@
--- PostgreSQL descartável com 0001/0002/0003 e migration de aniversários.
+-- Banco descartável: módulos 0001/0002/0003/0005/0006, nessa ordem.
 -- Os grants necessários pertencem à migration; a fixture não os acrescenta.
 begin;
 

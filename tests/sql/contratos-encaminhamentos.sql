@@ -1,4 +1,4 @@
--- Banco descartável: 0001, 0002, 0003, 0005 e migration de encaminhamentos.
+-- Banco descartável: módulos 0001/0002/0003/0005/0006, nessa ordem.
 -- Não concede privilégios às tabelas reais: a migration precisa prover os grants do invoker.
 begin;
 

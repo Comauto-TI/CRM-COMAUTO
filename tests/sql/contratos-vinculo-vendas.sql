@@ -1,3 +1,4 @@
+-- Banco descartável: módulos 0001/0002/0003/0005/0006, nessa ordem.
 -- A1.1d: setores explícitos, prova por mensagem e guarda de autorização sem conteúdo.
 begin;
 create function pg_temp.vv_uuid(n integer) returns uuid language sql immutable as $$

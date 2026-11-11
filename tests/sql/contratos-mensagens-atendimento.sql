@@ -1,3 +1,4 @@
+-- Banco descartável: módulos 0001/0002/0003/0005/0006, nessa ordem.
 -- A1.1b: só a mensagem inicial comprovada por encaminhamentos_bot em Peças.
 -- Fixture local descartável: não concede grants para esconder dependências da migration.
 begin;

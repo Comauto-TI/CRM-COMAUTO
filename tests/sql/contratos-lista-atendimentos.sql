@@ -1,3 +1,4 @@
+-- Banco descartável: módulos 0001/0002/0003/0005/0006, nessa ordem.
 -- A1.2b: lista/prévia/totais nascem do mesmo escopo atual, antes de paginação.
 begin;
 create function pg_temp.la_uuid(n integer) returns uuid language sql immutable as $$

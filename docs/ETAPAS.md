@@ -104,3 +104,16 @@ Proposta complementar para a aba **Métricas**, depois do piloto e com dados con
 | V-01 · Revisão conjunta com Claude | Validar Novos sem troca, Novos com troca, Seminovos com usado na troca e proposta devolvida. Qualificação, etapa do CRM, status da proposta e avaliação do usado continuam distinguíveis. |
 
 Primeiro PR do Codex após F0-2: módulo em branch `codex/*` com escopo e critérios acima. Mudanças na agenda compartilhada e no núcleo passam pela revisão do Claude. A visão geral do administrador continua em F6, após validar os dados que a alimentam.
+
+
+## Prioridade atual — consolidação e piloto de Peças · 11/11/2026
+
+Decisão do Simão repassada pelo Claude no chat: cumprir a ordem abaixo antes de ampliar A1.
+
+1. Consolidar os nove arquivos avulsos em 0003_vendas (F5 e proveniência de Vendas) e 0006_atendimento (encaminhamentos e A1.1/A1.2), sem mudar contratos. Estado: CONCLUÍDO LOCALMENTE — instalação limpa com nove contratos, reaplicação e upgrade populado PGlite passaram com e sem defaults permissivos; dados e schema preservados. Reorganização em commit separado.
+2. Entregar somente o MVP kanban de Peças: assumir, devolver e responder por outbound.ts dentro de 24h, com autorização no servidor. Claude extrai o quadro comum de Vendas; Codex pluga os status/ações e a conversa de Peças após o aviso da ref.
+3. Preparar PR único para main, revisado e aplicado no dev pelo Claude; depois o Simão valida a tela com a conta de teste de Peças. Login/E2E, dev e produção ainda não comprovados por esta reorganização.
+
+Transferências entre pessoas e outras expansões de A1 ficam congeladas. WIP anterior de liberação preservado fora da entrega em stash 6e0aa074dc35d9cec78b6c3ada484c5ccd78f518; seus testes SQL não foram executados. Não aplicar o stash inteiro sobre os módulos consolidados.
+
+AGENTS na branch reflete um arquivo reaplicável por módulo, sem novos avulsos da CLI. Documentação de implementação é alterada e commitada somente na branch do Codex; o chat compartilhado serve à coordenação. Preservar os arquivos do Claude e dados/credenciais de outros sistemas.

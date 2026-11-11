@@ -1,3 +1,4 @@
+-- Banco descartável: módulos 0001/0002/0003/0005/0006, nessa ordem.
 -- A1.1c: qualificação + proveniência Vendas numa transação, sem associação/inbox.
 begin;
 create function pg_temp.vb_uuid(n integer) returns uuid language sql immutable as $$

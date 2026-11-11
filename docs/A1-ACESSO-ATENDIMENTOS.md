@@ -7,11 +7,63 @@ nem aplicação de migrations em dev/produção.
 Levantamento inicial: branch `codex/atendimento-modulos`, base `f6370a1`.
 Nenhum acesso a Auth/banco remoto é necessário para preparar e testar o contrato localmente.
 
+## Consolidação por módulo e prioridade atual — 11/11/2026
+
+Decisão atual do Simão: manter um arquivo reaplicável por módulo. F5 e a proveniência
+do bot em Vendas pertencem a `0003_vendas.sql`; a camada entre setores pertence a
+`0006_atendimento.sql`. Alterações futuras entram no arquivo do módulo dono, sem criar
+migrations avulsas com timestamp. O mapeamento dos nove artefatos anteriores é:
+
+| Artefato anterior | Arquivo atual do módulo |
+| --- | --- |
+| `20261111130139_encaminhamentos_bot.sql` | `0006_atendimento.sql` |
+| `20261111134242_aniversarios_contatos.sql` | `0003_vendas.sql` |
+| `20261111140755_atendimentos_modulares.sql` | `0006_atendimento.sql` |
+| `20261111142602_mensagens_atendimento.sql` | `0006_atendimento.sql` |
+| `20261111144252_origem_bot_vendas.sql` | `0003_vendas.sql` |
+| `20261111150300_vinculo_vendas_atendimento.sql` | `0006_atendimento.sql` |
+| `20261111152147_leitura_mensagens_atendimento.sql` | `0006_atendimento.sql` |
+| `20261111154525_lista_atendimentos.sql` | `0006_atendimento.sql` |
+| `20261111160139_leituras_usuario_atendimento.sql` | `0006_atendimento.sql` |
+
+Os dois DDLs compartilhados de A1.1b (coluna gerada de entrada externa e índice composto
+de `mensagens`) ficam em `0003_vendas`, antes da FK do ledger de Vendas. A associação
+e os demais índices de A1.1b ficam em `0006_atendimento`. As definições foram preservadas;
+essa antecipação permite instalar Vendas sem depender de Peças/Atendimento.
+
+Instalação limpa: `0001 → 0002 → 0003 → 0005 → 0006`. Em banco existente, conferir
+o histórico e aplicar os módulos necessários na ordem, sem recriar o banco ou manipular
+usuários Auth. Executar cada módulo alterado inteiro em uma transação. Aplicar `0003`
+e `0006` antes de subir o código que chama as novas RPCs (CR-A1-001); SQL local validado
+não comprova que essa integração de dev já aconteceu.
+
+**Consolidação validada localmente.** Instalação limpa com os cinco módulos e nove contratos,
+reaplicação sobre dados e upgrade da base `84b95e5` passaram com e sem defaults permissivos.
+O upgrade extraiu os quatro módulos e nove arquivos antigos pelo Git, com fixture populada;
+preservou dados, IDs, datas, marcas, vínculos, slots, FKs, índices, triggers, sequências e ACLs
+de tabela/coluna/função. Corpos de funções normalizados por fim de linha permaneceram iguais.
+`0003_vendas` também foi instalado e reaplicado isoladamente, sem Peças/Atendimento,
+exercitando F5 e o bot de Vendas. Revisão independente confirmou o movimento literal dos
+blocos e a ordem dos pré-requisitos. Harness local: `work/validar-consolidacao-modulos.mjs`.
+Os commits, contagens de testes e SHA256 das fatias abaixo permanecem como histórico dos
+artefatos originais. Nenhuma dessas provas equivale a login/E2E, multissessão ou banco remoto.
+
+**Prioridade de produto:** após a consolidação, entregar o MVP kanban de Peças, reutilizando
+o componente de quadro que o Claude extrairá. O primeiro fluxo usa a cotação e o atendimento
+do próprio setor para abrir, consultar e responder ao lead, com contexto e autorização atuais.
+As respostas passam pelo `outbound.ts` existente; texto livre somente dentro da janela de
+24h, preservando opt-out, consentimento e as demais regras de envio. Não criar transporte
+paralelo nem usar o histórico global do cliente como autorização.
+
+Não avançar novas fatias de A1.3 nem acrescentar runtime nesta consolidação. As fatias e
+limites descritos a seguir continuam como referência; integração de UI, logins/E2E e aplicação
+no dev ainda precisam ser comprovadas no recorte liberado.
+
 ## A1.1a — Contexto e posse de registros atribuídos
 
 Implementação local na branch `codex/atendimento-modulos`, após `6f87052`:
 
-- Migration `20261111140755_atendimentos_modulares.sql`, dependente de 0001, 0002, 0003 e 0005.
+- Definições de contexto e posse em `0006_atendimento.sql`, dependente de 0001, 0002, 0003 e 0005.
 - `atendimentos_modulares` mantém um vínculo tipado e único por oportunidade ou cotação, com
   cliente, conversa física e unidade derivados do negócio. `atendimento_canais` reserva um
   único atendimento modular por conversa, com FK composta que impede cruzar os canais.
@@ -49,7 +101,7 @@ Validação local: typecheck, 846 testes Vitest (71 novos dos wrappers) e contra
 `tests/sql/contratos-atendimentos.sql` passaram. PostgreSQL/PGlite executou as RPCs como
 `service_role`, com e sem defaults permissivos, incluindo rollback real da auditoria,
 replay, revogações e reaplicação com dados. SQL e wrapper tiveram revisão independente.
-Migration revisada: SHA256 `97bb8a1f243e2e8fb0b671fd85eb09cfab3e2afcd54f016fbf2dd93de337fb5d`.
+Artefato original revisado, antes da consolidação: SHA256 `97bb8a1f243e2e8fb0b671fd85eb09cfab3e2afcd54f016fbf2dd93de337fb5d`.
 
 **Ainda pendente após A1.1a:** classificar e associar mensagens, vincular os encaminhamentos do bot,
 Oficina/triagem, filas sem dono, leitura/listagem/contadores por módulo, liberação do canal,
@@ -60,8 +112,8 @@ Os testes de concorrência entre sessões e os logins reais continuam necessári
 
 ## A1.1b — Mensagem inicial comprovada de Peças
 
-Migration `20261111142602_mensagens_atendimento.sql`, dependente de A1.1a e de
-`20261111130139_encaminhamentos_bot`, mais os schemas dos módulos já indicados.
+Definições de associação da mensagem inicial de Peças em `0006_atendimento.sql`, após os
+blocos de encaminhamento do bot e contexto de A1.1a, mais os schemas dos módulos já indicados.
 
 - O vínculo só aceita a mensagem inicial identificada por `encaminhamentos_bot`, para uma
   cotação de Peças aberta, já atribuída e com atendimento existente. O banco revalida o
@@ -88,7 +140,8 @@ Migration `20261111142602_mensagens_atendimento.sql`, dependente de A1.1a e de
   O ledger continua sem UPDATE concedido ao serviço; a FK comprova a chave referenciada
   na inserção. A ordem de locks de canal e atendimento acompanha a A1.1a.
 
-Esta migration acrescenta uma coluna gerada armazenada e índices nas fontes existentes.
+O conjunto mantém a coluna gerada armazenada e os índices nas fontes existentes;
+na organização atual a coluna e o índice de mensagem são criados em `0003_vendas`.
 Antes de aplicar no dev, avaliar tamanho de `mensagens`, custo da reescrita e criação de
 índices e a compatibilidade conjunta das migrations. Ainda não foi aplicada remotamente.
 
@@ -107,13 +160,13 @@ rollback e reaplicação passaram. Os quatro contratos de Encaminhamentos, Anive
 Atendimentos e Mensagens também passaram juntos na base completa, com e sem defaults
 permissivos. Processamento/status, redação de conteúdo e limpeza de metadata foram
 conferidos sem desfazer a associação. SQL e wrapper tiveram revisão independente.
-Migration revisada: SHA256 `762aae646a114fd58d1c9aac791fa07d633b3290741156180f5053d3f0aa8d8f`.
+Artefato original revisado, antes da consolidação: SHA256 `762aae646a114fd58d1c9aac791fa07d633b3290741156180f5053d3f0aa8d8f`.
 Não houve prova multissessão, login real, integração de runtime ou banco remoto.
 
 ## A1.1c — Qualificação e proveniência do bot em Vendas
 
-Migration `20261111144252_origem_bot_vendas.sql`, dependente das tabelas de Vendas e da
-coluna gerada de A1.1b. O ramo Vendas de `rotearLead` agora usa somente o wrapper
+Definições da proveniência do bot em `0003_vendas.sql`, após as tabelas de Vendas. A prova
+de mensagem e as dependências entre módulos serão revalidadas na consolidação. O ramo Vendas de `rotearLead` usa somente o wrapper
 `src/modulos/vendas/qualificacao-bot.ts` e a RPC `registrar_lead_vendas_bot`.
 
 - A RPC comprova a mensagem recebida, cliente, conversa e unidade ativa. O funil Novos ou
@@ -149,7 +202,7 @@ rodízio, origem de marketing separada, destinatários e rollback real de audito
 aviso e histórico. Reaplicação populada preservou dados e permissões. Os cinco contratos
 F2, F5, A1.1a, A1.1b e Vendas passaram juntos na base completa em ambos modos.
 SQL e wrapper/roteamento tiveram revisão independente.
-Migration revisada: SHA256 `ae07682ce23d45c0f262269eabe993d16d0dbe7175baa369d63c6b094e48f149`.
+Artefato original revisado, antes da consolidação: SHA256 `ae07682ce23d45c0f262269eabe993d16d0dbe7175baa369d63c6b094e48f149`.
 
 **Limites:** a trava de criação cliente/funil é usada por este produtor do bot; os caminhos
 manuais antigos não compartilham esse protocolo. Não houve prova multissessão ou login
@@ -164,7 +217,7 @@ envio e fechamento dos caminhos legados continuam pendentes. Nenhuma UI de conve
 
 ## A1.1d — Associação de Vendas e guarda contra origem ambígua
 
-Migration `20261111150300_vinculo_vendas_atendimento.sql`, após A1.1c. A tabela de associações
+Definições do vínculo de Vendas em `0006_atendimento.sql`, após a proveniência de `0003_vendas.sql`. A tabela de associações
 ganha setor explícito e oportunidade, com CHECK de um único domínio por linha. Os vínculos
 antigos recebem setor Peças e mantêm IDs, autoria, datas, referências e FKs. Não há movimento,
 exclusão ou reatribuição de mensagem. PK por mensagem e referência única continuam globais.
@@ -196,7 +249,7 @@ A migração foi aplicada em base com Peças já vinculada, preservando todos os
 Ambiguidade nas duas ordens e após o vínculo, transferência sem carteira, revogações, FKs,
 rollback real da auditoria e reaplicação populada foram verificados. Os seis contratos SQL
 passaram juntos na base completa nos dois modos. SQL e wrapper tiveram
-revisão independente. Migration revisada: SHA256
+revisão independente. Artefato original revisado, antes da consolidação: SHA256
 `9e3a0bf3d6c7fa871e9f694ce0678dfaffd4340970555d111cca2089bf8ca65f`.
 
 **Limites:** a guarda verifica a origem no ponto da autorização; não impede outra ferramenta
@@ -211,7 +264,7 @@ envio e fechamento dos caminhos legados permanecem no plano.
 
 ## A1.2a — Leitura paginada de um atendimento
 
-Migration `20261111152147_leitura_mensagens_atendimento.sql`, após A1.1d. A RPC
+Definições da leitura de mensagens em `0006_atendimento.sql`, usando as guardas de A1.1d. A RPC
 `ler_mensagens_atendimento` revalida usuário ativo, papel/setor, unidade, responsável do
 negócio, cliente, conversa e snapshots; o servidor não reutiliza uma autorização anterior.
 
@@ -245,7 +298,7 @@ regressões da correção de UUID, versionada separadamente em `d5be89c`.
 SQL verificou 1.005 mensagens no mesmo atendimento, 1.001 com data empatada, diferenças
 de microssegundos, páginas sem perdas/duplicações, cursores alheios/ocultos inválidos,
 contagem após ambiguidade, preservação dos dados e reaplicação. SQL e wrapper tiveram
-revisão independente. Migration revisada: SHA256
+revisão independente. Artefato original revisado, antes da consolidação: SHA256
 `16531ab8193b934513b708f21a0a489331ad23d4cbe2daa70573aa86e4b9868e`.
 
 A correção UUID exige string com 36 caracteres antes da regex nas entradas e IDs de
@@ -265,7 +318,7 @@ continuam necessários antes da interface por setor.
 
 ## A1.2b — Lista, prévias e totais por setor
 
-Migration `20261111154525_lista_atendimentos.sql`, após A1.2a. A RPC
+Definições da lista em `0006_atendimento.sql`, usando a política de A1.2a. A RPC
 `listar_atendimentos` recebe ator autenticado no servidor, setor e opções de paginação;
 não recebe cliente, unidade ou responsável como autoridade do navegador.
 
@@ -309,7 +362,7 @@ passaram na base completa com e sem defaults permissivos, incluindo 1.005 atendi
 com o contexto anterior, revogações, prévias após ambiguidade e reaplicação populada.
 A revisão independente comparou 154 combinações com 11 perfis entre contexto, helper,
 lista e detalhe; verificou ACL e leitura sem mutação em 17 tabelas. SQL e wrappers sem
-achados bloqueantes no recorte. Migration revisada: SHA256
+achados bloqueantes no recorte. Artefato original revisado, antes da consolidação: SHA256
 `56bd1145d69075fdd0aed307e8a62a850e8410e78e42d67f62a6bafd9b3e231f`.
 
 **Próxima parte:** A1.2c, leitura/não lidas por atendimento e usuário, com operações
@@ -321,7 +374,7 @@ e validação de volume/índices no ambiente de destino ainda não foram executa
 
 ## A1.2c — Leitura explícita por usuário
 
-Migration `20261111160139_leituras_usuario_atendimento.sql`, após A1.2b. As três RPCs
+Definições das marcas de leitura em `0006_atendimento.sql`, após os blocos de leitura/lista. As três RPCs
 novas não alteram o contrato de lista ou corpo já existente, nem integram UI ou envio.
 
 - `atendimento_leituras` guarda uma marca por atendimento, mensagem e usuário, com
@@ -370,11 +423,12 @@ preservando a primeira data, mensagem associada com data antiga, isolamento pess
 transferências/revogações, ambiguidade, FK/cascade/ACL e reaplicação populada.
 A revisão independente comprovou também falha na segunda inserção desfazendo a primeira,
 timestamp explícito negado ao serviço e preservação das 17 tabelas do núcleo observadas.
-SQL e wrapper sem bloqueantes no recorte. Migration revisada: SHA256
+SQL e wrapper sem bloqueantes no recorte. Artefato original revisado, antes da consolidação: SHA256
 `5e35495e465fb8054718147db4620c6277bd1e7978d5a56ca9836b7e093131e6`.
 
-**Após A1.2c:** seguir A1.3 em fatias, revisando posse, liberação do canal e transferências
-com versão e autorização atuais. Mensagens seguintes/roteamento, ambiguidades, Oficina,
+**Prioridade após A1.2c:** consolidar os arquivos por módulo e seguir com o MVP kanban de Peças,
+conforme a prioridade atual acima. A1.3 permanece planejada para revisão posterior de posse,
+liberação do canal e transferências com versão e autorização atuais. Mensagens seguintes/roteamento, ambiguidades, Oficina,
 filas sem dono e fechamento do legado continuam pendentes. A lista e o corpo não passaram
 a marcar leitura por efeito colateral; a integração futura da interface deverá enviar
 somente IDs explícitos e revalidar cada ação. Login real/E2E, concorrência multissessão,
@@ -455,7 +509,7 @@ preservado, mas fora da leitura modular até existir um vínculo comprovado.
 
 ### A1.1 — Modelo e autorização, sem UI
 
-- Migration isolada para atendimento, vínculos e associação de mensagens; RLS fechado e ACLs
+- Definições de atendimento, vínculos e associação de mensagens em `0006_atendimento.sql`; RLS fechado e ACLs
   explícitas de servidor.
 - Resolução central de acesso e RPCs de abertura/claim com contexto derivado do banco.
 - Encaminhamento novo aponta para o mesmo atendimento em reenvios; ledger continua idempotente.
@@ -499,6 +553,8 @@ Saída: nenhuma mutação autorizada apenas pela checagem prévia da tela.
 - Submeter endpoints/actions antigos à mesma política, sem fallback global por cliente.
 - Extrair apresentação de `Conversa`, com adaptadores definidos por módulo e capacidades vindas
   do servidor. Não ampliar simplesmente o papel aceito em `atendimento`.
+- Priorizar o MVP kanban de Peças com o componente de quadro que o Claude extrairá e as
+  respostas pelo `outbound.ts` existente, respeitando a janela de 24h e o contexto autorizado.
 - Somente então integrar Vendas, Peças e Oficina e executar a matriz de logins em contextos isolados.
 
 Saída: UI reaproveitada sem caminho alternativo que contorne vínculo, unidade ou posse.

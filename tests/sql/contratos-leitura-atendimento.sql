@@ -1,3 +1,4 @@
+-- Banco descartável: módulos 0001/0002/0003/0005/0006, nessa ordem.
 -- A1.2a: leitura somente das associações atuais autorizadas; cursor preserva microssegundos.
 begin;
 create function pg_temp.lr_uuid(n integer) returns uuid language sql immutable as $$

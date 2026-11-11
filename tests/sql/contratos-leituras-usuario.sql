@@ -1,3 +1,4 @@
+-- Banco descartável: módulos 0001/0002/0003/0005/0006, nessa ordem.
 -- A1.2c: marcas por mensagem/usuário, escopo atual e lotes explícitos atômicos.
 begin;
 create function pg_temp.lu_uuid(n integer) returns uuid language sql immutable as $$
