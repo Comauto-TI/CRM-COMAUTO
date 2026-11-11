@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { exigirAcesso } from "@/lib/auth";
+import { podeAcessar } from "@/lib/permissoes";
 import { getConfig } from "@/lib/config";
 import { interpretarBusca, mascararDocumento } from "@/lib/busca";
 import { buscarClientes, nomesVendedores } from "@/lib/busca-db";
@@ -76,7 +77,7 @@ export default async function BuscaGlobal({ searchParams }: { searchParams: Prom
           </table>
         </div>
       )}
-      <p className="mudo secao">Documento e telefone aparecem mascarados (LGPD). Para ver a conversa, abra o <Link href="/painel/conversas">Atendimento</Link>.</p>
+      <p className="mudo secao">Documento e telefone aparecem mascarados (LGPD).{podeAcessar(u, "atendimento") && <> Para ver a conversa, abra o <Link href="/painel/conversas">Atendimento</Link>.</>}</p>
     </>
   );
 }
