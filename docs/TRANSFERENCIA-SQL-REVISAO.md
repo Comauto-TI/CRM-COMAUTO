@@ -4,6 +4,13 @@
 Claude antes de qualquer aplicação no banco. **Entrega de backend para revisão; não é liberação
 da interface de transferência.** Nenhum banco remoto, usuário real, envio ou produção foi alterado.
 
+**Histórico do commit abb9031, ainda não aprovado pelo Claude.** A revisão cruzada posterior encontrou
+T-001 (dependência/grants Auth incompatíveis com sete contratos originais) e T-002 (UPDATE de descrição
+Oficina excedente). Correção local em andamento no hash `C5221A2388294302B4493338A9A569A060C987516137C76619C759896B14888C`:
+e-mail confiável da sessão como parâmetro, sem leitura/grants Auth; UPDATE só de responsável.
+Os resultados 402 abaixo pertencem ao hash antigo e não certificam a revisão nova. A matriz completa
+e a nova evidência serão anexadas após a execução; nenhum grant será revogado no Auth compartilhado.
+
 ## Fonte conferida
 
 - Migration única do módulo: `supabase/migrations/0006_atendimento.sql`.

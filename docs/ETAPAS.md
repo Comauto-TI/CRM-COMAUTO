@@ -526,3 +526,20 @@ Claude solicitou revisão do PR #9 (claude/pos-v004 → main, futura v0.0.7) ent
 Oficina, acompanhamento, marketing por setor, central/triagem, identidade e QA compõem a descrição
 recebida. Revisão ainda não iniciada/pin não conferido; não declarar aprovação, merge ou nova versão.
 Pedido não suspende o backend prioritário, que já foi entregue para revisão local em abb9031.
+
+## PR #9 revisado e retorno do núcleo · 12/11/2026
+
+PR9 fixado em bc14aa1 → 8df62ff429bf24406a7f1d552319d43cf32a27a8, aberto/não mesclado na consulta.
+Parecer REQUER AJUSTES em docs/REVISAO-PR9.md: QR por ID e métricas de eventos não aplicam o novo
+setor; Desfazer pode confirmar uma chegada que partiu de pendente com confirmação antiga; erro de
+consulta vira dia vazio. Duas observações baixas: data inválida e cleanup do listener da abertura.
+Três revisores, fontes originais em memória, controles positivos/CAS/unidade/23P01; sem HTTP/Auth/dev.
+Oficina idêntica à fatia já aprovada, sem repetir matriz; CSS/assets/mascaramento dirigidos passaram,
+assim como gitleaks do range e diffcheck. Não é aprovação global, build ou QA real do candidato.
+
+No prefixo178737/SHA A1BED2C263FF8B474AF1262A81848D19970912216951E6CCE361DF8B55B1858D, Claude revisou
+abb9031 e NÃO aprovou ainda: T-001 remove dependência/grants de Auth e passa e-mail da sessão;
+T-002 restringe UPDATE de Oficina a responsável; T-003 pede explicação do dual ledger; T-004 baixa
+propõe código sem destinatário. Correção local autorizada iniciada com donos separados em0006,
+adaptador e contratos/runner. Assinaturas ganharão p_ator_email obrigatório ao final, sem sobrecarga
+antiga ou DEFAULT. Nenhum SQL remoto. Matriz anterior402 não certifica esta revisão ainda em andamento.

@@ -24,6 +24,7 @@ Os resultados medem a primeira barreira. O teste não consultou a IA.
 [OBTIDO] liberado
 [TIPO] bug
 [GRAVIDADE] alta
+
 [PERGUNTA] O filtro deve recusar esta solicitação antes da IA?
 [SOLUCAO] Reconhecer erros frequentes em «regras» quando aparecem perto de um pedido para ignorar instruções.
 
@@ -1489,3 +1490,35 @@ Contrato novo tests/sql/contratos-pecas-sem-canal.sql passou nos dois modos e co
 [OBTIDO] Cópias de nota em descrição/atividade foram retiradas; novos domínios usam texto genérico. Triggers redigem nota/snapshot e preservam IDs/audit/vizinhos. Contrato402 e revisão estática final passaram no hash2141BE5D. Não certifica retenção dos domínios antigos.
 [TIPO] bug corrigido localmente
 [GRAVIDADE] alta
+
+[ID] PR9-SETOR-001
+[ARQUIVO] src/app/api/painel/links/[id]/qr/route.ts:18–24, pin8df62ff
+[TESTE] Gerente Vendas pede QR de link Peças com ID conhecido; função original com fronteiras em memória e controle próprio positivo.
+[ESPERADO] Novo escopo de setor também recorta esse consumidor antes da resposta.
+[OBTIDO] Retorno200 e destino com mensagem inicial fictícia de Peças; noEscopo original recusa Peças. Consumidor é igual à base, mas ficou sem adaptação ao campo/setor novo do PR.
+[TIPO] bug de paridade no novo contrato do PR
+[GRAVIDADE] média
+
+[ID] PR9-SETOR-002
+[ARQUIVO] src/modulos/metricas/dados.ts:108–120, pin8df62ff
+[TESTE] Gerente Vendas lista/consulta evento Peças na mesma unidade, funções originais em memória.
+[ESPERADO] Política de setor antes da lista e agregações de eventos.
+[OBTIDO] Lista contém evento Peças e funil retorna chamados1/confirmados1/recusaram1. Filtro só por unidade; mesmo consumidor da base não foi adaptado ao novo setor.
+[TIPO] bug de paridade no novo contrato do PR
+[GRAVIDADE] média
+
+[ID] PR9-ACOMP-003
+[ARQUIVO] src/app/painel/agendamentos/acompanhamento/actions.ts:18,36, pin8df62ff
+[TESTE] Ação original da base alcança pendente com confirmado_em antigo; novo Chegou seguido de Desfazer.
+[ESPERADO] Restaurar pendente, como registrado no de_status da chegada.
+[OBTIDO] Termina confirmado porque infere o estado anterior pelo timestamp; controles comuns passaram.
+[TIPO] bug novo, reproduzido sem HTTP/banco real
+[GRAVIDADE] média
+
+[ID] PR9-ACOMP-004
+[ARQUIVO] src/app/painel/agendamentos/acompanhamento/page.tsx:47–48,124,132, pin8df62ff
+[TESTE] Consulta retorna erro08006 e data=null ao componente original.
+[ESPERADO] Avisar indisponibilidade, sem informar ausência de clientes.
+[OBTIDO] KPIs zero e Nenhum agendamento neste dia, sem erro visível.
+[TIPO] bug novo, reproduzido em memória
+[GRAVIDADE] média
