@@ -407,3 +407,23 @@ passaram em390/1440px sem overflow do documento. Build Webpack/TypeScript/diffch
 Detalhes e limites em docs/OFICINA-TELA-MVP.md. SQL0004 foi aplicado pelo Claude e lido realmente em11
 casos readonly; filas vazias não provam cartões, escrita ou E2E. Integração do adaptador3ee0a95 precede
 esta UI; servidor/dev e testes reais continuam com Claude/Simão. Nenhum novo servidor ou write remoto.
+
+## Fila atualizada pelo Simão via Claude · 12/11/2026
+
+Repasses conferidos até167538/SHA E1DDDF76AB2E34B0E739A05F85F0BEE01EE7C4431799CFD091687A5C36136AC9.
+Oficina UI6f75cd0 está pronta para revisão e integração depois do adaptador3ee0a95. Claude liberou
+transferência entre setores como próximo recorte prioritário: central/triagem ou cartão para lead de
+Vendas, cotação de Peças ou triagem de Oficina, preservando cliente único, nota/histórico e aviso ao
+destino. A liberação substitui o congelamento anterior desse recurso; contrato e revisão do núcleo
+continuam com Claude. Não confundir essa direção com transferência já implementada ou com autorização
+para expor histórico de outro setor.
+
+Depois: métricas de Peças e Oficina (Codex), pessoais para operador, setor/unidades para gerente e
+geral para administrador; depois E2E do bot. Marketing/campanhas por setor e identidade visual seguem
+com Claude. Peças ainda não tem página de métricas. Rótulo Minhas métricas do vendedor (f2b5cb6) foi
+cherry-picked pelo Claude e conferido na fonte compartilhada; nenhuma nova consulta foi entregue aqui.
+
+Do QA do Claude, registrar para correção dirigida em Peças: iniciais do avatar incluindo parêntese
+e distinção visual entre responsável da cotação e posse ativa da conversa. Layout F9 permanece para
+trabalho com Simão. Sem repetir os testes já aprovados nem confundir mudanças informadas pelo Claude
+com execução de E2E ou aplicação remota pelo Codex.
