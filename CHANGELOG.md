@@ -9,7 +9,10 @@ Versionamento semântico a partir de **0.0.1** (decisão do Simão, 10/11/2026).
 - Quem mescla na `main` (Claude ou Codex) atualiza `package.json`, este arquivo e cria a tag.
 
 ## [Não lançado]
+
+## [0.0.6] — 12/11/2026 — Usuários com links de cadastro, Minha conta, login e nome WAGconnect CRM (PR #8; revisado pelo Codex)
 ### Adicionado
+- Nome do sistema **WAGconnect CRM** com logo (menu, login, cadastro, ícones do app); login corporativo com foto à esquerda e formulário à direita.
 - Aba **Usuários** (Administração): links de cadastro por setor (Vendedor, Peças, Agendamento/Recepção) com validade, limite de pessoas e cancelamento; a pessoa cria o próprio acesso já com papel/setor/unidade. A equipe saiu de Configurações para cá.
 - **Minha conta**: a pessoa troca a própria senha (mínimo 6 caracteres); senha provisória mais simples.
 - F7 Pontuação do lead (0–100) no cartão de Vendas, com selo colorido (alta/média/baixa) e os motivos ao passar o mouse; novo filtro “Maior chance (pontuação)”. Regra transparente: temperatura, prazo, pagamento, qualificação, troca, valor e contato recente.
