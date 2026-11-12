@@ -1546,3 +1546,11 @@ Contrato novo tests/sql/contratos-pecas-sem-canal.sql passou nos dois modos e co
 [OBTIDO] P0001 sobre preservação ocorre igualmente nos dois candidatos; assert considera atualizado_em, atualizado pelo trigger existente. Contrato e0005 são idênticos à base. Não alterado para passar, mantido como falha legada separada da guarda55000 de A1.
 [TIPO] incompatibilidade preexistente de validação, não corrigida nesta fatia
 [GRAVIDADE] média
+
+[ID] PR9-ACOMP003-R1
+[ARQUIVO] src/app/painel/agendamentos/acompanhamento/actions.ts:40–42; src/lib/scheduling/acompanhamento.ts:53–55, pin5941347
+[TESTE] Funções originais: pendente com confirmação antiga → Chegou → Salvar compareceu sem mudar o status na Agenda → Desfazer.
+[ESPERADO] Ignorar evento compareceu→compareceu e restaurar pendente da chegada efetiva anterior.
+[OBTIDO] Seleciona o noop mais recente e fallback de confirmado_em termina confirmado. Controle sem noop volta pendente. O noop foi criado pela ação original, não injetado no histórico.
+[TIPO] bug ainda presente após correção parcial de ACOMP003, prova controlada sem HTTP/Auth/dev
+[GRAVIDADE] média

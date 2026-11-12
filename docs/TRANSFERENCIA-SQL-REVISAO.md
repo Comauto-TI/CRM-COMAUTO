@@ -94,4 +94,5 @@ HTTP, navegador, envio WhatsApp ou concorrência multissessão reais. Nenhum nov
 5. Paginação/exportação autorizadas dos novos dados, login/fluxo real e disputa multissessão.
 
 Agenda manual A/B segue na prioridade combinada após esta fatia. Acompanhamento(C), marketing e
-integração são do Claude; revisão do PR9 está em `docs/REVISAO-PR9.md`, ainda requer ajustes.
+integração são do Claude; revisão inicial em `docs/REVISAO-PR9.md` e revalidação atual em
+`docs/REVALIDACAO-PR9.md`, ainda com ACOMP003-R1 pendente no pin5941347.

@@ -562,3 +562,15 @@ diffcheck/gitleaks das fatias passaram. Sem novo build, HTTP/Auth/UI/envio/dev o
 Relatório atual docs/TRANSFERENCIA-SQL-REVISAO.md; usar runner privado validar-transferencia-t001-t002.mjs,
 pois o anterior ainda mira aridade9. Claude revalida o conteúdo final antes de aplicar dev, banco antes
 do adaptador novo. UI/central/dispatch fences e prioridades de agenda/métricas continuam pendentes.
+
+## PR9 corrigido, revalidação dirigida ainda requer R1 · 12/11/2026
+
+Claude informou correções8c8fc18 até179504/SHA6C74A0BEA3EDB07257B7AEFC373827BDDBB7A8D9476ADAD69181CF66A84BEAA9.
+GitHub confirmou candidato5941347fbf043e2eb4511f4585559e7f521add4e aberto/não mesclado. Delta pequeno
+conferido sem importar runtime. SETOR001/002, ACOMP004, BAIXA005/006 fixed:23 casos marketing,10
+verificações abertura e10 casos acompanhamento executados com fontes originais/fronteiras em memória.
+ACOMP003-R1 ainda reproduz: chegada de pendente com confirmado_em antigo → Salvar compareceu sem
+mudança na Agenda cria histórico noop → Desfazer seleciona noop e termina confirmado. Controle sem
+noop volta pendente; nenhum histórico artificial inserido. Falta filtrar a marcação efetiva.
+Parecer continua REQUER AJUSTE, não APROVADO. docs/REVALIDACAO-PR9.md, gitleaksdelta/diffcheck PASS;
+sem novo build/login/HTTP/Auth/dev. Transferência corrigidaC522 já foi disponibilizada para Claude.

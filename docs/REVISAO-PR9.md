@@ -1,5 +1,8 @@
 # Revisão funcional do PR #9
 
+Histórico do pin8df62ff. A revalidação posterior de `5941347` está em
+[REVALIDACAO-PR9.md](REVALIDACAO-PR9.md): cinco itens corrigidos, ACOMP003 ainda com o cenário R1.
+
 12/11/2026. [PR #9](https://github.com/Comauto-TI/CRM-COMAUTO/pull/9), consultado pelo conector GitHub:
 aberto, não mesclado. Base `bc14aa1e90e440ec87e6fc88a275c817041b7f87`; candidato
 `8df62ff429bf24406a7f1d552319d43cf32a27a8`. Parecer vale somente para esse par imutável.
