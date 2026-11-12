@@ -16,12 +16,12 @@ describe("permissões por área (F0-3)", () => {
     }
   });
 
-  it("vendedor: vendas, clientes, busca e atendimento — sem oficina, peças nem financeiro", () => {
+  it("vendedor: vendas, clientes e busca — sem central geral de atendimento (atende pelos cartões), oficina, peças nem financeiro", () => {
     const v = { papel: "vendedor", setor: "vendas" } as const;
     expect(podeAcessar(v, "vendas")).toBe(true);
     expect(podeAcessar(v, "clientes")).toBe(true);
     expect(podeAcessar(v, "busca")).toBe(true);
-    expect(podeAcessar(v, "atendimento")).toBe(true);
+    expect(podeAcessar(v, "atendimento")).toBe(false);
     expect(podeAcessar(v, "oficina")).toBe(false);
     expect(podeAcessar(v, "pecas")).toBe(false);
     expect(podeAcessar(v, "financeiro")).toBe(false);
@@ -127,5 +127,17 @@ describe("importação de clientes", () => {
     expect(podeAcessar({ papel: "gerente", setor: "pecas" }, "importacao")).toBe(false);
     expect(podeAcessar({ papel: "vendedor", setor: "vendas" }, "importacao")).toBe(false);
     expect(podeAcessar({ papel: "recepcao", setor: "oficina" }, "importacao")).toBe(false);
+  });
+});
+
+describe("central geral de atendimento = triagem (decisão do Simão 12/11)", () => {
+  it("recepção, gerente de Oficina/administração e admin; ninguém mais", () => {
+    expect(podeAcessar({ papel: "recepcao", setor: "oficina" }, "atendimento")).toBe(true);
+    expect(podeAcessar({ papel: "gerente", setor: "oficina" }, "atendimento")).toBe(true);
+    expect(podeAcessar({ papel: "gerente", setor: "administracao" }, "atendimento")).toBe(true);
+    expect(podeAcessar({ papel: "admin", setor: "administracao" }, "atendimento")).toBe(true);
+    for (const [papel, setor] of [["vendedor", "vendas"], ["consultor_tecnico", "oficina"], ["gerente", "vendas"], ["gerente", "pecas"], ["pecas", "pecas"], ["financeiro", "administracao"]] as const) {
+      expect(podeAcessar({ papel, setor }, "atendimento")).toBe(false);
+    }
   });
 });

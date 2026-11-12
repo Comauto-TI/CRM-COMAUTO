@@ -50,7 +50,7 @@ export const AREAS = {
   metricas: ["gerente", "vendedor", "financeiro"], // vendedor vê SÓ as próprias (recorte no servidor); gerente o setor
   busca: ["gerente", "vendedor", "consultor_tecnico", "pecas", ...RECEPCAO],
   clientes: ["gerente", "vendedor", "consultor_tecnico", "pecas", ...RECEPCAO],
-  atendimento: ["gerente", "vendedor", "consultor_tecnico", ...RECEPCAO],
+  atendimento: ["gerente", ...RECEPCAO], // central geral = triagem (recepção + gerente de Oficina/administração + admin); cada setor atende pelos próprios cartões (decisão do Simão 12/11)
   agenda: ["gerente", "consultor_tecnico", ...RECEPCAO],
   links: ["gerente", "vendedor", ...RECEPCAO],
   followups: ["gerente", ...RECEPCAO],
@@ -68,7 +68,7 @@ export const AREAS = {
 export type Area = keyof typeof AREAS;
 
 // métricas de hoje são as de Vendas (funil/eventos); gerente de outro setor não vê. Métricas por setor vêm depois (A4).
-const SETOR_DA_AREA: Partial<Record<Area, Setor>> = { vendas: "vendas", metricas: "vendas", oficina: "oficina", agenda: "oficina", importacao: "vendas", pecas: "pecas" };
+const SETOR_DA_AREA: Partial<Record<Area, Setor>> = { vendas: "vendas", metricas: "vendas", oficina: "oficina", agenda: "oficina", atendimento: "oficina", importacao: "vendas", pecas: "pecas" };
 
 export type QuemAcessa = { papel: Papel; setor: Setor };
 
