@@ -1250,7 +1250,8 @@ a { color: var(--vw-azul); }
 .marca-sistema { display: grid; gap: 4px; justify-items: start; padding: 4px 2px 10px; }
 .marca-wordmark { display: block; width: 168px; height: auto; }
 .marca-empresa { font-size: 11px; font-weight: 600; letter-spacing: .12em; text-transform: uppercase; color: rgba(255, 255, 255, .62); }
-.marca-selo { background: #041831; border-radius: 12px; padding: 16px 18px; justify-items: start; }
-.marca-selo .marca-wordmark { width: 220px; }
+.marca-selo { background: linear-gradient(180deg, #d5dae2 0%, #c3c9d3 100%); border-radius: 12px; padding: 16px 18px; justify-items: start; }
+.marca-selo .marca-wordmark { width: 220px; filter: drop-shadow(0 1px 1px rgba(0, 0, 0, .45)) drop-shadow(0 3px 6px rgba(0, 0, 0, .25)); }
+.marca-selo .marca-empresa { color: #3b4657; }
 .acesso-logo { display: block; width: 340px; max-width: 100%; height: auto; }
 @media (max-width: 900px) { .acesso-logo { width: 220px; } }
