@@ -1,8 +1,44 @@
 # Transferência entre setores — contrato para revisão
 
-Direção do Simão recebida pelo Claude em 12/11/2026. **Proposta, ainda sem SQL, serviço ou tela de
-transferência implementados.** Base examinada: Claude `588bc1c` (Oficina integrada), incorporada na
+Direção do Simão recebida pelo Claude em 12/11/2026. **Contrato fechado no repasse posterior abaixo;
+implementação local em andamento, ainda sem revisão/integração de transferência no dev.** Base: Claude
+`588bc1c` (Oficina integrada), incorporada na
 branch `codex/transferencias-setores` pelo merge `be4868b`. Não é publicação em produção.
+
+## Contrato fechado pelo Claude — prevalece sobre a proposta histórica
+
+Repasse conferido até169975/SHA664291681E143C1A7B8405ACC9FEB0AA0DA469D0C2F40E791A6FD00880671714.
+
+- **Encaminhar:** negócio de origem intacto, inclusive resultado comercial e decisão de aberto/fechado.
+  Item nasce diretamente na fila do destino, sem aceite intermediário. Posse antiga é liberada na
+  mesma transação e destino passa a controlar o roteamento da conversa.
+- **Oficina:** só pedido de domínio, sem canal modular/WhatsApp nesta fatia. Mensagens seguintes
+  vão para a central da recepção. Não compartilhar mensagens anteriores como consequência disso.
+- **Reuso obrigatório:** aproveitar item aberto no destino (mesmo funil em Vendas; cotação aberta;
+  solicitação aberta em Oficina), acrescentando a nota sem sobrescrever dono ou dados comerciais.
+  Criar somente quando não existir. Vendas exige funil, responsável opcional elegível; novos itens
+  de Peças/Oficina nascem sem dono. A falta de dono não autoriza histórico de outra carteira.
+- **Quem encaminha:** dono atual ou supervisão do setor/unidades de origem/admin. Central:
+  recepção/gestão de Oficina/administração/admin, fila ou posse própria; supervisão pode intervir.
+  Modular exige versão exata; central confere posse atual sob lock, sem inventar versão da tela.
+- **Dados e atomicidade:** somente nota explícita atravessa com setor e autor; destino, evento,
+  aviso elegível e audit na mesma RPC. Sem wamid inventado, backfill de histórico ou confirmação
+  falsa em erro. SQL primeiro para revisão do Claude; código/guards antes de expor UI.
+
+RPC combinada para implementação e testes: `transferir_atendimento_setor(p_operacao uuid,
+p_origem text, p_registro uuid, p_ator uuid, p_destino text, p_funil text, p_responsavel uuid,
+p_nota text, p_versao integer)`. Origens central/Vendas/Peças/Oficina; destinos os três setores,
+distintos da origem de setor. Nota de1 a1000 caracteres; UUID por tentativa; replay exato revalida
+autorização. Ator vem da sessão, cliente/unidade/vínculo derivam da origem no banco.
+
+Sucesso mínimo: `ok`, `operacaoId`, `setorDestino`, `idDestino`, `reutilizado`. Nenhuma mensagem,
+cliente, e-mail ou nome de terceiro no retorno de falha. Esta definição não comprova implementação.
+
+**Dependências de código antes de testar transferência real:** central atual consulta dados extras
+por cliente (incluindo notas) e inbox/fila não recortam unidades no query. RPC/rota nova sozinhas não
+fecham esses caminhos. Adaptar leituras, contagens, capacidades e ações que o piloto atravessa com
+escopo atual; preservar só nota/novas mensagens explicitamente autorizadas após ida para Oficina.
+Não aplicar a UI de transferência sobre o legado sem essa validação.
 
 ## Resultado esperado
 
@@ -26,7 +62,7 @@ uma oportunidade como perdida ou cancelar cotação apenas para liberar o canal:
 | Mensagem vinculada é imutável | `0006_atendimento.sql:1107–1112`, `1151` | Não mover mensagens antigas para o destino ou forjar proveniência do bot. |
 | Oficina atual é domínio de triagem | `0004_oficina.sql:3–35` | Pode originar/receber uma solicitação, mas WhatsApp de Oficina ainda depende de decisão expressa de contrato. |
 
-## Recomendação para o primeiro recorte
+## Proposta histórica para revisão (9bcab0f, substituída onde divergir do contrato fechado)
 
 1. Manter a unidade da origem; transferência entre unidades fica fora deste recorte. Ator, cliente,
    unidade e eventual conversa são derivados novamente do registro no servidor, nunca livres do form.
@@ -54,7 +90,7 @@ uma oportunidade como perdida ou cancelar cotação apenas para liberar o canal:
    Nenhuma transferência cancela HTTP já enviado. Uma tentativa antiga não pode ganhar nova
    autorização após troca de contexto; `outbound.ts` e seu ponto de despacho precisam da mesma guarda.
 
-## Decisões de contrato para Claude antes do SQL
+## Perguntas históricas respondidas pelo contrato fechado
 
 | Decisão | Recomendação / limite |
 |---|---|

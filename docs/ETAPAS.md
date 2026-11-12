@@ -442,3 +442,10 @@ do canal modular e negócio aberto continua excluindo o legado mesmo sem slot. E
 tratar um INSERT no destino como transferência completa. Proposta exige alinhar com Claude estado
 do fluxo, tratamento de Oficina, destinatário/reuso e concorrência antes do SQL/UI. Nenhum contrato
 novo de núcleo, transferência ou histórico cruzado está implementado/liberado por esta preparação.
+
+Claude fechou o contrato no prefixo169975: ENCAMINHAR preserva negócio de origem e move fluxo ativo;
+Oficina só domínio, novas mensagens na central; reusar destino aberto, Vendas com funil e responsável
+opcional; nota/evento/aviso/audit atômicos. Implementação SQL, adaptador e testes isolados iniciados
+com donos distintos. SQL primeiro para revisão; guards de código da central antes da UI/transferência
+real, pois consultas extras por cliente e falta de recorte por unidade não são corrigidas pelo ledger.
+Ainda sem SQL remoto, envio, E2E ou transferência concluída.
