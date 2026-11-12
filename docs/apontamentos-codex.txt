@@ -104,6 +104,7 @@ Os resultados medem a primeira barreira. O teste não consultou a IA.
 [OBTIDO] liberado
 [TIPO] bug
 [GRAVIDADE] media
+
 [PERGUNTA] O filtro deve recusar esta solicitação antes da IA?
 [SOLUCAO] Cobrir verbos coloquiais como «monta» junto do objeto de software já normalizado.
 
@@ -1464,3 +1465,11 @@ Contrato novo tests/sql/contratos-pecas-sem-canal.sql passou nos dois modos e co
 [OBTIDO] GET chama preChecagem que executa UPDATE; navegador tentou o prefetch e o QA bloqueou antes do efeito. Sem correção de núcleo aplicada: separar cálculo puro do GET e persistência autorizada em ação explícita. Detalhe não certificado em readonly.
 [TIPO] bug
 [GRAVIDADE] media
+
+[ID] TRANSF-SETORES-CONTRATO-001
+[ARQUIVO] docs/TRANSFERENCIA-ENTRE-SETORES.md; supabase/migrations/0006_atendimento.sql:140,1424,1987
+[TESTE] Preparação readonly de transferência sobre Claude588bc1c com dois agentes independentes.
+[ESPERADO] Operação atômica entre setores, cliente único, nota/histórico/aviso e invalidação do fluxo antigo sem divulgar mensagens anteriores.
+[OBTIDO] Modelo modular só aceita Vendas/Peças; Oficina não tem conversa/versão. Devolver slot não desativa negócio aberto. Proposta concreta registra decisões de fluxo/canal, responsável/reuso e versão central/Oficina para Claude fechar ANTES da mudança de núcleo/SQL. Nenhum código de transferência ou SQL remoto foi executado; não confundir com entrega pronta.
+[TIPO] preparação / ainda-nao-implementado
+[GRAVIDADE] dependência de contrato

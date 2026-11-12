@@ -427,3 +427,18 @@ Do QA do Claude, registrar para correção dirigida em Peças: iniciais do avata
 e distinção visual entre responsável da cotação e posse ativa da conversa. Layout F9 permanece para
 trabalho com Simão. Sem repetir os testes já aprovados nem confundir mudanças informadas pelo Claude
 com execução de E2E ou aplicação remota pelo Codex.
+
+## Oficina integrada e contrato de transferência preparado · 12/11/2026
+
+Claude confirmou Oficina (adaptador +6f75cd0) integrada no merge287c498, 1.919 Vitest, servidor local
+recompilado e navegação de recepção/consultor autorizada, vendedor recusado. Esta execução é relato
+do Claude; Codex não repetiu os testes nem fez novas gravações no dev. Nova branch codex/transferencias-setores
+incorporou Claude588bc1c em be4868b; runtime coincide com essa fonte e ambos os históricos do chat
+foram preservados. codex/oficina-fila e stashes anteriores permanecem intactos.
+
+Próximo recorte: proposta concreta em docs/TRANSFERENCIA-ENTRE-SETORES.md, com duas análises
+independentes readonly. Central/Oficina não têm a versão dos diálogos, Oficina ainda não participa
+do canal modular e negócio aberto continua excluindo o legado mesmo sem slot. Esses fatos impedem
+tratar um INSERT no destino como transferência completa. Proposta exige alinhar com Claude estado
+do fluxo, tratamento de Oficina, destinatário/reuso e concorrência antes do SQL/UI. Nenhum contrato
+novo de núcleo, transferência ou histórico cruzado está implementado/liberado por esta preparação.
