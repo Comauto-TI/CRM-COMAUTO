@@ -381,3 +381,19 @@ CSS coincide com a main e chat preserva os dois históricos; src/app/src/lib/Ven
 Typecheck e 99 testes focados passaram após combinar as fontes. Sem repetir a matriz SQL inalterada.
 Claude informou iniciar revisão/aplicação de f6295a6 e depois3ee0a95; ainda não declarar o dev validado.
 Repasse de identidade visual final/loading foi lido e permanece com Claude, sem editar essa frente aqui.
+
+## Oficina: PostgREST e pendência de métricas · 12/11/2026
+
+Claude confirmou 0004 revisada/aplicada no dev. Codex comprovou leitura real via PostgREST em 11 casos:
+recepção/consultor autorizados com filas vazias e minhas; perfis indevidos recusados sem total/corpo;
+ator inexistente, limite inválido e chamada anônima recusados. Sem writes/sessões/fixtures ou leitura
+de dados pessoais em relatório. Evidência/limites em docs/OFICINA-POSTGREST-READONLY.md. Não é login/E2E,
+corpo de cartão ou isolamento quantitativo real. Preparação da tela essencial avança isoladamente;
+Claude ainda integra o adaptador, e a revisão/integração da UI permanece com ele.
+
+Simão perguntou pela aba de métricas de Peças e pela visão do vendedor. **Métricas de Peças seguem
+pendentes na A4**: o menu só tem Cotações e não existe página ligada ao setor. O vendedor já tem a rota
+/painel/metricas com recorte pessoal e título Minhas métricas; o menu genérico confundia. Fix isolado
+f2b5cb6 muda somente seu rótulo para Minhas métricas, mantendo permissões e consultas. Peças precisa
+da entrega A4 com carteira própria, gerente por setor/unidades e admin; não liberar métricas de Vendas
+para Peças nem fingir que o dashboard pessoal já foi entregue nesse módulo.
