@@ -19,6 +19,7 @@ Versionamento semântico a partir de **0.0.1** (decisão do Simão, 10/11/2026).
 ### Alterado
 - Central geral de atendimento só para triagem (recepção, gerente de Oficina/administração e admin); os setores atendem pelos próprios cartões.
 ### Corrigido
+- Transferência local compara a posse legada com o e-mail da sessão sem consultar ou conceder acesso ao Auth; permissões de atualização de Oficina limitadas ao responsável.
 - Avatar da conversa usa as mesmas iniciais do cartão; painel de Peças distingue o responsável pela cotação de quem assume a conversa.
 - “Agendamentos hoje” não conta mais cancelado como pendente.
 - Telefone do cliente em “Quem confirmou” agora aparece mascarado (LGPD).

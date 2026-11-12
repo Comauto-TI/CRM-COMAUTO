@@ -2127,17 +2127,9 @@ alter table public.mensagens add column if not exists transferencia_central_id u
 create index if not exists mensagens_transferencia_central_idx
   on public.mensagens(transferencia_central_id,criado_em,id) where transferencia_central_id is not null;
 grant select(transferencia_central_id),insert(transferencia_central_id) on public.mensagens to service_role;
--- Só leitura mínima para comparar a posse legada por e-mail com o ator UUID.
--- Stubs de contratos antigos possuem apenas id, sem implementar Auth.
-do $$ begin
-  if exists(select 1 from information_schema.columns where table_schema='auth' and table_name='users' and column_name='email') then
-    grant usage on schema auth to service_role;
-    grant select(id,email) on auth.users to service_role;
-  end if;
-end $$;
 grant select(nome) on public.usuarios to service_role;
 grant select,insert on public.vendas_atividades,public.oficina_atendimentos to service_role;
-grant update(descricao,responsavel_id) on public.oficina_atendimentos to service_role;
+grant update(responsavel_id) on public.oficina_atendimentos to service_role;
 grant select on public.vendas_etapas to service_role;
 grant insert on public.vendas_oportunidades to service_role;
 grant update(unidade,assumida_em,alerta_reenviado_em) on public.conversas to service_role;
@@ -2220,10 +2212,19 @@ returns jsonb language sql stable security invoker set search_path='' as $$
     pg_catalog.jsonb_build_object('ok',false,'codigo','nao_encontrado'));
 $$;
 
-create or replace function public.central_transferencia_legivel(p_conversa uuid,p_ator uuid,p_unidade text)
+-- Fecha as aridades antigas sem ler/revogar privilégios do Auth compartilhado.
+-- São somente funções desta entrega; nenhum dado ou vínculo é removido.
+drop function if exists public.transferir_atendimento_setor(uuid,text,uuid,uuid,text,text,uuid,text,integer);
+drop function if exists public.mensagens_origem_transferencia(text,uuid,uuid,uuid,uuid,text);
+drop function if exists public.central_transferencia_legivel(uuid,uuid,text);
+
+create or replace function public.central_transferencia_legivel(p_conversa uuid,p_ator uuid,p_unidade text,p_ator_email text)
 returns boolean language plpgsql stable security invoker set search_path='' as $$
-declare u record; c record; email_atual text;
+declare u record; c record;
 begin
+  -- Somente o servidor chama a RPC e fornece o e-mail da sessão, nunca o formulário.
+  if p_ator_email is null or p_ator_email='' or char_length(p_ator_email)>320 or p_ator_email<>btrim(p_ator_email)
+    or position(chr(10) in p_ator_email)>0 or position(chr(13) in p_ator_email)>0 then return false; end if;
   select user_id,papel,setor,unidade into u from public.usuarios where user_id=p_ator and ativo;
   if not found or not (u.papel in ('admin','recepcao','atendente') or (u.papel='gerente' and u.setor in ('oficina','administracao'))) then return false; end if;
   perform 1 from public.unidades un where un.chave=p_unidade and un.ativa;
@@ -2233,13 +2234,12 @@ begin
   if not found or c.status<>'humano' or c.unidade<>p_unidade then return false; end if;
   if not exists(select 1 from public.clientes cl where cl.id=c.cliente_id and not cl.anonimizado) then return false; end if;
   if u.papel in ('admin','gerente') or c.assumida_por is null then return true; end if;
-  select a.email into email_atual from auth.users a where a.id=p_ator;
-  return email_atual is not null and c.assumida_por=email_atual;
+  return c.assumida_por=p_ator_email;
 end $$;
 
 /** Corpo e política são selecionados juntos; IDs desta função não são permissões futuras. */
 create or replace function public.mensagens_origem_transferencia(
-  p_origem text,p_registro uuid,p_ator uuid,p_cliente uuid,p_conversa uuid,p_unidade text
+  p_origem text,p_registro uuid,p_ator uuid,p_cliente uuid,p_conversa uuid,p_unidade text,p_ator_email text
 ) returns table(id uuid,conteudo text,direcao text,autor text,tipo text,status text,criado_em timestamptz)
 language sql stable security invoker set search_path='' as $$
   with origem as materialized (
@@ -2263,7 +2263,7 @@ language sql stable security invoker set search_path='' as $$
     select m.id,m.conteudo,m.direcao,m.autor,m.tipo,m.status,m.criado_em
     from public.mensagens_legadas m join public.mensagens bruto on bruto.id=m.id
     where p_origem='central' and p_registro=p_conversa
-      and public.central_transferencia_legivel(p_conversa,p_ator,p_unidade)
+      and public.central_transferencia_legivel(p_conversa,p_ator,p_unidade,p_ator_email)
       and m.conversa_id=p_conversa and m.cliente_id=p_cliente
       and coalesce(bruto.metadata->'interno','false'::jsonb)='false'::jsonb
       and ((m.direcao='entrada' and m.autor='cliente') or (m.direcao='saida' and m.autor in ('atendente','bot','sistema')))
@@ -2354,16 +2354,18 @@ create trigger mensagem_transferencia_central_imutavel before update of transfer
 
 create or replace function public.transferir_atendimento_setor(
   p_operacao uuid,p_origem text,p_registro uuid,p_ator uuid,p_destino text,p_funil text,
-  p_responsavel uuid,p_nota text,p_versao integer
+  p_responsavel uuid,p_nota text,p_versao integer,p_ator_email text
 ) returns jsonb language plpgsql security invoker set search_path='' as $$
 declare pessoa record; anterior public.transferencias_setores%rowtype; rota public.atendimento_rotas_setores%rowtype;
   cliente uuid; loja text; dono uuid; veiculo uuid; canal public.conversas%rowtype;
   origem_mod public.atendimentos_modulares%rowtype; destino_mod public.atendimentos_modulares%rowtype;
   reservado uuid; alvo_id uuid; alvo_dono uuid; funil_destino uuid; etapa_destino uuid; reutilizado boolean;
-  supervisor boolean; pessoa_email text; destinatario record; destinatarios uuid[]; escolha record;
+  supervisor boolean; destinatario record; destinatarios uuid[]; escolha record;
   aviso_nome text; link_destino text; origem_nome text; snapshot_ids jsonb; snapshot_inicio timestamptz; snapshot_fim timestamptz;
 begin
   if p_operacao is null or p_ator is null or p_registro is null or p_origem is null
+    or p_ator_email is null or p_ator_email='' or char_length(p_ator_email)>320 or p_ator_email<>btrim(p_ator_email)
+    or position(chr(10) in p_ator_email)>0 or position(chr(13) in p_ator_email)>0
     or p_origem not in ('central','vendas','pecas','oficina') or p_destino is null
     or p_destino not in ('vendas','pecas','oficina') or p_destino=p_origem
     or p_versao is null or p_versao not between 0 and 2147483646
@@ -2433,7 +2435,7 @@ begin
           else pg_catalog.jsonb_build_object('nome',anterior.aviso_responsavel_nome) end);
     end if;
     if p_origem='central' then
-      if not public.central_transferencia_legivel(canal.id,p_ator,loja) then raise sqlstate 'P1009'; end if;
+      if not public.central_transferencia_legivel(canal.id,p_ator,loja,p_ator_email) then raise sqlstate 'P1009'; end if;
     else
       select * into origem_mod from public.atendimentos_modulares a
         where (p_origem='vendas' and a.oportunidade_id=p_registro) or (p_origem='pecas' and a.cotacao_id=p_registro) for update nowait;
@@ -2453,6 +2455,7 @@ begin
     if exists(select 1 from public.mensagens m where m.conversa_id=canal.id and m.direcao='saida'
       and m.autor='atendente' and (m.metadata->>'estagio' in ('reservado','despachando') or m.erro='envio_em_processamento')
       and m.status not in ('enviada','entregue','lida','falhou')) then raise sqlstate 'P1011'; end if;
+    -- T-003: a mesma mensagem com ledgers de Peças/triagem E Vendas é origem ambígua por contrato.
     if exists(select 1 from public.mensagens m join public.encaminhamentos_bot p on p.referencia=m.wamid
       join public.vendas_encaminhamentos_bot v on v.referencia=m.wamid
       where m.conversa_id=canal.id and m.entrada_cliente_externa and (
@@ -2535,7 +2538,7 @@ begin
     insert into public.transferencias_mensagens(operacao_id,mensagem_id,conversa_id,cliente_id,unidade,destino,registro_destino,
       direcao,autor,tipo,conteudo,status,criado_em)
       select p_operacao,m.id,canal.id,cliente,loja,p_destino,alvo_id,m.direcao,m.autor,m.tipo,m.conteudo,m.status,m.criado_em
-      from public.mensagens_origem_transferencia(p_origem,p_registro,p_ator,cliente,canal.id,loja) m;
+      from public.mensagens_origem_transferencia(p_origem,p_registro,p_ator,cliente,canal.id,loja,p_ator_email) m;
 
     if p_destino in ('vendas','pecas') then
       select * into destino_mod from public.atendimentos_modulares a where
@@ -2657,16 +2660,16 @@ end $$;
 revoke all on function public.rota_permite_atendimento(uuid),public.rota_destino_aberto(text,uuid,uuid,text),
   public.destino_transferencia_legivel(text,uuid,uuid,uuid,uuid,text),public.texto_compartilhavel_transferencia(text),
   public.mensagens_snapshot_destino(text,uuid,uuid),public.ler_snapshot_transferencia(uuid,uuid),
-  public.central_transferencia_legivel(uuid,uuid,text),public.mensagens_origem_transferencia(text,uuid,uuid,uuid,uuid,text),
+  public.central_transferencia_legivel(uuid,uuid,text,text),public.mensagens_origem_transferencia(text,uuid,uuid,uuid,uuid,text,text),
   public.proteger_rota_do_canal(),public.transferencia_central_leitura(),public.preservar_transferencia_central(),
-  public.transferir_atendimento_setor(uuid,text,uuid,uuid,text,text,uuid,text,integer)
+  public.transferir_atendimento_setor(uuid,text,uuid,uuid,text,text,uuid,text,integer,text)
   from public,anon,authenticated,service_role;
 grant execute on function public.rota_permite_atendimento(uuid),public.rota_destino_aberto(text,uuid,uuid,text),
   public.destino_transferencia_legivel(text,uuid,uuid,uuid,uuid,text),public.texto_compartilhavel_transferencia(text),
   public.mensagens_snapshot_destino(text,uuid,uuid),public.ler_snapshot_transferencia(uuid,uuid),
-  public.central_transferencia_legivel(uuid,uuid,text),public.mensagens_origem_transferencia(text,uuid,uuid,uuid,uuid,text),
+  public.central_transferencia_legivel(uuid,uuid,text,text),public.mensagens_origem_transferencia(text,uuid,uuid,uuid,uuid,text,text),
   public.proteger_rota_do_canal(),public.transferencia_central_leitura(),public.preservar_transferencia_central(),
-  public.transferir_atendimento_setor(uuid,text,uuid,uuid,text,text,uuid,text,integer) to service_role;
+  public.transferir_atendimento_setor(uuid,text,uuid,uuid,text,text,uuid,text,integer,text) to service_role;
 
 -- A anonimização existente marca clientes.anonimizado; as cópias não podem escapar
 -- dessa operação. Não há backfill nem anonimização executada pela migration.

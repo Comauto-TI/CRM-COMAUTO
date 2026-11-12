@@ -25,13 +25,14 @@ begin
 end $$;
 create function pg_temp.ts_rpc(operacao integer,origem text,registro uuid,ator integer,destino text,
   funil text default null,responsavel integer default null,nota text default 'Nota explícita fictícia',versao integer default 0,
-  papel text default 'service_role') returns jsonb language plpgsql as $$
+  papel text default 'service_role', ator_email text default null) returns jsonb language plpgsql as $$
 declare r jsonb;
 begin
   if papel not in ('service_role','anon','authenticated') then raise exception 'Papel de fixture inválido.'; end if;
   execute format('set local role %I',papel);
   r:=public.transferir_atendimento_setor(pg_temp.ts_id(operacao),origem,registro,pg_temp.ts_id(ator),destino,funil,
-    case when responsavel is null then null else pg_temp.ts_id(responsavel) end,nota,versao);
+    case when responsavel is null then null else pg_temp.ts_id(responsavel) end,nota,versao,
+    coalesce(ator_email,'qa-'||ator||'@comauto.invalid'));
   reset role;
   return r;
 exception when others then reset role;raise;
@@ -593,6 +594,41 @@ begin
   perform pg_temp.ts_assert(r->>'ok'='true' and r->>'nota'='[removido — LGPD]'
     and not exists(select 1 from jsonb_array_elements(r->'mensagens') m where m->>'conteudo' is distinct from '[removido — LGPD]'),
     'LGPD reativação só permite nota e corpos redigidos');
+end $$;
+
+-- A identidade da posse legada vem da sessão do servidor, nunca de leitura do Auth.
+-- A nova assinatura não deixa overload público antigo sem o e-mail autenticado.
+do $$ declare registro uuid:=pg_temp.ts_preparar(84,'central');r jsonb;antes jsonb;email_invalido text;
+begin
+  update public.conversas set assumida_por='qa-2@comauto.invalid' where id=registro;
+  antes:=pg_temp.ts_estado();
+  r:=pg_temp.ts_rpc(6840,'central',registro,2,'pecas',null,null,'Nota com posse central',0,'service_role','qa-17@comauto.invalid');
+  perform pg_temp.ts_assert(r=jsonb_build_object('ok',false,'codigo','conflito'),'e-mail divergente não toma posse central');
+  perform pg_temp.ts_assert(antes=pg_temp.ts_estado(),'e-mail divergente sem efeitos');
+  foreach email_invalido in array array[null::text,'',' ',E'qa-2@comauto.invalid\n',E'qa-2@comauto.invalid\r',
+    ' qa-2@comauto.invalid',repeat('x',321)] loop
+    set local role service_role;
+    r:=public.transferir_atendimento_setor(pg_temp.ts_id(6841),'central',registro,pg_temp.ts_id(2),
+      'pecas',null,null,'Nota com identidade inválida',0,email_invalido);
+    reset role;
+    perform pg_temp.ts_assert(r=jsonb_build_object('ok',false,'codigo','invalido'),'e-mail ausente ou malformado recusado: '||coalesce(quote_literal(email_invalido),'NULL'));
+    perform pg_temp.ts_assert(antes=pg_temp.ts_estado(),'e-mail inválido sem efeitos: '||coalesce(quote_literal(email_invalido),'NULL'));
+  end loop;
+  perform pg_temp.ts_assert(to_regprocedure('public.transferir_atendimento_setor(uuid,text,uuid,uuid,text,text,uuid,text,integer)') is null,'RPC antiga sem e-mail ausente');
+  perform pg_temp.ts_assert(to_regprocedure('public.central_transferencia_legivel(uuid,uuid,text)') is null,'política central antiga sem e-mail ausente');
+  perform pg_temp.ts_assert(to_regprocedure('public.mensagens_origem_transferencia(text,uuid,uuid,uuid,uuid,text)') is null,'seletor antigo sem e-mail ausente');
+  perform pg_temp.ts_assert(not has_schema_privilege('service_role','auth','usage'),'transferência sem USAGE Auth');
+  perform pg_temp.ts_assert(not has_any_column_privilege('service_role','auth.users','select,insert,update,references'),'transferência sem acesso a colunas Auth');
+  r:=pg_temp.ts_ok(6842,'central',registro,2,'pecas',null,null,'Nota com posse central');
+  perform pg_temp.ts_assert(r->>'ok'='true','e-mail da própria sessão reconhece posse sem consultar Auth');
+exception when others then reset role;raise;
+end $$;
+
+do $$ begin
+  perform pg_temp.ts_assert(has_column_privilege('service_role','public.oficina_atendimentos','responsavel_id','update'),'atribuição Oficina mantém grant mínimo');
+  perform pg_temp.ts_assert(not has_column_privilege('service_role','public.oficina_atendimentos','descricao','update'),'Oficina não concede UPDATE descricao');
+  perform pg_temp.ts_erro('Oficina descricao imutável via servidor',
+    format('set local role service_role;update public.oficina_atendimentos set descricao=''Alteração indevida'' where id=%L',pg_temp.ts_id(3008)),'42501');
 end $$;
 
 do $$ declare nome text;papel text;p record;
