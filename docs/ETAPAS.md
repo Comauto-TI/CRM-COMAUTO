@@ -356,3 +356,18 @@ trabalho do Claude no checkout573bfa2/package0.0.5; seletores foram adaptados ao
 Oficina WIP permanece intacto: SQL A210A0A9 com contratos locais, revisão independente pendente;
 adaptador/testes ainda não executados funcionalmente. O typecheck global passou durante validação dos
 ajustes UI, sem ativar o módulo. Continuar só a fila essencial após repasses/integração; sem extras/F2-3.
+
+## Continuidade de 12/11 — PR #8 aprovado e Oficina pronta para revisão cruzada
+
+PR #8 aprovado no pin f12e0c102d3ade6db9d8ee8c841711991e052348: convite corrigido confirmado por
+verificador independente (51 chamadas controladas), origem só app_metadata, parser CSS, quatro testes
+focados, build Webpack/TypeScript e gitleaks. Parecer em 202a781/ref codex/revalidacao-pr8; scan original
+selado preservado. Sem merge/tag/deploy ou Auth remoto pelo Codex. Decisão de autoidentificação do piloto
+registrada pelo Claude; confirmação de caixa postal fica para Segurança.
+
+Oficina: revisão estática independente APROVOU 0004 A210A0A9 no pin a13b721, sem bug funcional encontrado.
+Os 88 testes do adaptador e 7 do parser foram executados e passaram. SQL/contratos permanecem idênticos
+à matriz local anterior de dois modos ACL/reaplicação/upgrade, sem repetição desnecessária. Repasse em
+docs/OFICINA-FILA-VALIDACAO.md: Claude revisa/aplica primeiro f6295a6/0004; adaptador separado3ee0a95.
+Nada aplicado no dev e nenhuma tela nova exposta. UI exige SQL/contrato aprovados e contexto validado;
+Supabase/PostgREST, login/E2E e concorrência multissessão continuam pendentes. Sem ampliar Oficina.
