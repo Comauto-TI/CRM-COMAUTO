@@ -1309,7 +1309,7 @@ a { color: var(--vw-azul); }
 .acomp-grupo > summary h3 { display: inline; }
 .acomp-lista { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; }
 .acomp-item {
-  display: grid; grid-template-columns: 56px minmax(160px, 1.3fr) minmax(160px, 1.6fr) minmax(70px, 0.5fr) auto auto;
+  display: grid; grid-template-columns: 56px minmax(0, 1.3fr) minmax(0, 1.6fr) 80px 150px 190px;
   gap: 12px; align-items: center; padding: 10px 14px; background: var(--superficie);
   border: 1px solid var(--borda); border-left: 4px solid var(--borda); border-radius: var(--raio-pequeno);
 }
@@ -1321,6 +1321,7 @@ a { color: var(--vw-azul); }
 .acomp-quem, .acomp-servico { display: flex; flex-direction: column; min-width: 0; }
 .acomp-quem > *, .acomp-servico > * { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .acomp-nome { font-weight: 600; }
+.acomp-selo { display: flex; justify-content: flex-end; }
 .acomp-acoes { display: flex; gap: 6px; justify-content: flex-end; }
 .acomp-acoes form { margin: 0; }
 @media (max-width: 900px) {
