@@ -9,6 +9,12 @@ Versionamento semântico a partir de **0.0.1** (decisão do Simão, 10/11/2026).
 - Quem mescla na `main` (Claude ou Codex) atualiza `package.json`, este arquivo e cria a tag.
 
 ## [Não lançado]
+### Adicionado
+- Backend de transferência entre setores: operação atômica, reuso de pedido aberto, responsável preservado, avisos e histórico compartilhado com autorização. SQL C522 revisado e aplicado no dev pelo Claude; fluxo da interface ainda em preparação local.
+- Botão Transferir para setor ligado aos cartões de Vendas, Peças e Oficina: opções e versão carregadas no servidor, fila/pessoa, UUID por tentativa, aviso de responsável mantido e bloqueio após resultado incerto. Usa a RPC já aplicada; central permanece desativada.
+- Diálogo preparado para preservar autoria do assistente/sistema em histórico compartilhado autorizado, com validação de direção e pendência.
+### Corrigido
+- Transferência compara a posse legada com o e-mail da sessão sem consultar ou conceder acesso ao Auth; permissões de atualização de Oficina limitadas ao responsável.
 
 ## [0.0.7] — 12/11/2026 — Oficina integrada, acompanhamento do dia, marketing por setor e identidade final (PR #9; revisado e aprovado pelo Codex)
 ### Adicionado

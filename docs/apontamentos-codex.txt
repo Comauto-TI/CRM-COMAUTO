@@ -24,6 +24,7 @@ Os resultados medem a primeira barreira. O teste não consultou a IA.
 [OBTIDO] liberado
 [TIPO] bug
 [GRAVIDADE] alta
+
 [PERGUNTA] O filtro deve recusar esta solicitação antes da IA?
 [SOLUCAO] Reconhecer erros frequentes em «regras» quando aparecem perto de um pedido para ignorar instruções.
 
@@ -104,6 +105,7 @@ Os resultados medem a primeira barreira. O teste não consultou a IA.
 [OBTIDO] liberado
 [TIPO] bug
 [GRAVIDADE] media
+
 [PERGUNTA] O filtro deve recusar esta solicitação antes da IA?
 [SOLUCAO] Cobrir verbos coloquiais como «monta» junto do objeto de software já normalizado.
 
@@ -1464,3 +1466,91 @@ Contrato novo tests/sql/contratos-pecas-sem-canal.sql passou nos dois modos e co
 [OBTIDO] GET chama preChecagem que executa UPDATE; navegador tentou o prefetch e o QA bloqueou antes do efeito. Sem correção de núcleo aplicada: separar cálculo puro do GET e persistência autorizada em ação explícita. Detalhe não certificado em readonly.
 [TIPO] bug
 [GRAVIDADE] media
+
+[ID] TRANSF-SETORES-CONTRATO-001
+[ARQUIVO] docs/TRANSFERENCIA-ENTRE-SETORES.md; supabase/migrations/0006_atendimento.sql:140,1424,1987
+[TESTE] Preparação readonly de transferência sobre Claude588bc1c com dois agentes independentes.
+[ESPERADO] Operação atômica entre setores, cliente único, nota/histórico/aviso e invalidação do fluxo antigo sem divulgar mensagens anteriores.
+[OBTIDO] Modelo modular só aceita Vendas/Peças; Oficina não tem conversa/versão. Devolver slot não desativa negócio aberto. Proposta concreta registra decisões de fluxo/canal, responsável/reuso e versão central/Oficina para Claude fechar ANTES da mudança de núcleo/SQL. Nenhum código de transferência ou SQL remoto foi executado; não confundir com entrega pronta.
+[TIPO] preparação / ainda-nao-implementado
+[GRAVIDADE] dependência de contrato
+
+[ID] TRANSF-SETORES-NULL-002
+[ARQUIVO] supabase/migrations/0006_atendimento.sql (transferir_atendimento_setor)
+[TESTE] Origem Vendas/Peças sem atendimento modular tenta transferir canal com rota explícita alheia.
+[ESPERADO] Recusar conflito sem alterar rota, negócios, notificações ou snapshot.
+[OBTIDO] Revisão independente encontrou comparação nullable capaz de escapar do IF. Corrigida com Boolean total e exigência de origem_mod.id; dois casos negativos incluídos no contrato402, nos dois modos ACL. Fix local em abb9031; Claude revisa antes do dev.
+[TIPO] bug corrigido localmente
+[GRAVIDADE] alta
+
+[ID] TRANSF-SETORES-NOTA-003
+[ARQUIVO] supabase/migrations/0006_atendimento.sql (descrição/atividade/snapshot)
+[TESTE] Transferência seguida de anonimização do cliente.
+[ESPERADO] Nota explícita permanece só no ledger protegido; novas cópias de mensagens/nota acompanham a anonimização, sem recuperar texto ao reverter flag.
+[OBTIDO] Cópias de nota em descrição/atividade foram retiradas; novos domínios usam texto genérico. Triggers redigem nota/snapshot e preservam IDs/audit/vizinhos. Contrato402 e revisão estática final passaram no hash2141BE5D. Não certifica retenção dos domínios antigos.
+[TIPO] bug corrigido localmente
+[GRAVIDADE] alta
+
+[ID] PR9-SETOR-001
+[ARQUIVO] src/app/api/painel/links/[id]/qr/route.ts:18–24, pin8df62ff
+[TESTE] Gerente Vendas pede QR de link Peças com ID conhecido; função original com fronteiras em memória e controle próprio positivo.
+[ESPERADO] Novo escopo de setor também recorta esse consumidor antes da resposta.
+[OBTIDO] Retorno200 e destino com mensagem inicial fictícia de Peças; noEscopo original recusa Peças. Consumidor é igual à base, mas ficou sem adaptação ao campo/setor novo do PR.
+[TIPO] bug de paridade no novo contrato do PR
+[GRAVIDADE] média
+
+[ID] PR9-SETOR-002
+[ARQUIVO] src/modulos/metricas/dados.ts:108–120, pin8df62ff
+[TESTE] Gerente Vendas lista/consulta evento Peças na mesma unidade, funções originais em memória.
+[ESPERADO] Política de setor antes da lista e agregações de eventos.
+[OBTIDO] Lista contém evento Peças e funil retorna chamados1/confirmados1/recusaram1. Filtro só por unidade; mesmo consumidor da base não foi adaptado ao novo setor.
+[TIPO] bug de paridade no novo contrato do PR
+[GRAVIDADE] média
+
+[ID] PR9-ACOMP-003
+[ARQUIVO] src/app/painel/agendamentos/acompanhamento/actions.ts:18,36, pin8df62ff
+[TESTE] Ação original da base alcança pendente com confirmado_em antigo; novo Chegou seguido de Desfazer.
+[ESPERADO] Restaurar pendente, como registrado no de_status da chegada.
+[OBTIDO] Termina confirmado porque infere o estado anterior pelo timestamp; controles comuns passaram.
+[TIPO] bug novo, reproduzido sem HTTP/banco real
+[GRAVIDADE] média
+
+[ID] PR9-ACOMP-004
+[ARQUIVO] src/app/painel/agendamentos/acompanhamento/page.tsx:47–48,124,132, pin8df62ff
+[TESTE] Consulta retorna erro08006 e data=null ao componente original.
+[ESPERADO] Avisar indisponibilidade, sem informar ausência de clientes.
+[OBTIDO] KPIs zero e Nenhum agendamento neste dia, sem erro visível.
+[TIPO] bug novo, reproduzido em memória
+[GRAVIDADE] média
+
+[ID] TRANSF-REV-T001
+[ARQUIVO] supabase/migrations/0006_atendimento.sql; src/modulos/atendimento/transferencias.ts
+[TESTE] Revisão Claude de abb9031 com todos os contratos SQL, seguida de revalidação C522.
+[ESPERADO] Transferência não depender de leitura/grants no Auth compartilhado; mesma identidade da sessão na política e corpo.
+[OBTIDO] Grant antigo regredia7contratos; removidos grant/read Auth e aridades antigas. p_ator_email obrigatório vem só da sessão, ignorando request. Sete regressões e negativos de e-mail/ACL passaram nos dois modos,428 assertivas da transferência;140 testes wrapper/parser e3pontes passaram. Contrato MVP restaurado exatamente à base, sem enfraquecer assert.
+[TIPO] bug corrigido localmente em bda5b63/adf0f67, aguardando revalidação Claude
+[GRAVIDADE] alta
+
+[ID] TRANSF-REV-T002
+[ARQUIVO] supabase/migrations/0006_atendimento.sql (grant Oficina)
+[TESTE] Contrato original Oficina com service_role após0006.
+[ESPERADO] Permitir atualização de etapa/responsável conforme0004, sem conceder escrita de descrição.
+[OBTIDO] UPDATE adicional de descrição era desnecessário e regredia contrato. Retirado; responsável preservado, descrição nova sóINSERT. Oficina passou nos dois modos; nova negativa de UPDATEdescricao foi coberta.
+[TIPO] bug corrigido localmente em bda5b63, aguardando revalidação Claude
+[GRAVIDADE] alta
+
+[ID] SQL-BASELINE-PECAS-UPDATED-001
+[ARQUIVO] tests/sql/contratos-pecas.sql:786–791; supabase/migrations/0005_pecas.sql:707–710
+[TESTE] Todos os contratos em abb9031~1 e C522, com/sem defaults.
+[ESPERADO] Distinguir regressão nova de falha antiga do contrato de preservação.
+[OBTIDO] P0001 sobre preservação ocorre igualmente nos dois candidatos; assert considera atualizado_em, atualizado pelo trigger existente. Contrato e0005 são idênticos à base. Não alterado para passar, mantido como falha legada separada da guarda55000 de A1.
+[TIPO] incompatibilidade preexistente de validação, não corrigida nesta fatia
+[GRAVIDADE] média
+
+[ID] PR9-ACOMP003-R1
+[ARQUIVO] src/app/painel/agendamentos/acompanhamento/actions.ts:40–42; src/lib/scheduling/acompanhamento.ts:53–55, pin5941347
+[TESTE] Funções originais: pendente com confirmação antiga → Chegou → Salvar compareceu sem mudar o status na Agenda → Desfazer.
+[ESPERADO] Ignorar evento compareceu→compareceu e restaurar pendente da chegada efetiva anterior.
+[OBTIDO] Seleciona o noop mais recente e fallback de confirmado_em termina confirmado. Controle sem noop volta pendente. O noop foi criado pela ação original, não injetado no histórico.
+[TIPO] bug ainda presente após correção parcial de ACOMP003, prova controlada sem HTTP/Auth/dev
+[GRAVIDADE] média

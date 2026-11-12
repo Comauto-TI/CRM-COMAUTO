@@ -13,7 +13,7 @@ export type FalhaDialogo = {
   ok: false; erro: string; status: 400 | 403 | 404 | 409 | 503; incerto?: boolean; codigo?: "sem_responsavel";
 };
 export type MensagemAtendimento = {
-  id: string; direcao: "entrada" | "saida"; autor: "cliente" | "atendente"; tipo: string;
+  id: string; direcao: "entrada" | "saida"; autor: "cliente" | "atendente" | "bot" | "sistema"; tipo: string;
   conteudo: string | null; status: StatusMensagem; criadoEm: string; pendente: boolean;
 };
 export type DialogoAtendimento<K extends ChaveRegistro> = {
@@ -79,8 +79,8 @@ export function criarDialogo<K extends ChaveRegistro>(config: {
     if (!objeto(v) || !uuid(v.id) || typeof v.tipo !== "string" || !instante(v.criadoEm) ||
       (v.conteudo !== null && typeof v.conteudo !== "string") || !estados.includes(v.status as string) ||
       typeof v.pendente !== "boolean" || !((v.direcao === "entrada" && v.autor === "cliente") ||
-        (v.direcao === "saida" && v.autor === "atendente")) ||
-      (v.pendente && (v.direcao !== "saida" || v.status !== "bloqueada"))) return null;
+        (v.direcao === "saida" && (v.autor === "atendente" || v.autor === "bot" || v.autor === "sistema"))) ||
+      (v.pendente && (v.direcao !== "saida" || v.autor !== "atendente" || v.status !== "bloqueada"))) return null;
     return { id: v.id.toLowerCase(), direcao: v.direcao, autor: v.autor, tipo: v.tipo,
       conteudo: v.conteudo === null ? null : mascararDadosSensiveis(v.conteudo).texto,
       status: v.status as StatusMensagem, criadoEm: v.criadoEm, pendente: v.pendente };

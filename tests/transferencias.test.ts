@@ -1,0 +1,257 @@
+import { beforeEach, describe, expect, it, vi } from "vitest";
+import type { Usuario } from "@/lib/auth";
+import { transferirAtendimento } from "@/modulos/atendimento/transferencias";
+import { parsearTransferencia, type DadosTransferencia } from "@/modulos/atendimento/dados-transferencia";
+
+const f = vi.hoisted(() => ({ rpc: vi.fn(), from: vi.fn() }));
+vi.mock("@/lib/supabase/admin", () => ({ db: () => ({ rpc: f.rpc, from: f.from }) }));
+const ator = "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa";
+const operacao = "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb";
+const registro = "cccccccc-cccc-4ccc-8ccc-cccccccccccc";
+const destino = "dddddddd-dddd-4ddd-8ddd-dddddddddddd";
+const outro = "eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee";
+const u: Usuario = { id: ator, nome: "Pessoa fictícia", email: "teste@fixture.invalid", papel: "vendedor", setor: "vendas", unidade: "comauto", unidades: ["comauto"] };
+const dados: DadosTransferencia = { operacaoId: operacao, origem: "vendas", registroId: registro,
+  destino: "pecas", funil: null, responsavelId: null, nota: "Solicitação fictícia", versao: 0 };
+const sucesso = { ok: true, operacaoId: operacao, setorDestino: "pecas", idDestino: destino, reutilizado: false, avisoResponsavel: null };
+
+beforeEach(() => {
+  vi.resetAllMocks();
+  f.from.mockImplementation(() => { throw new Error("Consulta solta proibida"); });
+  f.rpc.mockResolvedValue({ data: sucesso, error: null });
+});
+
+describe("transferência pelo adaptador transacional", () => {
+  it("faz uma RPC com ator autenticado e nenhum SELECT separado", async () => {
+    expect(await transferirAtendimento(u, dados)).toEqual(sucesso);
+    expect(f.rpc).toHaveBeenCalledExactlyOnceWith("transferir_atendimento_setor", {
+      p_operacao: operacao, p_origem: "vendas", p_registro: registro, p_ator: ator,
+      p_destino: "pecas", p_funil: null, p_responsavel: null, p_nota: dados.nota, p_versao: 0,
+      p_ator_email: u.email,
+    });
+    expect(f.from).not.toHaveBeenCalled();
+  });
+
+  it("normaliza IDs e nota, ignorando ator/cliente/unidade do objeto", async () => {
+    const entrada = { ...dados, operacaoId: operacao.toUpperCase(), registroId: registro.toUpperCase(), nota: `  ${dados.nota}  `,
+      ator: outro, p_ator: outro, email: "forjado@fixture.invalid", ator_email: "forjado@fixture.invalid", p_ator_email: "forjado@fixture.invalid",
+      cliente: outro, unidade: "outra", mensagemIds: [outro], historico: [outro] };
+    expect(await transferirAtendimento({ ...u, id: ator.toUpperCase() }, entrada)).toEqual(sucesso);
+    expect(f.rpc.mock.calls[0][1]).toEqual({ p_operacao: operacao, p_origem: "vendas", p_registro: registro, p_ator: ator,
+      p_destino: "pecas", p_funil: null, p_responsavel: null, p_nota: dados.nota, p_versao: 0, p_ator_email: u.email });
+  });
+
+  it("ignora e-mail forjado no FormData e envia somente a identidade da sessão", async () => {
+    const form = new FormData();
+    for (const [key, value] of Object.entries({ operacao, origem: "vendas", registro, destino: "pecas", nota: dados.nota, versao: "0",
+      ator: outro, email: "forjado@fixture.invalid", ator_email: "forjado@fixture.invalid", p_ator_email: "forjado@fixture.invalid" })) form.set(key, value);
+    const entrada = parsearTransferencia(form);
+    expect(entrada).toEqual(dados);
+    if (!entrada) throw new Error("Fixture inválida");
+    const r = await transferirAtendimento(u, entrada);
+    expect(r).toEqual(sucesso);
+    expect(f.rpc).toHaveBeenCalledExactlyOnceWith("transferir_atendimento_setor", {
+      p_operacao: operacao, p_origem: "vendas", p_registro: registro, p_ator: ator,
+      p_destino: "pecas", p_funil: null, p_responsavel: null, p_nota: dados.nota, p_versao: 0, p_ator_email: u.email,
+    });
+    expect(JSON.stringify(r)).not.toMatch(/forjado@fixture|teste@fixture/);
+    expect(f.from).not.toHaveBeenCalled();
+  });
+
+  it("troca de sessão envia o UUID e e-mail atuais sem reutilizar autorização anterior", async () => {
+    f.rpc.mockResolvedValueOnce({ data: sucesso, error: null }).mockResolvedValueOnce({ data: { ok: false, codigo: "nao_encontrado" }, error: null });
+    expect(await transferirAtendimento(u, dados)).toEqual(sucesso);
+    const atual = { ...u, id: outro, email: "outra-sessao@fixture.invalid" };
+    const entrada = { ...dados, ator, email: u.email, p_ator_email: u.email };
+    const r = await transferirAtendimento(atual, entrada);
+    expect(r).toMatchObject({ ok: false, status: 404 });
+    expect(f.rpc).toHaveBeenCalledTimes(2);
+    expect(f.rpc.mock.calls[0][1]).toMatchObject({ p_ator: ator, p_ator_email: u.email });
+    expect(f.rpc.mock.calls[1][1]).toMatchObject({ p_ator: outro, p_ator_email: atual.email });
+    expect(JSON.stringify(r)).not.toContain(atual.email);
+    expect(JSON.stringify(r)).not.toContain(u.email);
+  });
+
+  it("retorna somente DTO mínimo e aceita reuso explícito", async () => {
+    f.rpc.mockResolvedValue({ data: { ...sucesso, operacaoId: operacao.toUpperCase(), idDestino: destino.toUpperCase(), reutilizado: true,
+      clienteId: outro, telefone: "privado", mensagens: [{ conteudo: "não exportar" }], metadata: { interno: true } }, error: null });
+    expect(await transferirAtendimento(u, dados)).toEqual({ ...sucesso, reutilizado: true });
+  });
+
+  it("preserva aviso explícito de responsável existente no reuso, descartando extras", async () => {
+    f.rpc.mockResolvedValue({ data: { ...sucesso, reutilizado: true,
+      avisoResponsavel: { nome: "Pessoa do destino", id: outro, email: "privado@fixture.invalid", metadata: { interno: true } } }, error: null });
+    expect(await transferirAtendimento(u, dados)).toEqual({ ...sucesso, reutilizado: true, avisoResponsavel: { nome: "Pessoa do destino" } });
+    expect(f.rpc).toHaveBeenCalledOnce();
+    expect(f.from).not.toHaveBeenCalled();
+  });
+
+  it("mascara CPF no nome do aviso antes de retornar", async () => {
+    f.rpc.mockResolvedValue({ data: { ...sucesso, reutilizado: true, avisoResponsavel: { nome: "Pessoa CPF 111.444.777-35" } }, error: null });
+    const r = await transferirAtendimento(u, dados);
+    expect(r).toMatchObject({ ok: true, reutilizado: true });
+    if (r.ok) {
+      expect(r.avisoResponsavel?.nome).toContain("Pessoa CPF");
+      expect(r.avisoResponsavel?.nome).not.toContain("111.444.777-35");
+    }
+    expect(JSON.stringify(r)).not.toContain("111.444.777-35");
+    expect(f.rpc).toHaveBeenCalledOnce();
+  });
+
+  it.each(["Á", "🔧".repeat(200)])("preserva nome Unicode válido do aviso: %s", async nome => {
+    f.rpc.mockResolvedValue({ data: { ...sucesso, reutilizado: true, avisoResponsavel: { nome } }, error: null });
+    expect(await transferirAtendimento(u, dados)).toEqual({ ...sucesso, reutilizado: true, avisoResponsavel: { nome } });
+    expect(f.rpc).toHaveBeenCalledOnce();
+  });
+
+  it.each([
+    undefined, "Pessoa", [], {}, { nome: null }, { nome: 10 }, { nome: "" }, { nome: " \t " },
+    { nome: "a".repeat(201) }, { nome: "🔧".repeat(201) }, { nome: "Pessoa\0resto" }, { nome: "Pessoa\ud800" },
+  ])("recusa aviso obrigatório ausente ou inválido no reuso: %j", async avisoResponsavel => {
+    f.rpc.mockResolvedValue({ data: { ...sucesso, reutilizado: true, avisoResponsavel }, error: null });
+    expect(await transferirAtendimento(u, dados)).toMatchObject({ ok: false, status: 503 });
+    expect(f.rpc).toHaveBeenCalledOnce();
+  });
+
+  it("não omite silenciosamente o aviso quando a propriedade não veio do SQL", async () => {
+    const { avisoResponsavel: _aviso, ...semCampo } = sucesso;
+    f.rpc.mockResolvedValue({ data: semCampo, error: null });
+    expect(await transferirAtendimento(u, dados)).toMatchObject({ ok: false, status: 503 });
+    expect(f.rpc).toHaveBeenCalledOnce();
+  });
+
+  it("não aceita aviso de responsável quando o destino não foi reutilizado", async () => {
+    f.rpc.mockResolvedValue({ data: { ...sucesso, avisoResponsavel: { nome: "Pessoa do destino" } }, error: null });
+    expect(await transferirAtendimento(u, dados)).toMatchObject({ ok: false, status: 503 });
+    expect(f.rpc).toHaveBeenCalledOnce();
+  });
+
+  it("descarta aviso de responsável e extras em retorno de falha", async () => {
+    f.rpc.mockResolvedValue({ data: { ok: false, codigo: "conflito", avisoResponsavel: { nome: "Nome privado", email: "privado@fixture.invalid" } }, error: null });
+    const r = await transferirAtendimento(u, dados);
+    expect(r).toMatchObject({ ok: false, status: 409, codigo: "conflito" });
+    expect(r).not.toHaveProperty("avisoResponsavel");
+    expect(JSON.stringify(r)).not.toContain("Nome privado");
+    expect(f.rpc).toHaveBeenCalledOnce();
+  });
+
+  it("não transforma a passagem de área em autorização persistente de replay", async () => {
+    expect(await transferirAtendimento(u, dados)).toEqual(sucesso);
+    expect(await transferirAtendimento(u, dados)).toEqual(sucesso);
+    expect(f.rpc).toHaveBeenCalledTimes(2);
+    expect(f.rpc.mock.calls[0]).toEqual(f.rpc.mock.calls[1]);
+  });
+
+  it.each([
+    ["oficina", "recepcao", "oficina"], ["vendas", "vendedor", "vendas"], ["pecas", "pecas", "pecas"],
+    ["oficina", "consultor_tecnico", "oficina"], ["oficina", "gerente", "oficina"], ["pecas", "admin", "administracao"],
+  ] as const)("mapeia origem %s à área correspondente", async (origem, papel, setor) => {
+    const d: DadosTransferencia = { ...dados, origem, destino: origem === "pecas" ? "oficina" : "pecas" };
+    f.rpc.mockResolvedValue({ data: { ...sucesso, setorDestino: d.destino }, error: null });
+    expect(await transferirAtendimento({ ...u, papel, setor }, d)).toMatchObject({ ok: true });
+    expect(f.rpc).toHaveBeenCalledOnce();
+  });
+
+  it.each([
+    { papel: "recepcao", setor: "oficina" }, { papel: "gerente", setor: "oficina" },
+    { papel: "gerente", setor: "administracao" }, { papel: "admin", setor: "administracao" },
+  ] as const)("piloto recusa central mesmo para %j antes de chamar RPC", async perfil => {
+    expect(await transferirAtendimento({ ...u, ...perfil }, { ...dados, origem: "central" })).toMatchObject({ ok: false, status: 403 });
+    expect(f.rpc).not.toHaveBeenCalled();
+    expect(f.from).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    ["central", "vendedor", "vendas"], ["central", "gerente", "pecas"], ["pecas", "recepcao", "oficina"],
+    ["vendas", "gerente", "pecas"], ["oficina", "pecas", "pecas"],
+  ] as const)("barra área local %s ao perfil %s/%s", async (origem, papel, setor) => {
+    expect(await transferirAtendimento({ ...u, papel, setor }, { ...dados, origem, destino: origem === "pecas" ? "oficina" : "pecas" })).toMatchObject({ ok: false, status: 403 });
+    expect(f.rpc).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    { ...dados, operacaoId: "inválido" }, { ...dados, registroId: registro + "\n" }, { ...dados, versao: -1 },
+    { ...dados, nota: "" }, { ...dados, destino: "pecas", origem: "pecas" },
+    { ...dados, responsavelId: "nome livre" }, { ...dados, destino: "oficina", responsavelId: outro + "\n" },
+  ])("recusa dados inválidos antes de consultar o banco: %j", async entrada => {
+    expect(await transferirAtendimento(u, entrada as DadosTransferencia)).toMatchObject({ ok: false, status: 400 });
+    expect(f.rpc).not.toHaveBeenCalled();
+  });
+
+  it("recusa ator inválido antes de consultar o banco", async () => {
+    expect(await transferirAtendimento({ ...u, id: "sem-sessao" }, dados)).toMatchObject({ ok: false, status: 400 });
+    expect(await transferirAtendimento(null as unknown as Usuario, dados)).toMatchObject({ ok: false, status: 400 });
+    expect(f.rpc).not.toHaveBeenCalled();
+  });
+
+  it.each([null, undefined, "", " \t ", 10])("recusa identidade de sessão sem e-mail válido: %j", async email => {
+    expect(await transferirAtendimento({ ...u, email } as unknown as Usuario, dados)).toMatchObject({ ok: false, status: 400 });
+    expect(f.rpc).not.toHaveBeenCalled();
+  });
+
+  it.each(["vendas", "pecas", "oficina"] as const)("transporta pessoa ou fila para %s, com funil apenas em Vendas", async destino => {
+    const funil = destino === "vendas" ? "novos" : null;
+    const origem = destino === "vendas" ? "pecas" : "vendas";
+    const usuario: Usuario = destino === "vendas" ? { ...u, papel: "pecas", setor: "pecas" } : u;
+    const d: DadosTransferencia = { ...dados, origem, destino, funil, responsavelId: outro.toUpperCase() };
+    f.rpc.mockResolvedValue({ data: { ...sucesso, setorDestino: destino }, error: null });
+    expect(await transferirAtendimento(usuario, d)).toMatchObject({ ok: true, setorDestino: destino });
+    expect(f.rpc).toHaveBeenCalledExactlyOnceWith("transferir_atendimento_setor", {
+      p_operacao: operacao, p_origem: origem, p_registro: registro, p_ator: ator,
+      p_destino: destino, p_funil: funil, p_responsavel: outro, p_nota: dados.nota, p_versao: 0,
+      p_ator_email: u.email,
+    });
+    f.rpc.mockClear();
+    expect(await transferirAtendimento(usuario, { ...d, responsavelId: null })).toMatchObject({ ok: true, setorDestino: destino });
+    expect(f.rpc).toHaveBeenCalledExactlyOnceWith("transferir_atendimento_setor", {
+      p_operacao: operacao, p_origem: origem, p_registro: registro, p_ator: ator,
+      p_destino: destino, p_funil: funil, p_responsavel: null, p_nota: dados.nota, p_versao: 0,
+      p_ator_email: u.email,
+    });
+  });
+
+  it.each([["invalido", 400], ["nao_encontrado", 404], ["conflito", 409], ["origem_ambigua", 409], ["envio_incerto", 409]] as const)("mapeia recusa SQL %s sem repetir chamada", async (codigo, status) => {
+    f.rpc.mockResolvedValue({ data: { ok: false, codigo, mensagens: "não exportar", clienteId: outro }, error: null });
+    const r = await transferirAtendimento(u, dados);
+    expect(r).toMatchObject({ ok: false, status, codigo });
+    expect(r).not.toHaveProperty("mensagens");
+    expect(r).not.toHaveProperty("clienteId");
+    expect(JSON.stringify(r)).not.toContain("não exportar");
+    expect(f.rpc).toHaveBeenCalledOnce();
+  });
+
+  it.each([
+    null, [], "texto", {}, { ok: "true" }, { ...sucesso, operacaoId: outro }, { ...sucesso, operacaoId: operacao + "\n" },
+    { ...sucesso, setorDestino: "oficina" }, { ...sucesso, idDestino: "não-uuid" }, { ...sucesso, reutilizado: "false" },
+    { ...sucesso, reutilizado: undefined }, { ok: false, codigo: "codigo_interno" },
+  ])("retorno desconhecido/inconsistente não é sucesso: %j", async data => {
+    f.rpc.mockResolvedValue({ data, error: null });
+    expect(await transferirAtendimento(u, dados)).toMatchObject({ ok: false, status: 503 });
+    expect(f.rpc).toHaveBeenCalledOnce();
+  });
+
+  it.each(["PGRST202", "42501", "23505", "08006"])("não repete erro de banco %s e não exporta detalhes", async code => {
+    f.rpc.mockResolvedValue({ data: sucesso, error: { code, message: "detalhe privado " + u.email } });
+    const r = await transferirAtendimento(u, dados);
+    expect(r).toMatchObject({ ok: false, status: 503 });
+    expect(JSON.stringify(r)).not.toContain("detalhe privado");
+    expect(JSON.stringify(r)).not.toContain(u.email);
+    expect(f.rpc).toHaveBeenCalledOnce();
+  });
+
+  it.each(["55P03", "40P01"])("SQLSTATE %s com rollback garantido é conflito sem retry ou detalhes", async code => {
+    f.rpc.mockResolvedValue({ data: null, error: { code, message: "detalhe privado " + u.email } });
+    const r = await transferirAtendimento(u, dados);
+    expect(r).toMatchObject({ ok: false, status: 409, codigo: "conflito" });
+    expect(JSON.stringify(r)).not.toContain("detalhe privado");
+    expect(JSON.stringify(r)).not.toContain(u.email);
+    expect(f.rpc).toHaveBeenCalledOnce();
+    expect(f.from).not.toHaveBeenCalled();
+  });
+
+  it("rejeição da chamada não gera repetição automática", async () => {
+    f.rpc.mockRejectedValue(new Error("transporte indisponível"));
+    expect(await transferirAtendimento(u, dados)).toMatchObject({ ok: false, status: 503 });
+    expect(f.rpc).toHaveBeenCalledOnce();
+  });
+});

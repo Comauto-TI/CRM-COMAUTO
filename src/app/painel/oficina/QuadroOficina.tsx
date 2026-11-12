@@ -2,6 +2,7 @@ import type { AtendimentoOficina } from "@/modulos/oficina/atendimentos";
 import { formatarDataHora } from "@/lib/time";
 import { assumirAtendimento } from "./actions";
 import BotaoOficina from "./BotaoOficina";
+import TransferirCartao from "../_components/TransferirCartao";
 
 const ETAPAS = [
   { status: "novo", nome: "Novas solicitações" },
@@ -43,6 +44,7 @@ export default function QuadroOficina({ atendimentos, minhas, fuso }: {
                       <BotaoOficina texto="Iniciar triagem" aguardando="Iniciando…" />
                     </form>
                   )}
+                  <TransferirCartao origem="oficina" registroId={item.id} unidade={item.unidade} />
                 </article>
               ))}
               {!cartoes.length && <p className="kanban-vazio mudo">Nenhuma solicitação nesta etapa.</p>}

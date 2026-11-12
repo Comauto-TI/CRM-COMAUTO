@@ -36,6 +36,27 @@ describe("Peças diálogo autorizado", () => {
     expect(JSON.stringify(r)).not.toMatch(/111\.444|4111|metadata|fixture_privado/);
     if (r.ok) { expect(r.mensagens[0].criadoEm).toBe(linha.criadoEm); expect(r.mensagens[1].conteudo).toBeNull(); }
   });
+  it.each(["bot", "sistema"] as const)("preserva saída %s do snapshot autorizado sem convertê-la em atendente", async autor => {
+    f.rpc.mockResolvedValue({ data: { ...dialogo, mensagens: [{ ...linha, direcao: "saida", autor, status: "enviada",
+      conteudo: "CPF 111.444.777-35 cartão 4111 1111 1111 1111", metadata: { interno: "não exportar" }, clienteId: cliente }] }, error: null });
+    const r = await obterDialogoPecas(u, cotacao);
+    expect(r.ok).toBe(true);
+    if (r.ok) expect(r.mensagens).toEqual([{ ...linha, direcao: "saida", autor, status: "enviada",
+      conteudo: "CPF [CPF removido] cartão [cartão removido]" }]);
+    expect(f.rpc).toHaveBeenCalledExactlyOnceWith("pecas_dialogo", { p_cotacao: cotacao, p_ator: ator });
+    expect(f.from).not.toHaveBeenCalled(); expect(f.responder).not.toHaveBeenCalled();
+  });
+  it.each([
+    { direcao: "entrada", autor: "atendente" }, { direcao: "entrada", autor: "bot" }, { direcao: "entrada", autor: "sistema" },
+    { direcao: "saida", autor: "cliente" }, { direcao: "saida", autor: "desconhecido" },
+    { direcao: "saida", autor: "bot", pendente: true, status: "bloqueada" },
+    { direcao: "saida", autor: "sistema", pendente: true, status: "bloqueada" },
+    { direcao: "saida", autor: "atendente", pendente: true, status: "enviada" },
+  ])("recusa autoria/direção ou pendência incompatível no snapshot %j", async patch => {
+    f.rpc.mockResolvedValue({ data: { ...dialogo, mensagens: [{ ...linha, ...patch }] }, error: null });
+    expect(await obterDialogoPecas(u, cotacao)).toMatchObject({ ok: false, status: 503 });
+    expect(f.rpc).toHaveBeenCalledOnce(); expect(f.responder).not.toHaveBeenCalled();
+  });
   it("preserva sem responsável para oferecer assumir0", async () => {
     f.rpc.mockResolvedValue({ data: { ok: false, codigo: "sem_responsavel" }, error: null });
     expect(await obterDialogoPecas(u, cotacao)).toMatchObject({ ok: false, codigo: "sem_responsavel" });

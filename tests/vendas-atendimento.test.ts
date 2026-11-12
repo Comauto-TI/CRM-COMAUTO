@@ -13,6 +13,7 @@ const u: Usuario = { id: ator, nome: "Vendedor", email: "vendas@fixture.invalid"
 const dialogo = { ok: true, id: atendimento, oportunidadeId: op, versao: 1, clienteNome: "Cliente", estado: "minha", janelaAberta: true, podeAssumir: false, podeDevolver: true, mensagens: [], revisaoPendente: false };
 const reserva = { ok: true, id: atendimento, oportunidadeId: op, versao: 1, clienteId: cliente, conversaId: conversa, mensagemId: mensagem, despachar: true };
 const autorizado = { ok: true, id: atendimento, clienteId: cliente, conversaId: conversa, mensagemId: mensagem };
+const linha = { id: mensagem, direcao: "entrada", autor: "cliente", tipo: "text", conteudo: "Pedido fictício", status: "recebida", criadoEm: "2026-11-11T12:00:00.000001Z", pendente: false };
 beforeEach(() => {
   vi.resetAllMocks();
   f.rpc.mockImplementation(async (nome: string) => ({ error: null, data: nome === "vendas_dialogo" ? dialogo : nome === "vendas_reservar_resposta" ? reserva : autorizado }));
@@ -24,6 +25,35 @@ describe("adaptador do atendimento de Vendas", () => {
   it("consulta somente a política de Vendas com ator autenticado e identidade normalizada", async () => {
     expect(await obterDialogoVendas(u, op.toUpperCase())).toEqual(dialogo);
     expect(f.rpc).toHaveBeenCalledExactlyOnceWith("vendas_dialogo", { p_oportunidade: op, p_ator: ator });
+  });
+  it.each(["bot", "sistema"] as const)("preserva saída %s do snapshot autorizado sem convertê-la em atendente", async autor => {
+    f.rpc.mockResolvedValue({ data: { ...dialogo, mensagens: [{ ...linha, direcao: "saida", autor, status: "enviada",
+      conteudo: "CPF 111.444.777-35 cartão 4111 1111 1111 1111", metadata: { interno: "não exportar" }, clienteId: cliente }] }, error: null });
+    const r = await obterDialogoVendas(u, op);
+    expect(r.ok).toBe(true);
+    if (r.ok) expect(r.mensagens).toEqual([{ ...linha, direcao: "saida", autor, status: "enviada",
+      conteudo: "CPF [CPF removido] cartão [cartão removido]" }]);
+    expect(f.rpc).toHaveBeenCalledExactlyOnceWith("vendas_dialogo", { p_oportunidade: op, p_ator: ator });
+    expect(f.responder).not.toHaveBeenCalled();
+  });
+  it("mantém pendência somente da saída de atendente bloqueada", async () => {
+    const pendente = { ...linha, direcao: "saida", autor: "atendente", status: "bloqueada", pendente: true };
+    f.rpc.mockResolvedValue({ data: { ...dialogo, mensagens: [pendente] }, error: null });
+    const r = await obterDialogoVendas(u, op);
+    expect(r.ok).toBe(true);
+    if (r.ok) expect(r.mensagens).toEqual([pendente]);
+    expect(f.responder).not.toHaveBeenCalled();
+  });
+  it.each([
+    { direcao: "entrada", autor: "atendente" }, { direcao: "entrada", autor: "bot" }, { direcao: "entrada", autor: "sistema" },
+    { direcao: "saida", autor: "cliente" }, { direcao: "saida", autor: "desconhecido" },
+    { direcao: "saida", autor: "bot", pendente: true, status: "bloqueada" },
+    { direcao: "saida", autor: "sistema", pendente: true, status: "bloqueada" },
+    { direcao: "saida", autor: "atendente", pendente: true, status: "enviada" },
+  ])("recusa autoria/direção ou pendência incompatível no snapshot %j", async patch => {
+    f.rpc.mockResolvedValue({ data: { ...dialogo, mensagens: [{ ...linha, ...patch }] }, error: null });
+    expect(await obterDialogoVendas(u, op)).toMatchObject({ ok: false, status: 503 });
+    expect(f.rpc).toHaveBeenCalledOnce(); expect(f.responder).not.toHaveBeenCalled();
   });
   it.each(["cotacaoId", "registroId"])("não aceita identidade de outro contrato: %s", async chave => {
     f.rpc.mockResolvedValue({ error: null, data: { ...dialogo, oportunidadeId: undefined, [chave]: op } });

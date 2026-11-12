@@ -397,3 +397,203 @@ pendentes na A4**: o menu só tem Cotações e não existe página ligada ao set
 f2b5cb6 muda somente seu rótulo para Minhas métricas, mantendo permissões e consultas. Peças precisa
 da entrega A4 com carteira própria, gerente por setor/unidades e admin; não liberar métricas de Vendas
 para Peças nem fingir que o dashboard pessoal já foi entregue nesse módulo.
+
+## Tela essencial de Oficina pronta · 12/11/2026
+
+Código isolado6f75cd0: /painel/oficina com fila geral/Minhas, duas etapas, cursor, registro e início de
+triagem autorizados. Agenda existente preservada; sem dinheiro/WhatsApp/etapas extras. 65 testes de
+ações/filtros +33 SSR passaram; revisão React/Next/acesso independente aprovada; 34 medições offline
+passaram em390/1440px sem overflow do documento. Build Webpack/TypeScript/diffcheck/gitleaks passaram.
+Detalhes e limites em docs/OFICINA-TELA-MVP.md. SQL0004 foi aplicado pelo Claude e lido realmente em11
+casos readonly; filas vazias não provam cartões, escrita ou E2E. Integração do adaptador3ee0a95 precede
+esta UI; servidor/dev e testes reais continuam com Claude/Simão. Nenhum novo servidor ou write remoto.
+
+## Fila atualizada pelo Simão via Claude · 12/11/2026
+
+Repasses conferidos até167538/SHA E1DDDF76AB2E34B0E739A05F85F0BEE01EE7C4431799CFD091687A5C36136AC9.
+Oficina UI6f75cd0 está pronta para revisão e integração depois do adaptador3ee0a95. Claude liberou
+transferência entre setores como próximo recorte prioritário: central/triagem ou cartão para lead de
+Vendas, cotação de Peças ou triagem de Oficina, preservando cliente único, nota/histórico e aviso ao
+destino. A liberação substitui o congelamento anterior desse recurso; contrato e revisão do núcleo
+continuam com Claude. Não confundir essa direção com transferência já implementada ou com autorização
+para expor histórico de outro setor.
+
+Depois: métricas de Peças e Oficina (Codex), pessoais para operador, setor/unidades para gerente e
+geral para administrador; depois E2E do bot. Marketing/campanhas por setor e identidade visual seguem
+com Claude. Peças ainda não tem página de métricas. Rótulo Minhas métricas do vendedor (f2b5cb6) foi
+cherry-picked pelo Claude e conferido na fonte compartilhada; nenhuma nova consulta foi entregue aqui.
+
+Do QA do Claude, registrar para correção dirigida em Peças: iniciais do avatar incluindo parêntese
+e distinção visual entre responsável da cotação e posse ativa da conversa. Layout F9 permanece para
+trabalho com Simão. Sem repetir os testes já aprovados nem confundir mudanças informadas pelo Claude
+com execução de E2E ou aplicação remota pelo Codex.
+
+## Oficina integrada e contrato de transferência preparado · 12/11/2026
+
+Claude confirmou Oficina (adaptador +6f75cd0) integrada no merge287c498, 1.919 Vitest, servidor local
+recompilado e navegação de recepção/consultor autorizada, vendedor recusado. Esta execução é relato
+do Claude; Codex não repetiu os testes nem fez novas gravações no dev. Nova branch codex/transferencias-setores
+incorporou Claude588bc1c em be4868b; runtime coincide com essa fonte e ambos os históricos do chat
+foram preservados. codex/oficina-fila e stashes anteriores permanecem intactos.
+
+Próximo recorte: proposta concreta em docs/TRANSFERENCIA-ENTRE-SETORES.md, com duas análises
+independentes readonly. Central/Oficina não têm a versão dos diálogos, Oficina ainda não participa
+do canal modular e negócio aberto continua excluindo o legado mesmo sem slot. Esses fatos impedem
+tratar um INSERT no destino como transferência completa. Proposta exige alinhar com Claude estado
+do fluxo, tratamento de Oficina, destinatário/reuso e concorrência antes do SQL/UI. Nenhum contrato
+novo de núcleo, transferência ou histórico cruzado está implementado/liberado por esta preparação.
+
+Claude fechou o contrato no prefixo169975: ENCAMINHAR preserva negócio de origem e move fluxo ativo;
+Oficina só domínio, novas mensagens na central; reusar destino aberto, Vendas com funil e responsável
+opcional; nota/evento/aviso/audit atômicos. Implementação SQL, adaptador e testes isolados iniciados
+com donos distintos. SQL primeiro para revisão; guards de código da central antes da UI/transferência
+real, pois consultas extras por cliente e falta de recorte por unidade não são corrigidas pelo ledger.
+Ainda sem SQL remoto, envio, E2E ou transferência concluída.
+
+Repasse posterior173664 mudou para pessoa/fila nos3 destinos e histórico compartilhado por snapshot
+explícito auditado, sem consulta genérica por cliente. Parser/adaptador atualizados:114 testes
+simulados PASS; nenhum endpoint exposto. SQL/testes antigos NÃO aprovados nem compatíveis com esse
+contrato; WIP privado preservado com hashes, migration ativa restaurada à base. Revisão automática
+rejeitou a edição do trigger0006 por alegada falta de autorização de núcleo/permissões; não houve
+reexecução por outro caminho, banco remoto ou Auth alterados. Detalhes, alternativas Oficina e
+questão de reuso/responsável em docs/TRANSFERENCIA-ENTRE-SETORES.md.
+
+Agenda Oficina: Claude assumiu/implementou acompanhamento do dia (C). Codex ficou com descrição
+livre(A) e horário/recurso livres(B), após SQL da transferência e revisão. Ainda não implementados
+aqui; não editar acompanhamento concorrentemente nem retirar as travas de conflito23P01 do banco.
+
+## Respostas de contrato recebidas, autorização ainda pendente · 12/11/2026
+
+Prefixo174752: reuso mantém responsável existente; pessoa alternativa recebe só aviso, sem nova posse
+ou acesso. Sem dono, pessoa elegível escolhida vira responsável. Snapshot restrito ao contexto
+autorizado da origem, com IDs/intervalo auditados; Oficina permanece na central/opção1. Claude
+reafirmou o pedido de edição local0006 e informou consultar Simão. Não é a resposta direta da
+autorização pendente neste chat: núcleo continua intacto e suspenso. Nenhum teste foi repetido ou
+novo runtime entregue nesta leitura; DTO do adaptador precisará aviso estruturado antes da UI.
+
+## Preparação independente da agenda manual · 12/11/2026
+
+Sem tocar o núcleo suspenso, foi mapeada A/B na fonte compartilhada775f39e. Documento
+docs/AGENDA-MANUAL-PREPARACAO.md registra campo/constraint, recurso/unidade, escrita atômica,
+reagendamento com serviço nulo, consumidores do rótulo e matriz a executar. Não é SQL implementado
+ou nova validação funcional; acompanhamento(C) permanece com Claude. Implementação conserva a
+prioridade depois do SQL da transferência; autorização pendente não foi presumida nem contornada.
+
+Claude fechou A/B no prefixo175859: descrição3..500 com NULL explicitamente recusado; início + duração
+15min..8h em passos15min; expediente/bloqueios sempre respeitados; reagendamento manual mantém
+duração/recurso por caminho explícito; revisão periódica só catálogo; templates usam rótulo até60
+caracteres. Documento atualizado, sem código/SQL/testes novos. Ordem e autorização pendente mantidas.
+
+## Autorização direta para retomar núcleo local · 12/11/2026
+
+Simão respondeu à pergunta específica de núcleo/roteamento/snapshot: "Autorizar implementação local
+com revisão do Claude". Retomada em codex/transferencias-setores a partir da base revisada; sem
+aplicar o WIP antigo. Subagentes com arquivos separados implementam0006, contratos SQL e aviso
+estruturado do adaptador; revisão independente e revisão do Claude precedem banco/dev. A rejeição
+anterior ficou documentada; a autorização direta posterior resolve aquela falta de escopo.
+Nada aplicado remotamente. Ainda não afirmar transferência pronta ou teste SQL funcional aprovado.
+
+## Backend local de transferência entregue para revisão · 12/11/2026
+
+`abb9031` contém somente a fatia SQL0006/contratos/CHANGELOG. Origem mantém negócio; destino aberto
+é reutilizado, responsável existente é preservado e pessoa alternativa recebe só aviso. Operação
+une rota, snapshot autorizado, evento, notificação e audit; replay revalida, falhas revertem efeitos.
+Nota bruta fica no ledger protegido; anonimização redige as novas cópias. Hash0006:
+2141BE5DFB1465C9538704CC86A38043E014D402EE860B747E347D881F7C7853.
+
+402 verificações por modo ACL passaram, incluindo limpa, upgrade real com54 tabelas/115FKs legadas
+preservadas e reaplicação populada. Quatro contratos dirigidos Peças/Vendas passaram nos dois modos.
+Contrato antigo A1 falha55000 também na baseline74cc99e: incompatibilidade preexistente documentada,
+sem chamá-la aprovação. Revisão independente identificou/cobriu guardaNULL da rota e cópias da nota;
+parecer final no hash acima. Diffcheck/gitleaks passaram. Typecheck e133 testes do adaptador0bffe79
+e104 da compatibilidade de diálogo2bf3e72 passaram; estes últimos preservam autoria bot/sistema.
+
+Revisão do Claude deve avaliar especialmente o grant mínimo service_role→auth.users(id,email),
+sem escrita ou colunas sensíveis. Nada aplicado no dev/Auth. Evidências e limitações em
+docs/TRANSFERENCIA-SQL-REVISAO.md. Antes da UI: central com unidade/política antes de count/corpo,
+guard de despacho legado e nota/snapshot com saída filtrada/paginada. PGlite sequencial não prova
+concorrência multissessão, HTTP, PostgREST, login ou WhatsApp. Transferência completa ainda pendente.
+Agenda A/B segue na prioridade acordada depois desta fatia SQL; acompanhamento(C) é do Claude.
+
+Ponte dirigida posterior: 3 casos PASS com JSON real do PGlite → criarDialogo original por Next SWC/VM.
+Central → Vendas/Peças antes/depois do claim preservam autoria cliente/bot/sistema, IDs únicos,
+pendente booleano e mascaramento real; interno/outro negócio omitidos. Reuso Peças sem dono com versão >0
+retorna versão real e resumo vazio, assume com essa versão e lê histórico autorizado. Fontes/hash
+inalterados; sem repetir 402, sem HTTP/Auth/UI/envio reais. Artefatos privados referidos no relatório.
+
+Repasse posterior conferido até 176356/SHA 19DDBCCC0BD3377FB11617925EEFEC58B37C74E649FF1E0C5CE6E921C3CCA240:
+Claude solicitou revisão do PR #9 (claude/pos-v004 → main, futura v0.0.7) entre fatias da transferência.
+Oficina, acompanhamento, marketing por setor, central/triagem, identidade e QA compõem a descrição
+recebida. Revisão ainda não iniciada/pin não conferido; não declarar aprovação, merge ou nova versão.
+Pedido não suspende o backend prioritário, que já foi entregue para revisão local em abb9031.
+
+## PR #9 revisado e retorno do núcleo · 12/11/2026
+
+PR9 fixado em bc14aa1 → 8df62ff429bf24406a7f1d552319d43cf32a27a8, aberto/não mesclado na consulta.
+Parecer REQUER AJUSTES em docs/REVISAO-PR9.md: QR por ID e métricas de eventos não aplicam o novo
+setor; Desfazer pode confirmar uma chegada que partiu de pendente com confirmação antiga; erro de
+consulta vira dia vazio. Duas observações baixas: data inválida e cleanup do listener da abertura.
+Três revisores, fontes originais em memória, controles positivos/CAS/unidade/23P01; sem HTTP/Auth/dev.
+Oficina idêntica à fatia já aprovada, sem repetir matriz; CSS/assets/mascaramento dirigidos passaram,
+assim como gitleaks do range e diffcheck. Não é aprovação global, build ou QA real do candidato.
+
+No prefixo178737/SHA A1BED2C263FF8B474AF1262A81848D19970912216951E6CCE361DF8B55B1858D, Claude revisou
+abb9031 e NÃO aprovou ainda: T-001 remove dependência/grants de Auth e passa e-mail da sessão;
+T-002 restringe UPDATE de Oficina a responsável; T-003 pede explicação do dual ledger; T-004 baixa
+propõe código sem destinatário. Correção local autorizada iniciada com donos separados em0006,
+adaptador e contratos/runner. Assinaturas ganharão p_ator_email obrigatório ao final, sem sobrecarga
+antiga ou DEFAULT. Nenhum SQL remoto. Matriz anterior402 não certifica esta revisão ainda em andamento.
+
+## Retorno T-001/T-002 concluído localmente · 12/11/2026
+
+SQL isolado bda5b631fd1a24f37d7937513ef023fa8d849d45 corrige abb9031: hash final C5221A2388294302B4493338A9A569A060C987516137C76619C759896B14888C.
+Adaptador adf0f6794bfb95e96e3c9c0fb3e87e35c812b522 passa somente e-mail/UUID da sessão atual, ignora
+identidade forjada no request e preserva DTO mínimo. Sem Auth read/grant/REVOKE ou alteração remota.
+Oficina UPDATE adicional somente de responsável. T-003 dual ledger intencional comentado e coberto;
+T-004 continua conflito, refinamento baixo reservado à UI. Fonte/hash ficaram inalterados nos testes.
+
+Matriz completa:18 contratos por modo ACL,16 PASS e2 falhas também presentes em abb9031~1 nos dois
+modos. Sete regressões Auth e Oficina voltaram a PASS, com assert MVP restaurado exatamente à base.
+Transferência428 verificações PASS por modo + reaplicação populada/replay + upgrade real com54tabelas
+preservadas. Falhas mantidas: A1/atendimentos55000 guarda de posse; Peças antigoP0001 na comparação
+envolvendo atualizado_em. Runner sai1, não toda verde; contratos antigos não foram alterados para passar.
+140 Vitest do adaptador, typecheck,3pontes SQL→leitor original e revisão estática independente passaram;
+diffcheck/gitleaks das fatias passaram. Sem novo build, HTTP/Auth/UI/envio/dev ou disputa multissessão.
+Relatório atual docs/TRANSFERENCIA-SQL-REVISAO.md; usar runner privado validar-transferencia-t001-t002.mjs,
+pois o anterior ainda mira aridade9. Claude revalida o conteúdo final antes de aplicar dev, banco antes
+do adaptador novo. UI/central/dispatch fences e prioridades de agenda/métricas continuam pendentes.
+
+## PR9 corrigido, revalidação dirigida ainda requer R1 · 12/11/2026
+
+Claude informou correções8c8fc18 até179504/SHA6C74A0BEA3EDB07257B7AEFC373827BDDBB7A8D9476ADAD69181CF66A84BEAA9.
+GitHub confirmou candidato5941347fbf043e2eb4511f4585559e7f521add4e aberto/não mesclado. Delta pequeno
+conferido sem importar runtime. SETOR001/002, ACOMP004, BAIXA005/006 fixed:23 casos marketing,10
+verificações abertura e10 casos acompanhamento executados com fontes originais/fronteiras em memória.
+ACOMP003-R1 ainda reproduz: chegada de pendente com confirmado_em antigo → Salvar compareceu sem
+mudança na Agenda cria histórico noop → Desfazer seleciona noop e termina confirmado. Controle sem
+noop volta pendente; nenhum histórico artificial inserido. Falta filtrar a marcação efetiva.
+Parecer continua REQUER AJUSTE, não APROVADO. docs/REVALIDACAO-PR9.md, gitleaksdelta/diffcheck PASS;
+sem novo build/login/HTTP/Auth/dev. Transferência corrigidaC522 já foi disponibilizada para Claude.
+
+## PR9 aprovado no pin98156e1 e dev da transferência conferido por leitura · 12/11/2026
+
+Repasse confirmado181139/SHA2B3B9B92BD46AFB90E38DB2D5E4983661D8C00FE7113279310362C688C860F65:
+Claude aprovou bda5b63 e informou0006 aplicado no dev, incluindo transparência do ensaio que executou
+COMMIT. Codex não executou aplicação. Conferência real PostgREST11casos PASS: assinatura10/email
+obrigatório,3tabelas vazias/anon42501 e leitores sem metadados para operação ausente. Sem Auth admin,
+login, escrita/seed/envio; não prova positivo de transferência/histórico/E2E/concorrência. Relatório
+docs/TRANSFERENCIA-DEV-READONLY.md. Claude relatou3falhas baseline; nossa matriz teve2, divergência
+de ambiente/runner a conferir separadamente, sem inventar aprovação geral de testes.
+
+R1 corrigido69a256e e candidatoGitHub98156e10781c7e141a0a257c94cfd0d1a63931e2 aprovado funcional C7:
+9casos dirigidos PASS, incluindo cadeia atual sem novo noop e histórico legado com noop ignorado.
+CAS/unidade/ciclos/23P01 preservados, raiz leu delta, diffcheck/gitleaks PASS. Fontes anteriores
+inalteradas não foram repetidas. docs/APROVACAO-PR9.md; PR permanecia aberto/não mesclado, sem nova tag.
+
+Antes da UI Transferir, dois inventários readonly fecharam proposta concreta de leitura/posse/
+despacho central em docs/TRANSFERENCIA-CENTRAL-PREREQUISITOS.md. Unidade/corpo/contagens juntos,
+versão e reserva central, templates/bot e respostas tardias precisam contrato/donos com Claude.
+Recorte posterior fechado com Claude: piloto somente nos três cartões, central desativada no adaptador;
+hardening central fica com Claude. Em 12/11, a pedido direto do Simão, botão ligado em Vendas/Peças/Oficina,
+preparo servidor de opções/versão e confirmação pela RPC10 existente, sem migration nova. Testes de actions,
+cartões e navegador offline; consultas PostgREST de metadados sem escrita. Login/transferência real não executados.
