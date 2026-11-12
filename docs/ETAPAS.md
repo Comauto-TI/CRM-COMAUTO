@@ -492,3 +492,31 @@ aplicar o WIP antigo. Subagentes com arquivos separados implementam0006, contrat
 estruturado do adaptador; revisão independente e revisão do Claude precedem banco/dev. A rejeição
 anterior ficou documentada; a autorização direta posterior resolve aquela falta de escopo.
 Nada aplicado remotamente. Ainda não afirmar transferência pronta ou teste SQL funcional aprovado.
+
+## Backend local de transferência entregue para revisão · 12/11/2026
+
+`abb9031` contém somente a fatia SQL0006/contratos/CHANGELOG. Origem mantém negócio; destino aberto
+é reutilizado, responsável existente é preservado e pessoa alternativa recebe só aviso. Operação
+une rota, snapshot autorizado, evento, notificação e audit; replay revalida, falhas revertem efeitos.
+Nota bruta fica no ledger protegido; anonimização redige as novas cópias. Hash0006:
+2141BE5DFB1465C9538704CC86A38043E014D402EE860B747E347D881F7C7853.
+
+402 verificações por modo ACL passaram, incluindo limpa, upgrade real com54 tabelas/115FKs legadas
+preservadas e reaplicação populada. Quatro contratos dirigidos Peças/Vendas passaram nos dois modos.
+Contrato antigo A1 falha55000 também na baseline74cc99e: incompatibilidade preexistente documentada,
+sem chamá-la aprovação. Revisão independente identificou/cobriu guardaNULL da rota e cópias da nota;
+parecer final no hash acima. Diffcheck/gitleaks passaram. Typecheck e133 testes do adaptador0bffe79
+e104 da compatibilidade de diálogo2bf3e72 passaram; estes últimos preservam autoria bot/sistema.
+
+Revisão do Claude deve avaliar especialmente o grant mínimo service_role→auth.users(id,email),
+sem escrita ou colunas sensíveis. Nada aplicado no dev/Auth. Evidências e limitações em
+docs/TRANSFERENCIA-SQL-REVISAO.md. Antes da UI: central com unidade/política antes de count/corpo,
+guard de despacho legado e nota/snapshot com saída filtrada/paginada. PGlite sequencial não prova
+concorrência multissessão, HTTP, PostgREST, login ou WhatsApp. Transferência completa ainda pendente.
+Agenda A/B segue na prioridade acordada depois desta fatia SQL; acompanhamento(C) é do Claude.
+
+Ponte dirigida posterior: 3 casos PASS com JSON real do PGlite → criarDialogo original por Next SWC/VM.
+Central → Vendas/Peças antes/depois do claim preservam autoria cliente/bot/sistema, IDs únicos,
+pendente booleano e mascaramento real; interno/outro negócio omitidos. Reuso Peças sem dono com versão >0
+retorna versão real e resumo vazio, assume com essa versão e lê histórico autorizado. Fontes/hash
+inalterados; sem repetir 402, sem HTTP/Auth/UI/envio reais. Artefatos privados referidos no relatório.

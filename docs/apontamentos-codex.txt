@@ -1473,3 +1473,19 @@ Contrato novo tests/sql/contratos-pecas-sem-canal.sql passou nos dois modos e co
 [OBTIDO] Modelo modular só aceita Vendas/Peças; Oficina não tem conversa/versão. Devolver slot não desativa negócio aberto. Proposta concreta registra decisões de fluxo/canal, responsável/reuso e versão central/Oficina para Claude fechar ANTES da mudança de núcleo/SQL. Nenhum código de transferência ou SQL remoto foi executado; não confundir com entrega pronta.
 [TIPO] preparação / ainda-nao-implementado
 [GRAVIDADE] dependência de contrato
+
+[ID] TRANSF-SETORES-NULL-002
+[ARQUIVO] supabase/migrations/0006_atendimento.sql (transferir_atendimento_setor)
+[TESTE] Origem Vendas/Peças sem atendimento modular tenta transferir canal com rota explícita alheia.
+[ESPERADO] Recusar conflito sem alterar rota, negócios, notificações ou snapshot.
+[OBTIDO] Revisão independente encontrou comparação nullable capaz de escapar do IF. Corrigida com Boolean total e exigência de origem_mod.id; dois casos negativos incluídos no contrato402, nos dois modos ACL. Fix local em abb9031; Claude revisa antes do dev.
+[TIPO] bug corrigido localmente
+[GRAVIDADE] alta
+
+[ID] TRANSF-SETORES-NOTA-003
+[ARQUIVO] supabase/migrations/0006_atendimento.sql (descrição/atividade/snapshot)
+[TESTE] Transferência seguida de anonimização do cliente.
+[ESPERADO] Nota explícita permanece só no ledger protegido; novas cópias de mensagens/nota acompanham a anonimização, sem recuperar texto ao reverter flag.
+[OBTIDO] Cópias de nota em descrição/atividade foram retiradas; novos domínios usam texto genérico. Triggers redigem nota/snapshot e preservam IDs/audit/vizinhos. Contrato402 e revisão estática final passaram no hash2141BE5D. Não certifica retenção dos domínios antigos.
+[TIPO] bug corrigido localmente
+[GRAVIDADE] alta

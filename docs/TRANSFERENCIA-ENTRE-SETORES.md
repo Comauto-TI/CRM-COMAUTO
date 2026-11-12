@@ -1,7 +1,8 @@
 # Transferência entre setores — contrato para revisão
 
-Direção do Simão recebida pelo Claude em 12/11/2026. **Contrato fechado no repasse posterior abaixo;
-implementação local retomada após autorização direta do Simão, ainda sem revisão/integração no dev.** Base: Claude
+Direção do Simão recebida pelo Claude em 12/11/2026. **Backend local entregue em `abb9031` para revisão
+do Claude, após autorização direta do Simão; integração de dev e interface ainda pendentes.** Evidências,
+ACLs e dependências de exposição em [TRANSFERENCIA-SQL-REVISAO.md](TRANSFERENCIA-SQL-REVISAO.md). Base: Claude
 `588bc1c` (Oficina integrada), incorporada na
 branch `codex/transferencias-setores` pelo merge `be4868b`. Não é publicação em produção.
 
@@ -39,7 +40,8 @@ Respostas posteriores do Claude, conferidas até174752/SHA
 O DTO mínimo do adaptador `b9e64dd` ainda não transportava o aviso de responsável preservado. O retorno
 combinado passa a exigir `avisoResponsavel: null | { nome: string }` no sucesso, validado e mascarado
 no adaptador. Aviso só em reuso que preserva dono diferente do selecionado, inclusive escolha de fila;
-erro fora do escopo continua sem nome/ID. Implementação/testes dessa ampliação ainda em andamento.
+erro fora do escopo continua sem nome/ID. Implementação concluída em `0bffe79`, com 133 testes de
+parser/adaptador; `2bf3e72` preserva autoria bot/sistema nos diálogos, com 104 testes de compatibilidade.
 
 ### Autorização direta recebida — edição local
 
@@ -63,9 +65,9 @@ arquivos/donos separados. Dados remotos, Auth, produção e implantação contin
 Decisão recebida: opção1 nesta entrega; as demais permanecem propostas futuras.
 Não criar outro número/integração ou liberar histórico genérico como solução provisória.
 
-### Estado de implementação e revisão automática
+### Histórico da suspensão e revisão automática
 
-Parser/adaptador atualizados para pessoa/fila nos três destinos:114 testes com RPC simulada passaram;
+Na primeira preparação, parser/adaptador para pessoa/fila nos três destinos tiveram 114 testes com RPC simulada;
 não há action/endpoint/UI expondo a operação. SQL e contratos locais anteriores ficaram desatualizados.
 O WIP foi preservado privadamente com hashes e retirado do arquivo ativo; `0006` voltou exatamente à
 base revisada. Nada desse SQL foi aplicado no dev ou validado funcionalmente.
@@ -203,3 +205,10 @@ Claude confirmou Oficina (adaptador + UI) em merge `287c498`, 1.919 Vitest e ser
 relatou recepção/consultor autorizados e vendedor recusado no navegador. Codex não repetiu nem atribuiu
 a si essa execução. Nesta fatia foram feitas análise da fonte e duas revisões independentes readonly;
 nenhum SQL remoto, dado, Auth, envio ou servidor foi alterado.
+
+Backend atual separado: `abb9031` contém `0006` e contratos SQL; `0bffe79` contém o aviso estruturado
+do adaptador; `2bf3e72` contém a compatibilidade de autoria do diálogo. O novo contrato passou 402
+verificações em cada modo ACL, upgrade real e reaplicação populada; quatro regressões dirigidas
+passaram. O contrato antigo de A1 falha também na baseline, conforme relatório. Nenhum desses
+resultados comprova multissessão, login, PostgREST ou envio real. Claude revisa SQL/ACL antes do dev;
+caminhos legados da central e interface permanecem como gates explícitos antes da exposição.
