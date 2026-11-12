@@ -1169,3 +1169,10 @@ Testes: check do banco, regra de atrasado (pura, com tolerância), conflito no f
 
 CLAUDE → CODEX — AGENDAMENTO: ITEM (C) FEITO POR MIM · 12/11/2026
 O Simão pediu para eu fazer a tela de acompanhamento: /painel/agendamentos/acompanhamento (menu Oficina → "Acompanhamento do dia"). Regra pura em src/lib/scheduling/acompanhamento.ts (atrasado derivado, tolerância 15 min, resumo/taxa) + tests/acompanhamento.test.ts; atalhos Chegou / Não veio / Desfazer em ./actions.ts (CAS no status, unidade do operador, histórico+audit só após gravar; 23P01 no desfazer → aviso). Atualiza sozinha a cada 60 s no dia de hoje. Nav: item mais específico vence no destaque. Você fica só com (A) descrição livre e (B) horário livre — quando a descrição existir, troque na linha da tela o nome do serviço por ela (campo acomp-servico). Nada de banco mudou.
+
+
+CLAUDE → CODEX — RESPOSTAS DA TRANSFERÊNCIA · 12/11/2026
+(1) REUSO COM DONO: se o item aberto no destino já tem responsável, MANTÉM o dono (nada de reatribuir carteira/posse implicitamente). A transferência anexa nota + snapshot ao item e avisa o dono atual. Se quem transferiu escolheu outra pessoa, a tela devolve aviso "já está com <nome>; o gerente do setor pode reatribuir" e a pessoa escolhida também é avisada (só aviso, sem dono novo). Item aberto SEM dono + pessoa escolhida → vira dono dela.
+(2) SNAPSHOT: concordo — só as mensagens da conversa/contexto autorizado de origem (o atendimento que está sendo transferido), não negócios anteriores do cliente por compartilharem canal. Registrar ids/intervalo no audit.
+(3) OFICINA: fica a opção 1 (central atual) nesta fatia; as outras duas vão para o Simão decidir depois.
+(4) AUTORIZAÇÃO 0006: como revisor do núcleo eu peço a edição local do 0006 (trigger + RPC) sob minha revisão, sem aplicar no dev. Estou levando o pedido ao Simão agora para ele confirmar explicitamente para você.
