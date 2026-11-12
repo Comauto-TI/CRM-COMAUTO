@@ -1293,3 +1293,39 @@ a { color: var(--vw-azul); }
 @media (prefers-reduced-motion: reduce) {
   .abertura, .abertura * { animation: none !important; transition-duration: .2s !important; }
 }
+
+/* ===== Oficina · Acompanhamento do dia ===== */
+.acomp-dias { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+.acomp-dias .linha-form { display: flex; gap: 6px; margin: 0; }
+.acomp-dias input[type=date] { width: auto; }
+.acomp-kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 10px; margin-bottom: 18px; }
+.acomp-kpi { display: flex; flex-direction: column; gap: 2px; padding: 12px 14px; }
+.acomp-kpi span { font-size: 12px; color: var(--texto-2); }
+.acomp-kpi strong { font-size: 26px; line-height: 1.1; font-variant-numeric: tabular-nums; }
+.acomp-kpi.alerta-kpi { border-color: var(--erro); }
+.acomp-kpi.alerta-kpi strong { color: var(--erro); }
+.acomp-grupo { margin-bottom: 18px; }
+.acomp-grupo > summary { cursor: pointer; list-style: none; }
+.acomp-grupo > summary h3 { display: inline; }
+.acomp-lista { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; }
+.acomp-item {
+  display: grid; grid-template-columns: 56px minmax(0, 1.3fr) minmax(0, 1.6fr) 80px 150px 190px;
+  gap: 12px; align-items: center; padding: 10px 14px; background: var(--superficie);
+  border: 1px solid var(--borda); border-left: 4px solid var(--borda); border-radius: var(--raio-pequeno);
+}
+.acomp-item.acomp-atrasado { border-left-color: var(--erro); }
+.acomp-item.acomp-aguardando { border-left-color: var(--acento, #2563eb); }
+.acomp-item.acomp-veio { border-left-color: var(--positivo, var(--ok)); }
+.acomp-item.acomp-nao_veio, .acomp-item.acomp-cancelado { opacity: 0.75; }
+.acomp-hora { font-size: 18px; font-weight: 700; font-variant-numeric: tabular-nums; }
+.acomp-quem, .acomp-servico { display: flex; flex-direction: column; min-width: 0; }
+.acomp-quem > *, .acomp-servico > * { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.acomp-nome { font-weight: 600; }
+.acomp-selo { display: flex; justify-content: flex-end; }
+.acomp-acoes { display: flex; gap: 6px; justify-content: flex-end; }
+.acomp-acoes form { margin: 0; }
+@media (max-width: 900px) {
+  .acomp-item { grid-template-columns: 50px 1fr; }
+  .acomp-servico, .acomp-box, .acomp-selo, .acomp-acoes { grid-column: 2; }
+  .acomp-acoes { justify-content: flex-start; }
+}

@@ -13,6 +13,8 @@ Versionamento semântico a partir de **0.0.1** (decisão do Simão, 10/11/2026).
 - Backend local de transferência entre setores: operação atômica, reuso de pedido aberto, responsável preservado, avisos e histórico compartilhado com autorização; SQL ainda depende de revisão e integração no dev.
 - Preparação isolada da transferência entre setores: validação e adaptador servidor; operação ainda sem SQL integrado ou interface disponível.
 - Diálogo preparado para preservar autoria do assistente/sistema em histórico compartilhado autorizado, com validação de direção e pendência.
+
+- **Oficina · Acompanhamento do dia**: atrasados (tolerância de 15 min, “há X min”), aguardando, vieram, não vieram e cancelados; atalhos Chegou / Não veio / Desfazer; totais e taxa de comparecimento; atualiza sozinha a cada minuto. Sem mudança de banco.
 - **Oficina**: fila e triagem com duas etapas, filtro “Minhas”, paginação e ações autorizadas no servidor; a agenda continua como estava.
 - **Marketing por setor**: campanhas, eventos e links/QR têm setor; cada setor vê e cria só os seus (com as estatísticas deles); admin e gerente da administração veem tudo, com filtro por setor.
 - **Abertura WAGconnect** depois do login (roda patina, Golf arranca, painel aparece) e identidade final (logo v10 e foto do Golf).
@@ -20,6 +22,7 @@ Versionamento semântico a partir de **0.0.1** (decisão do Simão, 10/11/2026).
 - Central geral de atendimento só para triagem (recepção, gerente de Oficina/administração e admin); os setores atendem pelos próprios cartões.
 ### Corrigido
 - Transferência local compara a posse legada com o e-mail da sessão sem consultar ou conceder acesso ao Auth; permissões de atualização de Oficina limitadas ao responsável.
+
 - Avatar da conversa usa as mesmas iniciais do cartão; painel de Peças distingue o responsável pela cotação de quem assume a conversa.
 - “Agendamentos hoje” não conta mais cancelado como pendente.
 - Telefone do cliente em “Quem confirmou” agora aparece mascarado (LGPD).
