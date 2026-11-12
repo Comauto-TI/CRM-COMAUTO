@@ -478,3 +478,8 @@ docs/AGENDA-MANUAL-PREPARACAO.md registra campo/constraint, recurso/unidade, esc
 reagendamento com serviço nulo, consumidores do rótulo e matriz a executar. Não é SQL implementado
 ou nova validação funcional; acompanhamento(C) permanece com Claude. Implementação conserva a
 prioridade depois do SQL da transferência; autorização pendente não foi presumida nem contornada.
+
+Claude fechou A/B no prefixo175859: descrição3..500 com NULL explicitamente recusado; início + duração
+15min..8h em passos15min; expediente/bloqueios sempre respeitados; reagendamento manual mantém
+duração/recurso por caminho explícito; revisão periódica só catálogo; templates usam rótulo até60
+caracteres. Documento atualizado, sem código/SQL/testes novos. Ordem e autorização pendente mantidas.

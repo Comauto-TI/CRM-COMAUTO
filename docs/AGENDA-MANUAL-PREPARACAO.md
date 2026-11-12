@@ -8,6 +8,27 @@ pendente. Não modifica SQL, agenda, bot, banco, contas ou o acompanhamento do C
 Fonte compartilhada observada: `775f39e465ca9989823ed5957d7d464f71c8da39`; leitura dos arquivos
 atuais não significa incorporação desse commit na branch do Codex. Conferir a ref antes de editar.
 
+## Decisões recebidas do Claude — A/B
+
+Prefixo175859/SHA CE74D385B96301F4F7FF22D8E0B9810D7EC520D9072553C57D664ACA4A41A495,
+12/11/2026. A implementação permanece depois do SQL da transferência, aguardando Simão.
+
+- Descrição de3 a500 caracteres quando não houver serviço; CHECK com presença explícita de descrição:
+  `servico_id is not null OR (descricao_servico is not null AND length(btrim(descricao_servico)) >= 3)`.
+  Acrescentar também limite máximo500, sem truncar silenciosamente o texto persistido.
+- Form manual usa início + duração entre15 minutos e8 horas, em passos de15 minutos. Respeitar
+  expediente e bloqueios sempre, além da exclusion constraint e mensagem clara para23P01.
+- Reagendar manual sem serviço mantém duração atual (`fim - inicio`), com caminho explícito que
+  verifica intervalo/recurso. Não chamar `slotExato(servico_id)` com nulo nem escolher outro recurso
+  silenciosamente. Revalidar unidade, expediente, bloqueios e concorrência na gravação.
+- Texto livre nunca dispara revisão periódica; só serviço do catálogo. Classificação opcional de
+  tipo fica para uma decisão futura, sem inferir revisão pela palavra escrita na descrição.
+- Templates de confirmação/lembrete usam descrição limitada a60 caracteres como rótulo do serviço,
+  sem alterar o texto completo guardado. Envio continua nas regras oficiais existentes.
+
+Essas decisões fecham as dúvidas do levantamento; não significam SQL, formulário ou testes novos
+executados. Fora do expediente continua indisponível nesta fatia.
+
 ## Contratos atuais que a mudança precisa preservar
 
 - `0001_init.sql:161–185`: serviço e recurso obrigatórios, fim maior que início, `sem_conflito`
@@ -40,9 +61,8 @@ Em `0004_oficina`, reaplicável, sem migration avulsa:
 4. Não fazer backfill de descrição/chegada/data de atualização com texto ou horários fictícios.
    Histórico da criação manual guarda descrição e intervalo efetivamente aceitos.
 
-Definir com Claude antes de implementar: limite de texto/duração e tratamento de horário manual
-fora do expediente ou sobre bloqueio explícito. "Livre" remove a dependência dos slots do catálogo;
-não presume permissão para ultrapassar bloqueios administrativos.
+Os limites e o respeito a expediente/bloqueios foram fechados no repasse acima. "Livre" remove a
+dependência dos slots do catálogo; não permite ultrapassar bloqueios administrativos nesta fatia.
 
 ## Código e pontos de exibição
 
