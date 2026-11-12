@@ -1,5 +1,8 @@
 # Revalidação dirigida do PR #9
 
+Histórico do pin5941347. R1 foi corrigido e conferido no pin98156e1; parecer atual em
+[APROVACAO-PR9.md](APROVACAO-PR9.md).
+
 12/11/2026. Candidato `5941347fbf043e2eb4511f4585559e7f521add4e`, sobre a base
 `bc14aa1e90e440ec87e6fc88a275c817041b7f87`. Delta reconferido desde o pin revisado `8df62ff`:
 fix `8c8fc18` e dois commits de coordenação. PR consultado aberto/não mesclado.

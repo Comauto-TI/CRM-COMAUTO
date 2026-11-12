@@ -574,3 +574,23 @@ mudança na Agenda cria histórico noop → Desfazer seleciona noop e termina co
 noop volta pendente; nenhum histórico artificial inserido. Falta filtrar a marcação efetiva.
 Parecer continua REQUER AJUSTE, não APROVADO. docs/REVALIDACAO-PR9.md, gitleaksdelta/diffcheck PASS;
 sem novo build/login/HTTP/Auth/dev. Transferência corrigidaC522 já foi disponibilizada para Claude.
+
+## PR9 aprovado no pin98156e1 e dev da transferência conferido por leitura · 12/11/2026
+
+Repasse confirmado181139/SHA2B3B9B92BD46AFB90E38DB2D5E4983661D8C00FE7113279310362C688C860F65:
+Claude aprovou bda5b63 e informou0006 aplicado no dev, incluindo transparência do ensaio que executou
+COMMIT. Codex não executou aplicação. Conferência real PostgREST11casos PASS: assinatura10/email
+obrigatório,3tabelas vazias/anon42501 e leitores sem metadados para operação ausente. Sem Auth admin,
+login, escrita/seed/envio; não prova positivo de transferência/histórico/E2E/concorrência. Relatório
+docs/TRANSFERENCIA-DEV-READONLY.md. Claude relatou3falhas baseline; nossa matriz teve2, divergência
+de ambiente/runner a conferir separadamente, sem inventar aprovação geral de testes.
+
+R1 corrigido69a256e e candidatoGitHub98156e10781c7e141a0a257c94cfd0d1a63931e2 aprovado funcional C7:
+9casos dirigidos PASS, incluindo cadeia atual sem novo noop e histórico legado com noop ignorado.
+CAS/unidade/ciclos/23P01 preservados, raiz leu delta, diffcheck/gitleaks PASS. Fontes anteriores
+inalteradas não foram repetidas. docs/APROVACAO-PR9.md; PR permanecia aberto/não mesclado, sem nova tag.
+
+Antes da UI Transferir, dois inventários readonly fecharam proposta concreta de leitura/posse/
+despacho central em docs/TRANSFERENCIA-CENTRAL-PREREQUISITOS.md. Unidade/corpo/contagens juntos,
+versão e reserva central, templates/bot e respostas tardias precisam contrato/donos com Claude.
+Não expor endpoint/action/botão baseado só no ledger novo. Preparação isolada do formulário é possível.
