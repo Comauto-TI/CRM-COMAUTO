@@ -470,3 +470,11 @@ autorizado da origem, com IDs/intervalo auditados; Oficina permanece na central/
 reafirmou o pedido de edição local0006 e informou consultar Simão. Não é a resposta direta da
 autorização pendente neste chat: núcleo continua intacto e suspenso. Nenhum teste foi repetido ou
 novo runtime entregue nesta leitura; DTO do adaptador precisará aviso estruturado antes da UI.
+
+## Preparação independente da agenda manual · 12/11/2026
+
+Sem tocar o núcleo suspenso, foi mapeada A/B na fonte compartilhada775f39e. Documento
+docs/AGENDA-MANUAL-PREPARACAO.md registra campo/constraint, recurso/unidade, escrita atômica,
+reagendamento com serviço nulo, consumidores do rótulo e matriz a executar. Não é SQL implementado
+ou nova validação funcional; acompanhamento(C) permanece com Claude. Implementação conserva a
+prioridade depois do SQL da transferência; autorização pendente não foi presumida nem contornada.
