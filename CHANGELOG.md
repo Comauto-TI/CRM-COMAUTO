@@ -10,6 +10,7 @@ Versionamento semântico a partir de **0.0.1** (decisão do Simão, 10/11/2026).
 
 ## [Não lançado]
 ### Adicionado
+- Preparação isolada da transferência entre setores: validação e adaptador servidor; operação ainda sem SQL integrado ou interface disponível.
 - **Oficina**: fila e triagem com duas etapas, filtro “Minhas”, paginação e ações autorizadas no servidor; a agenda continua como estava.
 - **Marketing por setor**: campanhas, eventos e links/QR têm setor; cada setor vê e cria só os seus (com as estatísticas deles); admin e gerente da administração veem tudo, com filtro por setor.
 - **Abertura WAGconnect** depois do login (roda patina, Golf arranca, painel aparece) e identidade final (logo v10 e foto do Golf).
