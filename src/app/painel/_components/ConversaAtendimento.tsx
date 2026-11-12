@@ -4,7 +4,7 @@ import { useCallback, useEffect, useRef, useState, useTransition } from "react";
 import { iniciais } from "@/lib/quadro";
 import DialogoMensagens, { type MensagemDialogo } from "./DialogoMensagens";
 
-type Mensagem = MensagemDialogo & { direcao: "entrada" | "saida"; autor: "cliente" | "atendente" };
+type Mensagem = MensagemDialogo & { direcao: "entrada" | "saida"; autor: "cliente" | "atendente" | "bot" | "sistema" };
 type Dados = {
   ok: true; id: string | null; versao: number; clienteNome: string;
   estado: "livre" | "minha" | "outra"; janelaAberta: boolean; podeDevolver: boolean; podeAssumir: boolean;
@@ -34,10 +34,12 @@ function dadosValidos(v: unknown, registroId: string, chave: ConfigConversa["cha
     typeof v.podeAssumir === "boolean" && (!v.podeAssumir || v.estado === "livre") &&
     typeof v.revisaoPendente === "boolean" && Array.isArray(v.mensagens) &&
     (v.id !== null || (v.estado !== "minha" && v.versao === 0 && v.mensagens.length === 0)) &&
-    v.mensagens.every((m: unknown) => objeto(m) && uuid(m.id) && (m.direcao === "entrada" || m.direcao === "saida") &&
-      (m.autor === "cliente" || m.autor === "atendente") && typeof m.tipo === "string" &&
+    v.mensagens.every((m: unknown) => objeto(m) && uuid(m.id) &&
+      ((m.direcao === "entrada" && m.autor === "cliente") ||
+        (m.direcao === "saida" && (m.autor === "atendente" || m.autor === "bot" || m.autor === "sistema"))) && typeof m.tipo === "string" &&
       (m.conteudo === null || typeof m.conteudo === "string") && typeof m.status === "string" &&
-      typeof m.criadoEm === "string" && Number.isFinite(Date.parse(m.criadoEm)) && (m.pendente === undefined || typeof m.pendente === "boolean"));
+      typeof m.criadoEm === "string" && Number.isFinite(Date.parse(m.criadoEm)) && (m.pendente === undefined || typeof m.pendente === "boolean") &&
+      (!m.pendente || (m.direcao === "saida" && m.autor === "atendente" && m.status === "bloqueada")));
 }
 
 function corAvatar(nome: string) {
