@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState, useTransition } from "react";
+import { iniciais } from "@/lib/quadro";
 import DialogoMensagens, { type MensagemDialogo } from "./DialogoMensagens";
 
 type Mensagem = MensagemDialogo & { direcao: "entrada" | "saida"; autor: "cliente" | "atendente" };
@@ -44,10 +45,6 @@ function corAvatar(nome: string) {
   let h = 0;
   for (const ch of nome) h = (h * 31 + ch.charCodeAt(0)) >>> 0;
   return cores[h % cores.length];
-}
-function iniciais(nome: string) {
-  const p = nome.trim().split(/\s+/);
-  return ((p[0]?.[0] ?? "?") + (p.length > 1 ? p[p.length - 1][0] : "")).toUpperCase();
 }
 
 /** Rascunhos ficam por setor e negócio enquanto o painel está aberto, sem persistência no navegador. */
@@ -174,7 +171,7 @@ function ConversaDoRegistro({ registroId, config, onMudou, onVoltar, rascunho, a
   const ocupado = pendente || rascunho.enviando;
   const podeEnviar = !!dados && dados.estado === "minha" && dados.janelaAberta && !ocupado;
   const estado = dados?.estado === "minha" ? "Em atendimento com você" : dados?.estado === "outra"
-    ? "Em atendimento por outra pessoa" : dados ? "Disponível para assumir" : semResponsavel ? `${config.registro} sem responsável` : `Conversa de ${config.nome}`;
+    ? "Em atendimento por outra pessoa" : dados ? "Conversa disponível para assumir" : semResponsavel ? `${config.registro} sem responsável` : `Conversa de ${config.nome}`;
 
   return (
     <div className="wa-conversa">

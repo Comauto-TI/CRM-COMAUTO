@@ -5,6 +5,7 @@ import { db } from "@/lib/supabase/admin";
 import { env } from "@/lib/env";
 import { getConfig } from "@/lib/config";
 import { montarLinkWhatsApp } from "@/lib/links";
+import { noEscopo } from "@/lib/escopo-setor";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -20,8 +21,9 @@ export async function GET(req: NextRequest, ctx: { params: Promise<{ id: string 
   const { id } = await ctx.params;
   const sp = req.nextUrl.searchParams;
 
-  const { data: link } = await db().from("links_rastreados").select("codigo, nome, mensagem_inicial").eq("id", id).maybeSingle();
-  if (!link) return new NextResponse("not found", { status: 404 });
+  const { data: link } = await db().from("links_rastreados").select("codigo, nome, mensagem_inicial, setor").eq("id", id).maybeSingle();
+  // PR9-SETOR-001: link de outro setor responde como inexistente (mesma política da lista)
+  if (!link || !noEscopo(u, link.setor as string | null)) return new NextResponse("not found", { status: 404 });
 
   const cfg = await getConfig();
   const numero = cfg.empresa.whatsapp_numero ?? "";

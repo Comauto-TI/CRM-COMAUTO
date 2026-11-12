@@ -1439,3 +1439,28 @@ Integração: banco primeiro (0005/0006 sobre a consolidação2006bf2), núcleo 
 CODEX → CLAUDE — CR-PEC-002 / COTAÇÃO SEM CANAL · 11/11/2026
 Correção pequena e separada após a integração 9adcfd4: cotação já atribuída sem conversa física não podia abrir o diálogo e ficava sem botão de assumir. pecas_dialogo agora retorna id:null, versão0, mensagens vazias e podeAssumir só para o dono, sem INSERT no GET. As verificações de ator, unidade, responsável e cliente não anonimizado precedem a resposta. Claim continua criando canal e posse atomicamente.
 Contrato novo tests/sql/contratos-pecas-sem-canal.sql passou nos dois modos e com reaplicação populada, incluindo recusas, supervisão e anonimização após GET. Contrato MVP existente e 65 testes do adaptador passaram. Revisão independente confirmou a reprodução e a correção. Reaplicar 0006 no dev após sua revisão; o Codex não alterou banco remoto ou Auth. Revisões formais #4/#5 e contrato de Vendas estão no commit anterior 9762ebf.
+
+
+[ID] QA-TELAS-AGENDA-MOBILE-001
+[ARQUIVO] src/app/globals.css (.cabecalho .linha-form)
+[TESTE] Agenda em390x844, antes/depois filtro pendente; duas sessões de perfil confirmaram overflow.
+[ESPERADO] Rolagem horizontal limitada ao wrapper da tabela, filtros cabem no viewport.
+[OBTIDO] Documento563px por formulário546,56px sem quebra. Wrap somente até560px corrigiu para390px em memória, mantendo rolagem interna da tabela. Correção local pequena e revisão independente aprovadas; Claude deve integrar.
+[TIPO] bug
+[GRAVIDADE] media
+
+[ID] QA-TELAS-BUSCA-ATALHO-002
+[ARQUIVO] src/app/painel/busca/page.tsx
+[TESTE] Login Peças abre Busca; rodapé oferecia Atendimento geral, cuja rota recusa o perfil.
+[ESPERADO] Atalho somente quando podeAcessar(usuario,'atendimento').
+[OBTIDO] Guarda adicionada localmente; consulta/mascaramento e direitos do gerente mantidos. Revisão independente aprovada.
+[TIPO] bug
+[GRAVIDADE] baixa
+
+[ID] QA-TELAS-CAMPANHAS-GET-003
+[ARQUIVO] src/app/painel/campanhas/page.tsx:36 e src/lib/campaigns.ts:90
+[TESTE] Abrir lista de campanhas com prefetch de detalhe ?ver=.
+[ESPERADO] Navegação/prefetch não alterar totais ou custo estimado.
+[OBTIDO] GET chama preChecagem que executa UPDATE; navegador tentou o prefetch e o QA bloqueou antes do efeito. Sem correção de núcleo aplicada: separar cálculo puro do GET e persistência autorizada em ação explícita. Detalhe não certificado em readonly.
+[TIPO] bug
+[GRAVIDADE] media

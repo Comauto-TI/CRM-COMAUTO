@@ -53,7 +53,7 @@ QR Code + filas → validação → lote de até 10 convites autorizados. Instal
 | F7 | Captação e IA | Ambos |
 | F2-4 | **Lembretes e mensagens agendadas** (pedido do Simão, 10/11): o usuário agenda um lembrete para si sobre um cliente específico (vira pop-up na hora) ou agenda uma mensagem para o cliente. A mensagem sai pelo `outbound.ts`: dentro da janela de 24h texto livre; fora dela só template aprovado e com consentimento do tipo certo (senão o sistema avisa e não envia) | Claude | ✅ na main — 🟨 pronto em `claude/f1-vendas` e testado no dev: agendar pe… |
 | F2-5 | **Aba Clientes reorganizada** (pedido do Simão, 10/11): lista mais organizada no padrão do quadro (filtros no topo, ficha com abas: dados, veículos, oportunidades, agendamentos, conversas, lembretes) | Claude | ✅ na main — 🟨 pronta em `claude/f1-vendas` e testada no dev: filtros + … |
-| F8 | 🟨 **F8 v1 pronta antes do piloto (decisão do Simão, 10/11)** em `claude/f1-vendas`: /painel/metricas com KPIs, funil contínuo (desenho do Codex), previsão do mês com confiança, conversão por vendedor/origem, tempo por etapa, motivos de perda e funil de eventos (Chamados → Confirmados → Presentes → Vendidos). F8-001 revalidado no carregador do bb85c40. F8-001-R1: origem_ref do lead de link usa código, enquanto a métrica exige o ID do evento. F8-002 revalidado com 5.200 oportunidades. F8-002-R1: histórico por lote sem paginação pode truncar tempos e chances quando a API limita linhas. **Aba Métricas e previsões** (pedido do Simão, 10/11). Centraliza o dashboard e os relatórios, incluindo o funil de Vendas e a seção Eventos. Funil de conversão por etapa com % e volume (Novos, Seminovos, Oficina, Peças, chatbot/QR/campanhas), tempo médio por etapa, conversão por vendedor/origem/unidade; **previsões** que melhoram com o histórico (vendas do mês, agenda da oficina, demanda de peças) a partir de séries diárias guardadas no banco; metas definidas pelos dados que já temos. Começa simples (médias móveis e taxa histórica por etapa), sem prometer precisão antes de ter volume | Claude (painel e modelo de previsão) · Codex (consultas SQL/views, testes de cálculo e de carga) | ✅ v1 na main + métricas por pessoa (v0.0.4) — … 
+| F8 | 🟨 **F8 v1 pronta antes do piloto (decisão do Simão, 10/11)** em `claude/f1-vendas`: /painel/metricas com KPIs, funil contínuo (desenho do Codex), previsão do mês com confiança, conversão por vendedor/origem, tempo por etapa, motivos de perda e funil de eventos (Chamados → Confirmados → Presentes → Vendidos). F8-001 revalidado no carregador do bb85c40. F8-001-R1: origem_ref do lead de link usa código, enquanto a métrica exige o ID do evento. F8-002 revalidado com 5.200 oportunidades. F8-002-R1: histórico por lote sem paginação pode truncar tempos e chances quando a API limita linhas. **Aba Métricas e previsões** (pedido do Simão, 10/11). Centraliza o dashboard e os relatórios, incluindo o funil de Vendas e a seção Eventos. Funil de conversão por etapa com % e volume (Novos, Seminovos, Oficina, Peças, chatbot/QR/campanhas), tempo médio por etapa, conversão por vendedor/origem/unidade; **previsões** que melhoram com o histórico (vendas do mês, agenda da oficina, demanda de peças) a partir de séries diárias guardadas no banco; metas definidas pelos dados que já temos. Começa simples (médias móveis e taxa histórica por etapa), sem prometer precisão antes de ter volume | Claude (painel e modelo de previsão) · Codex (consultas SQL/views, testes de cálculo e de carga) | ✅ v1 na main + métricas por pessoa (v0.0.4) — …
 | F9 | **Otimização dos layouts (ETAPA FINAL, decisão do Simão 11/11)**: depois que tudo estiver validado, Simão + Claude revisam tela por tela para reduzir a densidade de informação (o que é essencial fica à vista; o resto em abas, detalhes ou ao passar o mouse) sem perder o que é importante. Até lá a prioridade é função | Claude + Simão |
 
 ## F8 — visão do Codex
@@ -297,3 +297,103 @@ O PR #6 substitui #4/#5; não declarar merge/tag até evidência remota.
 sobre 279f553 (runtime); os commits posteriores da versão são package/CHANGELOG. A continuidade de Vendas
 será rebaseada nessa main, mantendo a próxima entrega em Não lançado até novo merge real. CR-PEC-002
 já foi revisada/aplicada no dev pelo Claude; evidência de navegador desse fluxo ainda depende de fixtures.
+
+
+## Oficina — primeira fatia isolada · 11/11/2026
+
+Após Vendas/PR #7, Claude liberou Oficina. Branch codex/oficina-fila no checkout Codex existente,
+recuperando pontualmente 35d56b2: 0004, validadores e contratos. Agenda continua principal; Nav/Resumo
+atuais preservados. Claude confirmou triagem como domínio, vínculo opcional verificável ao agendamento,
+recepção na fila coletiva com filtro minhas, consultor próprias+sem dono, gestão unidades autorizadas.
+
+Em andamento: 0004 reaplicável, grants reais, perfil/ator/unidade atual e revalidação de cliente/veículo;
+fila paginada por política no banco e adaptador server-only com DTO mínimo. SQL/contrato e adaptação serão
+commits separados. Ainda não há telas de Oficina restauradas nem conversa/0006 expandida. Próximo aceite:
+SQL em dois modos/reapply/rollback e revisão independente; Claude revisa/aplica antes da UI. Recuperação
+explícita de triagem órfã em alinhamento, sem transferência de dono vigente. Plano docs/OFICINA-MVP-PILOTO.md.
+
+Base remota v0.0.5 confirmada via PR #7 (main 16b873b); clone compartilhado main ainda 5e73115.
+Rebase somente após congelar arquivos dos subagentes, preservando hashes e trabalho em andamento.
+
+
+
+**Prioridade posterior do Simão via Claude:** antes de continuar Oficina, QA somente leitura de todas as telas/perfis na produção local v0.0.5. WIP Oficina congelado: SQL A210A0A9 passou contratos locais em dois modos/reapply/upgrade; revisão independente não executada. Adaptador 22D64066 e testes 0680C26B escritos, ainda não executados. Nenhuma integração remota. Preservar essa distinção ao retomar.
+
+
+
+## QA prioritária das telas — v0.0.5 · 11/11/2026
+
+Rodada real readonly consolidada em docs/QA-TELAS-PERFIS-v005.md: 7 perfis autenticados, 47 casos passaram,
+nenhuma falha de produto comprovada nos casos executados após recheck do seletor; 2 pendências: login de
+Vendedor aguarda senha válida documentada e conversa de Peças sem cartão autorizado. Admin e gerentes
+abriram conversas autorizadas vazias, sem testar envios/histórico. Visão pessoal de Métricas do vendedor
+continua pendente. URLs negadas/menu/início e telas permitidas cobertos no roteiro, sem CRUD/WhatsApp.
+Oficina está congelada no WIP 0004 A210A0A9 (contratos locais passaram; revisão independente pendente),
+adaptador 22D64066/testes0680C26B ainda não executados. Branch rebaseada no pin main v0.0.5 16b873b.
+
+Fila atual do Simão via Claude: QA por perfil → Oficina somente agenda existente + fila/triagem essencial
+(0004 separado → telas) → E2E do bot com simulador e relatório funciona/quebra/depende de chave. Recursos
+novos e vínculo Revisão F2-3 congelados; publicar na Vercel fica por último. Sem alterar Auth/dados externos.
+
+
+## QA ampliado e vendedor adicional — pedido direto do Simão · 11/11/2026
+
+Executado com três subagentes mais coordenador: inventário de 21 páginas reais do painel, incluindo
+Minha conta/Usuários adicionadas ao runtime. Vendedor QA 2 criado explicitamente a pedido do Simão
+(vendedor/Vendas/Comauto), origem Auth do CRM e perfil confirmados; credencial somente no env ignorado.
+A conta adicional foi testada em sessão isolada: 25 verificações aprovadas, Minhas métricas sem globais,
+10 URLs recusadas; quantitativo/carteira estrangeira continua sem fixture comparável. Contas antigas
+preservadas. A antiga pendência de senha não impede validar o perfil novo; não alegar teste da conta antiga.
+
+Resultados e limites em docs/QA-TODAS-TELAS-CONSOLIDADO.md e relatórios específicos de Vendas, Peças,
+Recepção/Consultor. Correções pequenas de UI em commit isolado 0fb2a00 (filtros da Agenda até560px e
+atalho Busca condicionado à permissão). Typecheck/revisão independente aprovados; CSS foi comprovado
+em memória, falta integração do Claude. Campanhas GET/prefetch ainda grava estimativa e foi bloqueado
+no QA: apontamento de núcleo para correção, sem executar o detalhe. A carteira própria Peças sem cartão
+mantém seu positivo pendente. Não tratar navegação como envio/CRUD/concorrência. Runtime estava em
+trabalho do Claude no checkout573bfa2/package0.0.5; seletores foram adaptados ao DOM conferido.
+
+Oficina WIP permanece intacto: SQL A210A0A9 com contratos locais, revisão independente pendente;
+adaptador/testes ainda não executados funcionalmente. O typecheck global passou durante validação dos
+ajustes UI, sem ativar o módulo. Continuar só a fila essencial após repasses/integração; sem extras/F2-3.
+
+## Continuidade de 12/11 — PR #8 aprovado e Oficina pronta para revisão cruzada
+
+PR #8 aprovado no pin f12e0c102d3ade6db9d8ee8c841711991e052348: convite corrigido confirmado por
+verificador independente (51 chamadas controladas), origem só app_metadata, parser CSS, quatro testes
+focados, build Webpack/TypeScript e gitleaks. Parecer em 202a781/ref codex/revalidacao-pr8; scan original
+selado preservado. Sem merge/tag/deploy ou Auth remoto pelo Codex. Decisão de autoidentificação do piloto
+registrada pelo Claude; confirmação de caixa postal fica para Segurança.
+
+Oficina: revisão estática independente APROVOU 0004 A210A0A9 no pin a13b721, sem bug funcional encontrado.
+Os 88 testes do adaptador e 7 do parser foram executados e passaram. SQL/contratos permanecem idênticos
+à matriz local anterior de dois modos ACL/reaplicação/upgrade, sem repetição desnecessária. Repasse em
+docs/OFICINA-FILA-VALIDACAO.md: Claude revisa/aplica primeiro f6295a6/0004; adaptador separado3ee0a95.
+Nada aplicado no dev e nenhuma tela nova exposta. UI exige SQL/contrato aprovados e contexto validado;
+Supabase/PostgREST, login/E2E e concorrência multissessão continuam pendentes. Sem ampliar Oficina.
+
+## Base de Oficina alinhada à v0.0.6 · 12/11/2026
+
+PR #8 confirmado merged pelo GitHub em bc14aa1e90e440ec87e6fc88a275c817041b7f87, com tag local
+v0.0.6 nesse commit. Delta desde o pin aprovado f12e0c1 é somente versão/changelog/coordenação.
+Merge na branch codex/oficina-fila preserva 0004 A210A0A9 e adaptador22D64066, commits e stashes.
+CSS coincide com a main e chat preserva os dois históricos; src/app/src/lib/Vendas/0002 iguais à main.
+Typecheck e 99 testes focados passaram após combinar as fontes. Sem repetir a matriz SQL inalterada.
+Claude informou iniciar revisão/aplicação de f6295a6 e depois3ee0a95; ainda não declarar o dev validado.
+Repasse de identidade visual final/loading foi lido e permanece com Claude, sem editar essa frente aqui.
+
+## Oficina: PostgREST e pendência de métricas · 12/11/2026
+
+Claude confirmou 0004 revisada/aplicada no dev. Codex comprovou leitura real via PostgREST em 11 casos:
+recepção/consultor autorizados com filas vazias e minhas; perfis indevidos recusados sem total/corpo;
+ator inexistente, limite inválido e chamada anônima recusados. Sem writes/sessões/fixtures ou leitura
+de dados pessoais em relatório. Evidência/limites em docs/OFICINA-POSTGREST-READONLY.md. Não é login/E2E,
+corpo de cartão ou isolamento quantitativo real. Preparação da tela essencial avança isoladamente;
+Claude ainda integra o adaptador, e a revisão/integração da UI permanece com ele.
+
+Simão perguntou pela aba de métricas de Peças e pela visão do vendedor. **Métricas de Peças seguem
+pendentes na A4**: o menu só tem Cotações e não existe página ligada ao setor. O vendedor já tem a rota
+/painel/metricas com recorte pessoal e título Minhas métricas; o menu genérico confundia. Fix isolado
+f2b5cb6 muda somente seu rótulo para Minhas métricas, mantendo permissões e consultas. Peças precisa
+da entrega A4 com carteira própria, gerente por setor/unidades e admin; não liberar métricas de Vendas
+para Peças nem fingir que o dashboard pessoal já foi entregue nesse módulo.

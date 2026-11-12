@@ -15,7 +15,7 @@ export default async function Cadastro({ params, searchParams }: { params: Promi
     <main className="acesso">
       <section className="acesso-foto" aria-hidden="true">
         <div className="acesso-foto-texto">
-          <img src="/marca/wagconnect.webp" alt="WAGconnect CRM" className="acesso-logo" width={340} height={89} />
+          <img src="/branding/wagconnect/logo.webp" alt="WAGconnect CRM" className="acesso-logo" width={340} height={95} />
           <p>Bem-vindo à equipe.</p>
         </div>
       </section>

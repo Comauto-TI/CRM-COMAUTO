@@ -1,5 +1,6 @@
 /* eslint-disable @next/next/no-img-element */
 import { redirect } from "next/navigation";
+import { cookies } from "next/headers";
 import { authClient } from "@/lib/supabase/server";
 import Marca from "../painel/_components/Marca";
 
@@ -10,12 +11,14 @@ async function entrar(formData: FormData) {
   const supa = await authClient();
   const { error } = await supa.auth.signInWithPassword({ email, password: senha });
   if (error) redirect("/login?erro=1");
+  // abertura WAGconnect só logo depois do login (o painel já chega com a logo por cima, sem "flash")
+  (await cookies()).set("wag_abertura", "1", { path: "/painel", maxAge: 120, sameSite: "lax" });
   redirect("/painel");
 }
 
 /**
- * Login corporativo: foto à esquerda (Golf GTI Mk8 — Unsplash, David Moffatt / Stable Vehicle Contracts,
- * licença Unsplash; placa desfocada) e formulário à direita. Sem ilustração, sem efeitos.
+ * Login corporativo: foto final do Golf GTI na concessionária (repasse de design do Codex) à esquerda,
+ * formulário à direita sobre fundo cinza; logo WAGconnect CRM transparente com sombra leve.
  */
 export default async function Login({ searchParams }: { searchParams: Promise<{ erro?: string }> }) {
   const { erro } = await searchParams;
@@ -23,7 +26,7 @@ export default async function Login({ searchParams }: { searchParams: Promise<{ 
     <main className="acesso">
       <section className="acesso-foto" aria-hidden="true">
         <div className="acesso-foto-texto">
-          <img src="/marca/wagconnect.webp" alt="WAGconnect CRM" className="acesso-logo" width={340} height={89} />
+          <img src="/branding/wagconnect/logo.webp" alt="WAGconnect CRM" className="acesso-logo" width={340} height={95} />
           <p>Vendas, Oficina e Peças com a mesma ficha do cliente.</p>
         </div>
       </section>

@@ -10,6 +10,21 @@ Versionamento semântico a partir de **0.0.1** (decisão do Simão, 10/11/2026).
 
 ## [Não lançado]
 
+## [0.0.7] — 12/11/2026 — Oficina integrada, acompanhamento do dia, marketing por setor e identidade final (PR #9; revisado e aprovado pelo Codex)
+### Adicionado
+- **Oficina · Acompanhamento do dia**: atrasados (tolerância de 15 min, “há X min”), aguardando, vieram, não vieram e cancelados; atalhos Chegou / Não veio / Desfazer; totais e taxa de comparecimento; atualiza sozinha a cada minuto. Sem mudança de banco.
+- **Oficina**: fila e triagem com duas etapas, filtro “Minhas”, paginação e ações autorizadas no servidor; a agenda continua como estava.
+- **Marketing por setor**: campanhas, eventos e links/QR têm setor; cada setor vê e cria só os seus (com as estatísticas deles); admin e gerente da administração veem tudo, com filtro por setor.
+- **Abertura WAGconnect** depois do login (roda patina, Golf arranca, painel aparece) e identidade final (logo v10 e foto do Golf).
+### Alterado
+- Central geral de atendimento só para triagem (recepção, gerente de Oficina/administração e admin); os setores atendem pelos próprios cartões.
+### Corrigido
+- Avatar da conversa usa as mesmas iniciais do cartão; painel de Peças distingue o responsável pela cotação de quem assume a conversa.
+- “Agendamentos hoje” não conta mais cancelado como pendente.
+- Telefone do cliente em “Quem confirmou” agora aparece mascarado (LGPD).
+- Menu do vendedor identifica a visão pessoal como **Minhas métricas**.
+- Revisão do Codex (PR #9): QR de link e métricas de eventos respeitam o setor; Desfazer volta ao status real da marcação; falha de leitura não aparece como dia vazio; data inválida não derruba a tela.
+
 ## [0.0.6] — 12/11/2026 — Usuários com links de cadastro, Minha conta, login e nome WAGconnect CRM (PR #8; revisado pelo Codex)
 ### Adicionado
 - Nome do sistema **WAGconnect CRM** com logo (menu, login, cadastro, ícones do app); login corporativo com foto à esquerda e formulário à direita.

@@ -1217,7 +1217,7 @@ a { color: var(--vw-azul); }
 /* Login corporativo: foto à esquerda, formulário à direita (pedido do Simão) */
 .acesso { min-height: 100vh; display: grid; grid-template-columns: minmax(0, 1.25fr) minmax(380px, 1fr); background: #fff; }
 .acesso-foto {
-  position: relative; background: #0b1a33 url("/login-gti.webp") center / cover no-repeat;
+  position: relative; background: #0b1a33 url("/branding/wagconnect/golf-gti.webp") center 62% / cover no-repeat;
 }
 .acesso-foto::after {
   content: ""; position: absolute; inset: 0;
@@ -1226,14 +1226,15 @@ a { color: var(--vw-azul); }
 .acesso-foto-texto { position: absolute; z-index: 1; left: 48px; right: 48px; bottom: 44px; color: #fff; }
 .acesso-selo { display: inline-block; font-size: 12px; font-weight: 700; letter-spacing: .14em; text-transform: uppercase; opacity: .85; }
 .acesso-foto-texto p { margin: 8px 0 0; font-size: 26px; line-height: 1.25; font-weight: 600; max-width: 520px; }
-.acesso-painel { display: flex; align-items: center; justify-content: center; padding: 48px 32px; background: #fff; border-left: 1px solid #e5e9f0; }
+.acesso-painel { display: flex; align-items: center; justify-content: center; padding: 48px 32px; background: linear-gradient(180deg, #d3d8e0 0%, #c2c8d2 100%); border-left: 1px solid #b9c0cb; }
+.acesso-painel input { background: #fff; }
 .acesso-form { width: 100%; max-width: 380px; display: grid; gap: 18px; }
 .acesso-titulo h1 { margin: 6px 0 4px; font-size: 26px; color: var(--vw-marinho); letter-spacing: -0.01em; }
 .acesso-titulo p { margin: 0; color: var(--texto-2); font-size: 14px; }
 .acesso-form label { display: grid; gap: 6px; font-size: 13px; font-weight: 600; color: var(--texto-2); }
 .acesso-form input { height: 46px; font-size: 15px; }
 .acesso-botao { height: 48px; font-size: 15px; font-weight: 700; }
-.acesso-rodape { margin: 4px 0 0; font-size: 12px; color: var(--mudo); border-top: 1px solid #eef1f5; padding-top: 14px; }
+.acesso-rodape { margin: 4px 0 0; font-size: 12px; color: #4a5568; border-top: 1px solid rgba(0, 0, 0, .1); padding-top: 14px; }
 @media (max-width: 900px) {
   .acesso { grid-template-columns: 1fr; }
   .acesso-foto { min-height: 220px; }
@@ -1250,8 +1251,81 @@ a { color: var(--vw-azul); }
 .marca-sistema { display: grid; gap: 4px; justify-items: start; padding: 4px 2px 10px; }
 .marca-wordmark { display: block; width: 168px; height: auto; }
 .marca-empresa { font-size: 11px; font-weight: 600; letter-spacing: .12em; text-transform: uppercase; color: rgba(255, 255, 255, .62); }
-.marca-selo { background: linear-gradient(180deg, #d5dae2 0%, #c3c9d3 100%); border-radius: 12px; padding: 16px 18px; justify-items: start; }
-.marca-selo .marca-wordmark { width: 220px; filter: drop-shadow(0 1px 1px rgba(0, 0, 0, .45)) drop-shadow(0 3px 6px rgba(0, 0, 0, .25)); }
+.marca-selo { background: none; padding: 0; justify-items: start; }
+.marca-selo .marca-wordmark { width: 240px; filter: drop-shadow(0 1px 1px rgba(0, 0, 0, .45)) drop-shadow(0 3px 6px rgba(0, 0, 0, .25)); }
 .marca-selo .marca-empresa { color: #3b4657; }
 .acesso-logo { display: block; width: 340px; max-width: 100%; height: auto; }
 @media (max-width: 900px) { .acesso-logo { width: 220px; } }
+
+/* Abertura WAGconnect: roda patina, Golf + "connect" arrancam, painel aparece (repasse do Codex) */
+.abertura { position: fixed; inset: 0; z-index: 9999; display: grid; place-content: center; gap: 28px; background: #041831; transition: opacity .55s ease; }
+.abertura-saindo { opacity: 0; pointer-events: none; }
+.abertura-logo { position: relative; width: min(640px, 82vw); aspect-ratio: 1233 / 345; }
+.abertura-marca, .abertura-carro, .abertura-carro > img:first-child { position: absolute; inset: 0; width: 100%; height: 100%; }
+.abertura-marca { transition: opacity .55s ease .05s; }
+.abertura-carro { will-change: transform; }
+.abertura-roda { position: absolute; left: 56.853%; top: 32.464%; width: 7.218%; height: auto; aspect-ratio: 1; transform-origin: 50% 50%; }
+.abertura-fumaca { position: absolute; left: 54%; top: 52%; width: 10%; height: 20%; pointer-events: none; }
+.abertura-fumaca i { position: absolute; left: 0; top: 0; width: 100%; height: 100%; border-radius: 50%; background: rgba(220, 237, 255, .35); filter: blur(6px); opacity: 0; }
+.abertura-info { display: grid; justify-items: center; gap: 10px; color: rgba(255, 255, 255, .8); font-size: 13px; letter-spacing: .04em; transition: opacity .3s ease; }
+.abertura-barra { width: min(260px, 60vw); height: 3px; border-radius: 3px; background: rgba(255, 255, 255, .14); overflow: hidden; }
+.abertura-barra i { display: block; width: 35%; height: 100%; border-radius: 3px; background: #c8f00a; animation: abertura-indeterminada 1.15s ease-in-out infinite; }
+@keyframes abertura-indeterminada { 0% { transform: translateX(-110%); } 100% { transform: translateX(320%); } }
+/* arrancada: roda patina (acelera), antecipação para trás e saída rápida para a direita */
+.abertura-arrancando .abertura-roda, .abertura-saindo .abertura-roda { animation: abertura-patina .95s cubic-bezier(.55, 0, 1, .45) forwards; }
+.abertura-arrancando .abertura-carro, .abertura-saindo .abertura-carro { animation: abertura-arranca 1.2s forwards; }
+.abertura-arrancando .abertura-marca, .abertura-saindo .abertura-marca { opacity: 0; transition-delay: .5s; }
+.abertura-arrancando .abertura-info, .abertura-saindo .abertura-info { opacity: 0; }
+.abertura-arrancando .abertura-fumaca i { animation: abertura-fumaca .9s ease-out forwards; }
+.abertura-arrancando .abertura-fumaca i:nth-child(2) { animation-delay: .12s; }
+.abertura-arrancando .abertura-fumaca i:nth-child(3) { animation-delay: .24s; }
+@keyframes abertura-patina { from { transform: rotate(0deg); } to { transform: rotate(-1080deg); } }
+@keyframes abertura-arranca {
+  0% { transform: translate(0, 0); animation-timing-function: ease-out; }
+  35% { transform: translate(-1.6%, -0.3%); animation-timing-function: cubic-bezier(.6, 0, 1, 1); }
+  100% { transform: translate(140vw, 0); }
+}
+@keyframes abertura-fumaca {
+  0% { opacity: 0; transform: translate(0, 0) scale(.6); }
+  30% { opacity: .55; }
+  100% { opacity: 0; transform: translate(-160%, -40%) scale(2.2); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .abertura, .abertura * { animation: none !important; transition-duration: .2s !important; }
+}
+
+/* ===== Oficina · Acompanhamento do dia ===== */
+.acomp-dias { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+.acomp-dias .linha-form { display: flex; gap: 6px; margin: 0; }
+.acomp-dias input[type=date] { width: auto; }
+.acomp-kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 10px; margin-bottom: 18px; }
+.acomp-kpi { display: flex; flex-direction: column; gap: 2px; padding: 12px 14px; }
+.acomp-kpi span { font-size: 12px; color: var(--texto-2); }
+.acomp-kpi strong { font-size: 26px; line-height: 1.1; font-variant-numeric: tabular-nums; }
+.acomp-kpi.alerta-kpi { border-color: var(--erro); }
+.acomp-kpi.alerta-kpi strong { color: var(--erro); }
+.acomp-grupo { margin-bottom: 18px; }
+.acomp-grupo > summary { cursor: pointer; list-style: none; }
+.acomp-grupo > summary h3 { display: inline; }
+.acomp-lista { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; }
+.acomp-item {
+  display: grid; grid-template-columns: 56px minmax(0, 1.3fr) minmax(0, 1.6fr) 80px 150px 190px;
+  gap: 12px; align-items: center; padding: 10px 14px; background: var(--superficie);
+  border: 1px solid var(--borda); border-left: 4px solid var(--borda); border-radius: var(--raio-pequeno);
+}
+.acomp-item.acomp-atrasado { border-left-color: var(--erro); }
+.acomp-item.acomp-aguardando { border-left-color: var(--acento, #2563eb); }
+.acomp-item.acomp-veio { border-left-color: var(--positivo, var(--ok)); }
+.acomp-item.acomp-nao_veio, .acomp-item.acomp-cancelado { opacity: 0.75; }
+.acomp-hora { font-size: 18px; font-weight: 700; font-variant-numeric: tabular-nums; }
+.acomp-quem, .acomp-servico { display: flex; flex-direction: column; min-width: 0; }
+.acomp-quem > *, .acomp-servico > * { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.acomp-nome { font-weight: 600; }
+.acomp-selo { display: flex; justify-content: flex-end; }
+.acomp-acoes { display: flex; gap: 6px; justify-content: flex-end; }
+.acomp-acoes form { margin: 0; }
+@media (max-width: 900px) {
+  .acomp-item { grid-template-columns: 50px 1fr; }
+  .acomp-servico, .acomp-box, .acomp-selo, .acomp-acoes { grid-column: 2; }
+  .acomp-acoes { justify-content: flex-start; }
+}

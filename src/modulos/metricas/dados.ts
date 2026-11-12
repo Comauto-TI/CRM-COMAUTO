@@ -4,6 +4,7 @@ import type { Usuario } from "@/lib/auth";
 import { faixaFunil, type EtapaResumo } from "@/modulos/vendas/regras";
 import { funisDaUnidade } from "@/modulos/vendas/dados";
 import { resumoDaCoorte, type OpMetrica } from "./calculos";
+import { setorDoMarketing } from "@/lib/escopo-setor";
 
 /** F8 — leitura para a aba Métricas. Sempre depois de exigirAcesso("metricas"); tudo filtrado pelas unidades do usuário. */
 
@@ -106,18 +107,27 @@ async function lerTodas(funilId: string, unidades: string[], desde: string, umAn
 }
 
 export async function listarEventos(u: Usuario) {
-  const { data } = await db().from("eventos").select("id, nome, inicio, status").in("unidade", u.unidades).neq("status", "rascunho").order("inicio", { ascending: false }).limit(20);
+  // PR9-SETOR-002: mesma política do marketing por setor (admin/gerente da administração veem todos)
+  const setor = setorDoMarketing(u);
+  let q = db().from("eventos").select("id, nome, inicio, status").in("unidade", u.unidades).neq("status", "rascunho");
+  if (setor) q = q.eq("setor", setor);
+  const { data } = await q.order("inicio", { ascending: false }).limit(20);
   return (data ?? []) as { id: string; nome: string; inicio: string; status: string }[];
 }
 
 /** Pessoas únicas por etapa do evento. Vendidos = presentes com venda GANHA até 60 dias após o evento. */
 export async function carregarFunilEvento(u: Usuario, eventoId: string) {
   if (!/^[0-9a-f-]{36}$/i.test(eventoId)) return null;
-  const { data: ev } = await db().from("eventos").select("id, nome, inicio, unidade").eq("id", eventoId).in("unidade", u.unidades).maybeSingle();
+  const setor = setorDoMarketing(u);
+  let qEv = db().from("eventos").select("id, nome, inicio, unidade").eq("id", eventoId).in("unidade", u.unidades);
+  if (setor) qEv = qEv.eq("setor", setor);
+  const { data: ev } = await qEv.maybeSingle();
   if (!ev) return null;
+  let qCamp = db().from("campanhas").select("id").eq("evento_id", ev.id);
+  if (setor) qCamp = qCamp.eq("setor", setor); // associação cruzada não reabre o recorte
   const [{ data: insc }, { data: camps }] = await Promise.all([
     db().from("inscricoes_evento").select("cliente_id, status").eq("evento_id", ev.id),
-    db().from("campanhas").select("id").eq("evento_id", ev.id),
+    qCamp,
   ]);
   const idsCamp = (camps ?? []).map((c) => c.id as string);
   const { data: envios } = idsCamp.length

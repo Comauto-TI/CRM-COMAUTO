@@ -36,7 +36,9 @@ const GRUPOS: Grupo[] = [
   },
   {
     chave: "oficina", rotulo: "Oficina", icone: "agenda", itens: [
+      { href: "/painel/agendamentos/acompanhamento", rotulo: "Acompanhamento do dia", icone: "agenda", area: "agenda" },
       { href: "/painel/agendamentos", rotulo: "Agendamentos", icone: "agenda", area: "agenda" },
+      { href: "/painel/oficina", rotulo: "Fila e triagem", icone: "agenda", area: "oficina" },
     ],
   },
   {
@@ -69,6 +71,7 @@ export default function Nav({ papel, setor, fila }: { papel: Papel; setor: Setor
   const pathname = usePathname();
   const pode = (i: Item) => podeAcessar({ papel, setor }, i.area);
   const grupos = GRUPOS.map((g) => ({ ...g, itens: g.itens.filter(pode) })).filter((g) => g.itens.length);
+  const todosHrefs = [...FIXOS.filter(pode), ...grupos.flatMap((g) => g.itens)].map((i) => i.href);
   const grupoAtual = grupos.find((g) => g.itens.some((i) => !i.emBreve && ativoEm(i.href, pathname)))?.chave;
 
   // grupos abertos: lembra a escolha da pessoa neste computador; o grupo da página atual e o do
@@ -100,10 +103,12 @@ export default function Nav({ papel, setor, fila }: { papel: Papel; setor: Setor
         </span>
       );
     }
-    const ativo = ativoEm(i.href, pathname);
+    // o item mais específico vence (ex.: /painel/agendamentos/acompanhamento não acende também /painel/agendamentos)
+    const ativo = ativoEm(i.href, pathname) && !todosHrefs.some((h) => h.length > i.href.length && h.startsWith(i.href) && ativoEm(h, pathname));
+    const rotulo = i.href === "/painel/metricas" && papel === "vendedor" ? "Minhas métricas" : i.rotulo;
     return (
       <Link key={i.href} href={i.href} className={`${ativo ? "ativo" : ""}${sub ? " sub" : ""}`} prefetch aria-current={ativo ? "page" : undefined}>
-        <span className="nav-rotulo"><Icone nome={i.icone} />{i.rotulo}</span>
+        <span className="nav-rotulo"><Icone nome={i.icone} />{rotulo}</span>
         {i.badge && fila > 0 && <span className="badge">{fila}</span>}
       </Link>
     );
