@@ -10,10 +10,14 @@ Versionamento semântico a partir de **0.0.1** (decisão do Simão, 10/11/2026).
 
 ## [Não lançado]
 ### Adicionado
-- Backend local de transferência entre setores: operação atômica, reuso de pedido aberto, responsável preservado, avisos e histórico compartilhado com autorização; SQL ainda depende de revisão e integração no dev.
-- Preparação isolada da transferência entre setores: validação e adaptador servidor; operação ainda sem SQL integrado ou interface disponível.
+- Backend de transferência entre setores: operação atômica, reuso de pedido aberto, responsável preservado, avisos e histórico compartilhado com autorização. SQL C522 revisado e aplicado no dev pelo Claude; fluxo da interface ainda em preparação local.
+- Formulário isolado para transferência pelos cartões de Vendas, Peças e Oficina, com fila/pessoa, UUID por tentativa, aviso de responsável mantido e bloqueio após resultado incerto. Central recusada no adaptador do piloto; componente ainda sem integração aos cartões.
 - Diálogo preparado para preservar autoria do assistente/sistema em histórico compartilhado autorizado, com validação de direção e pendência.
+### Corrigido
+- Transferência compara a posse legada com o e-mail da sessão sem consultar ou conceder acesso ao Auth; permissões de atualização de Oficina limitadas ao responsável.
 
+## [0.0.7] — 12/11/2026 — Oficina integrada, acompanhamento do dia, marketing por setor e identidade final (PR #9; revisado e aprovado pelo Codex)
+### Adicionado
 - **Oficina · Acompanhamento do dia**: atrasados (tolerância de 15 min, “há X min”), aguardando, vieram, não vieram e cancelados; atalhos Chegou / Não veio / Desfazer; totais e taxa de comparecimento; atualiza sozinha a cada minuto. Sem mudança de banco.
 - **Oficina**: fila e triagem com duas etapas, filtro “Minhas”, paginação e ações autorizadas no servidor; a agenda continua como estava.
 - **Marketing por setor**: campanhas, eventos e links/QR têm setor; cada setor vê e cria só os seus (com as estatísticas deles); admin e gerente da administração veem tudo, com filtro por setor.
@@ -21,12 +25,11 @@ Versionamento semântico a partir de **0.0.1** (decisão do Simão, 10/11/2026).
 ### Alterado
 - Central geral de atendimento só para triagem (recepção, gerente de Oficina/administração e admin); os setores atendem pelos próprios cartões.
 ### Corrigido
-- Transferência local compara a posse legada com o e-mail da sessão sem consultar ou conceder acesso ao Auth; permissões de atualização de Oficina limitadas ao responsável.
-
 - Avatar da conversa usa as mesmas iniciais do cartão; painel de Peças distingue o responsável pela cotação de quem assume a conversa.
 - “Agendamentos hoje” não conta mais cancelado como pendente.
 - Telefone do cliente em “Quem confirmou” agora aparece mascarado (LGPD).
 - Menu do vendedor identifica a visão pessoal como **Minhas métricas**.
+- Revisão do Codex (PR #9): QR de link e métricas de eventos respeitam o setor; Desfazer volta ao status real da marcação; falha de leitura não aparece como dia vazio; data inválida não derruba a tela.
 
 ## [0.0.6] — 12/11/2026 — Usuários com links de cadastro, Minha conta, login e nome WAGconnect CRM (PR #8; revisado pelo Codex)
 ### Adicionado
