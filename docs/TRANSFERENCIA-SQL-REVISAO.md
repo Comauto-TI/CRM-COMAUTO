@@ -1,108 +1,97 @@
 # Transferência entre setores — revisão local do SQL
 
-12/11/2026. Implementação autorizada diretamente pelo Simão, na branch local, com revisão do
-Claude antes de qualquer aplicação no banco. **Entrega de backend para revisão; não é liberação
-da interface de transferência.** Nenhum banco remoto, usuário real, envio ou produção foi alterado.
+12/11/2026. Implementação local autorizada diretamente pelo Simão, com revisão do Claude antes
+de qualquer aplicação no banco. **Correções T-001/T-002 prontas para revalidação do Claude;
+interface de transferência e integração de dev permanecem pendentes.** Nenhum banco remoto,
+usuário real, envio ou produção foi alterado pelo Codex.
 
-**Histórico do commit abb9031, ainda não aprovado pelo Claude.** A revisão cruzada posterior encontrou
-T-001 (dependência/grants Auth incompatíveis com sete contratos originais) e T-002 (UPDATE de descrição
-Oficina excedente). Correção local em andamento no hash `C5221A2388294302B4493338A9A569A060C987516137C76619C759896B14888C`:
-e-mail confiável da sessão como parâmetro, sem leitura/grants Auth; UPDATE só de responsável.
-Os resultados 402 abaixo pertencem ao hash antigo e não certificam a revisão nova. A matriz completa
-e a nova evidência serão anexadas após a execução; nenhum grant será revogado no Auth compartilhado.
+## Fonte atual e fatias
 
-## Fonte conferida
+- SQL final: `supabase/migrations/0006_atendimento.sql`.
+- SHA256: `C5221A2388294302B4493338A9A569A060C987516137C76619C759896B14888C`.
+- Correção SQL/contratos/CHANGELOG isolada: `bda5b631fd1a24f37d7937513ef023fa8d849d45`, sobre a
+  implementação `abb9031`. Revisar o conteúdo final C522 antes de aplicar; abb9031 isolado contém
+  os dois bloqueios encontrados pelo Claude.
+- Adaptador servidor da nova assinatura: `adf0f6794bfb95e96e3c9c0fb3e87e35c812b522`.
+  O aviso estruturado veio em `0bffe79`; autoria bot/sistema no diálogo, em `2bf3e72`.
+- Base de upgrade: `abb9031~1` (`2bf3e72`); seu blob0006 é o mesmo de `74cc99e`.
+- Dependência: `0004_oficina` antes de `0006`. Um arquivo reaplicável por módulo; WIP anterior
+  incompleto não deve ser reaplicado. Não mesclar toda a branch para obter estas fatias.
 
-- Migration única do módulo: `supabase/migrations/0006_atendimento.sql`.
-- Commit isolado SQL/contratos/CHANGELOG: `abb9031bb6a73d17717cdf77fd1c0b13f7c04d10`.
-- SHA256: `2141BE5DFB1465C9538704CC86A38043E014D402EE860B747E347D881F7C7853`.
-- Base de comparação/upgrade: `74cc99e`, sobre a integração do Claude `588bc1c` e main `v0.0.6`.
-- A nova fatia depende de `0004_oficina` antes de `0006`; não criar arquivo timestamp ou reaplicar
-  o backup incompleto do contrato anterior.
+## Resposta à revisão do Claude
 
-## Comportamento implementado
+| Item | Resultado local |
+|---|---|
+| T-001 · Auth compartilhado | Removidos DO, grants e consulta a `auth.users`. `p_ator_email` obrigatório ao final da RPC vem exclusivamente de `u.email` da sessão; campos forjados do form/DTO são ignorados. UUID/ator ativo/setor/unidade continuam revalidados no banco. O mesmo e-mail segue à política e seleção do snapshot central. |
+| Assinaturas | RPC de transferência com 10 argumentos, seletor de origem com 7 e política central com 4. Sem DEFAULT; antigas aridades9/6/3 têm DROP explícito, sem CASCADE. Nenhuma outra função/dado é removido. |
+| T-002 · Oficina | Retirado UPDATE de descrição; permanece somente o grant adicional de `responsavel_id`. Descrição nova é INSERT; origem e itens reutilizados não são reescritos. Contrato original de Oficina passou. |
+| T-003 · Ambiguidade | Intencional: mesmo wamid em ledgers Peças/triagem **e** Vendas é ambíguo. Comentário e casos preservados, incluindo associação inicial com `atendimento_id` nulo. Não escolher um setor nem anexar aos dois. |
+| T-004 · Sem destinatário | Permanece `conflito` nesta fatia; código específico/explicação da UI fica registrado como refinamento baixo. |
 
-Uma chamada a `transferir_atendimento_setor` confere ator, setor/unidade, origem, posse/versão e
-destino atuais; reaproveita um pedido aberto ou cria o destino; registra nota/snapshot/evento,
-notificação e audit na mesma transação. Replay exato não duplica, argumentos divergentes recusam.
-Falhas reais durante a escrita desfazem os efeitos parciais.
+Remover um GRANT do arquivo não revoga uma ACL historicamente concedida. Claude informou que não
+aplicou abb9031 no dev. Esta correção **não executa REVOKE no Auth compartilhado**, não altera
+contas nem afirma auditoria das permissões remotas. O contrato MVP de Peças foi restaurado
+exatamente à baseline, com os asserts originais estritos de ausência de acesso Auth.
 
-Negócio de origem preserva seus dados comerciais e histórico. A rota explícita muda o controle
-ativo e impede novo claim/resposta pela versão anterior. Vendas/Peças recebem mensagens novas no
-contexto de destino mesmo enquanto aguardam alguém assumir. Oficina recebe só o pedido de domínio;
-novas mensagens seguem a central da recepção, sem recuperar histórico genérico por cliente.
+## Comportamento mantido
 
-O destino aceita fila ou pessoa elegível. Pedido aberto já atribuído mantém o dono; outra pessoa
-indicada recebe só aviso, sem adquirir propriedade/leitura. Pedido sem dono pode ser atribuído à
-pessoa elegível escolhida. O resultado inclui aviso estruturado de responsável preservado.
+Uma RPC autoriza origem/posse/versão e destino atuais, reaproveita pedido aberto ou cria um novo,
+registra nota/snapshot/evento/aviso/audit e muda a rota atomicamente. Replay reautoriza e não duplica;
+falhas reais revertem efeitos. Negócio de origem mantém dados comerciais e histórico.
 
-Snapshot guarda apenas mensagens do contexto autorizado da origem, com IDs/intervalo auditados,
-sem alterar os vínculos originais ou suas leituras. Bot/sistema cliente-visíveis da central
-preservam a autoria. Leituras voltam a conferir ator ativo, dono/setor/unidade, cliente não
-anonimizado e estado do destino; uma notificação não vira permissão de consulta.
+Fila ou pessoa elegível nos três destinos. Dono existente é preservado; alternativa indicada recebe
+somente aviso genérico, sem propriedade/leitura/link. Sem dono, a pessoa escolhida pode receber o
+pedido. Vendas/Peças passam a receber entradas no destino; Oficina é só domínio e novas mensagens
+vão à central da recepção.
 
-Nota bruta fica somente no ledger protegido. Atividades e descrições novas usam texto genérico;
-descrições preexistentes não são reescritas. A anonimização já existente aciona remoção do conteúdo
-das novas cópias e da nota desse cliente; IDs/audit e vizinhos permanecem. Reverter a flag não
-restaura o texto. Isso não certifica toda a política de retenção dos domínios antigos.
+Snapshot contém apenas mensagens autorizadas no contexto de origem, com IDs/intervalo auditados.
+Vínculos e leituras originais não são alterados; destino volta a conferir ator, dono, unidade, cliente
+não anonimizado e estado. Bot/sistema cliente-visíveis preservam autoria. Nota bruta fica somente no
+ledger protegido; descrições/atividades novas são genéricas. Anonimização redige nota/cópias novas,
+preserva IDs/audit/vizinhos e reversão de flag não restaura texto. Não certifica retenção dos domínios antigos.
 
-## Validação executada
+## Validação atual
 
 | Camada | Evidência e limite |
 |---|---|
-| Contrato SQL novo | **402 verificações** passaram em cada modo de ACL (com/sem defaults permissivos), em base limpa, upgrade real, reaplicação populada e replay. Fonte permaneceu inalterada. |
-| Upgrade | Dados/colunas de **54 tabelas** e **115 FKs legadas** preservados; sem backfill de dados fictícios. |
-| Regressões dirigidas | Peças atendimento, Vendas atendimento, retorno ao legado e cotação sem canal passaram nos dois modos. |
-| Auth mínimo | Contrato confere leitura apenas de `auth.users.id/email` pelo servidor, sem DML, colunas sensíveis ou acesso de navegador. Compatibilidade de stub só-ID e stub com e-mail/colunas sensíveis fictícias passou nos dois modos. |
-| Parser/adaptador da transferência (`0bffe79`) | **133 testes** passaram; ator vem da sessão, uma RPC, sem retry automático, DTO mínimo e aviso validado/mascarado. São RPCs simuladas. |
-| Compatibilidade dos diálogos (`2bf3e72`) | **104 testes** passaram em Peças/Vendas; saída de bot/sistema preservada, direção validada, pendência só para saída bloqueada de atendente. Não são os antigos 104 de transferência. |
-| SQL → adaptador original | **3 casos dirigidos** passaram com JSON real de PGlite entregue ao `criarDialogo` original (Next SWC/VM), antes/depois do claim: central→Vendas, central→Peças e reuso Peças sem dono com versão positiva. Autoria cliente/bot/sistema, IDs únicos, pendente booleano e mascaramento real de CPF/cartão conferidos; interno/outro negócio omitidos. Fronteiras DB/outbound/env/server-only substituídas, sem HTTP/Auth/UI reais. |
-| Revisões | Revisão independente identificou e conferiu a correção da guarda NULL da rota e das cópias da nota; parecer final no hash acima. Typecheck, diffcheck e gitleaks das fatias TypeScript passaram. |
+| Todos os contratos SQL | **18 executados por modo ACL**, com/sem defaults permissivos: **16 PASS e 2 falhas também presentes na baseline**, sem falha nova observada. Processo encerrou com código1 pelas duas falhas, não é uma matriz toda verde. |
+| Transferência | **428 verificações PASS por modo**, base limpa, reaplicação populada/replay e upgrade real da baseline seguido de contrato/reaplicação. Fonte C522 permaneceu inalterada. |
+| Sete regressões Auth + Oficina | Aniversários, vendas-bot, leitura-atendimento, leituras-usuario, lista-atendimentos, mensagens-atendimento, vínculo-vendas e Oficina passaram em ambos os modos, sem enfraquecer seus contratos. |
+| Upgrade/reaplicação | Dados e identidades das colunas existentes de **54 tabelas** preservados. Reaplicação comparou dados, schema, ACL, funções e FKs. |
+| Adaptador | **140 Vitest PASS** (66 parser +74 wrapper). Ator/e-mail exclusivamente da sessão atual, request forjado ignorado, uma RPC/sem retry, aviso mínimo/mascarado, e-mail não aparece em DTO/erro. Typecheck global passou. |
+| Ponte SQL → leitor | **3 casos PASS** no C522: central→Vendas, central→Peças e reuso Peças sem dono com versão positiva. RPC real10args, central assumida por e-mail da fixture, JSON real entregue ao `criarDialogo` original por Next SWC/VM. Autoria/máscara/IDs/direção/pendente booleano e claim com versão real conferidos; fila sem dono não revelou histórico. |
+| Revisão independente | Parecer estático do delta abb9031→C522 sem bug material identificado; fechamento de overloads, ausência de dependência Auth, grant Oficina e política/corpo conferidos. Diffcheck/gitleaks das fatias passaram. |
 
-A suíte cobre nove caminhos entre central e setores; fila/pessoa; reuso e autoria; unidades/atores
-revogados; origem sem atendimento modular tentando desviar rota alheia; ambiguidade inicial;
-veículo reatribuído; envio reservado/incerto; snapshot/contexto e leituras antigas; anonimização;
-falhas forçadas em destino, snapshot, notificação e audit, com comparação integral antes/depois.
+As duas incompatibilidades antigas ocorreram igualmente na baseline e no candidato, nos dois modos:
 
-O contrato antigo `contratos-atendimentos.sql` **não passou**: falha `55000` na guarda de posse de
-Vendas também na baseline `74cc99e`. A comparação foi executada e ficou registrada. Não chamar a
-validação de toda a matriz antiga de aprovada, nem esconder essa incompatibilidade preexistente.
+- `contratos-atendimentos.sql`: `55000`, guarda de posse de Vendas exige devolver antes de encerrar/reatribuir.
+- `contratos-pecas.sql`: `P0001`, assert de preservação compara também `atualizado_em`, que o trigger
+  existente modifica com `clock_timestamp()`. Contrato e `0005` são iguais aos da baseline.
 
-Artefatos privados do trabalho: `work/transferencia-sql-atual-resultados.json` e
-`work/validar-transferencia-setores-atual.mjs`. O contrato reproduzível fica versionado em
-`tests/sql/contratos-transferencia-setores.sql`. PGlite usa uma conexão: **não comprova disputa
-multissessão, PostgREST, login, HTTP real ou envio WhatsApp**.
+Esses contratos não foram ajustados para passar nem excluídos. Os resultados antigos402/133 do
+hash2141 são históricos e não substituem esta rodada mais ampla.
 
-A ponte dirigida está em `work/validar-ponte-transferencia-dialogo.mjs` e
-`work/ponte-transferencia-dialogo-resultados.json`, sem repetir a matriz SQL nem alterar fontes.
-O caso sem dono confirma versão real no resumo vazio, seguida de claim com essa versão e leitura
-autorizada das mensagens. O harness confere o hash final de `0006` e fonte original de permissões,
-guard e validadores; não é E2E de navegador ou de sessão.
+Artefatos privados: `work/validar-transferencia-t001-t002.mjs`,
+`work/transferencia-t001-matriz-false.json` e `work/transferencia-t001-matriz-true.json`.
+Usar este runner; `validar-transferencia-setores-atual.mjs` antigo ainda corresponde à assinatura9.
+Ponte: `work/validar-ponte-transferencia-dialogo.mjs` / `work/ponte-transferencia-dialogo-resultados.json`.
+Contrato versionado: `tests/sql/contratos-transferencia-setores.sql`.
 
-## Pontos para a revisão do Claude
+PGlite usa uma conexão por cenário. Fronteiras DB/outbound/env/server-only da ponte foram
+substituídas; permissões/guard/validadores são originais. Não são prova de PostgREST, sessão/Auth,
+HTTP, navegador, envio WhatsApp ou concorrência multissessão reais. Nenhum novo build/servidor foi iniciado.
 
-O diff concede ao `service_role` leitura mínima de `auth.users.id/email`, quando a coluna existe,
-para relacionar o UUID autenticado à posse legada guardada por e-mail. Não concede escrita ou
-colunas adicionais; não altera usuários/metadata. O assert antigo que proibia todo USAGE do schema
-foi substituído por verificações específicas mais restritas sobre as colunas permitidas/negadas.
-Esse é um delta intencional para revisar, sem alegar auditoria das ACLs do projeto remoto.
+## Antes da exposição
 
-Locks novos usam `NOWAIT`; indisponibilidade/deadlock vira conflito com rollback, sem retry. Isso
-não é evidência de concorrência real nem promessa de cancelar HTTP que já começou a ser enviado.
+1. Claude revalida SQL/ACL e decide a integração de dev; conteúdo final do banco antes do adaptador
+   que chama a assinatura10. Sem action/endpoint/UI de transferência expostos nesta fatia.
+2. Central: unidade/política antes de contagens, paginação e corpo; fechar extras globais por cliente.
+   Autorizar corpo no mesmo contexto, sem IDs usados como ACL posterior.
+3. Proteger despacho legado com tentativa/rota/versão/autorização atuais. O SQL não cancela HTTP já
+   iniciado entre uma checagem antiga de posse e o envio; NOWAIT não é prova de concorrência real.
+4. UI/DTO de nota/snapshot/aviso e estado: não sugerir disponível quando `podeAssumir=false`,
+   filtrar segredos/mascarar dados e manter a autoria real.
+5. Paginação/exportação autorizadas dos novos dados, login/fluxo real e disputa multissessão.
 
-## Antes de expor transferência ao usuário
-
-1. Claude revisa o SQL/ACL e decide a integração de dev; banco antes do código que chama a RPC.
-2. Fechar os caminhos da central que o piloto atravessa: unidade/política antes de contagem,
-   paginação e corpo; dados globais por cliente não acompanham a transferência automaticamente.
-   Autorizar leitura/corpo no mesmo contexto, sem IDs usados como ACL posterior.
-3. Proteger despacho legado da central com tentativa/versão/rota e autorização atuais. Hoje ele
-   pode checar a posse antes e despachar depois; o SQL sozinho não cancela esse intervalo.
-4. Adaptar UI/DTO de nota/snapshot e aviso de responsável preservado. Não mostrar "disponível"
-   quando `podeAssumir=false`; não transformar histórico do assistente em fala de atendente.
-   Filtrar segredos na saída e mascarar dados; o SQL filtra formatos conhecidos, sem receber env.
-5. Completar leitura/paginação e exportação dos novos dados no código autorizado, sem histórico
-   por cliente ou marcas de leitura herdadas. Validar login, fluxo real e concorrência antes do aceite.
-
-Agenda manual A/B permanece na próxima prioridade combinada, seguida das etapas de interface/
-métricas/E2E conforme o Claude e Simão coordenarem. Acompanhamento do dia permanece com Claude.
+Agenda manual A/B segue na prioridade combinada após esta fatia. Acompanhamento(C), marketing e
+integração são do Claude; revisão do PR9 está em `docs/REVISAO-PR9.md`, ainda requer ajustes.

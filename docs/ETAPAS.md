@@ -543,3 +543,22 @@ T-002 restringe UPDATE de Oficina a responsável; T-003 pede explicação do dua
 propõe código sem destinatário. Correção local autorizada iniciada com donos separados em0006,
 adaptador e contratos/runner. Assinaturas ganharão p_ator_email obrigatório ao final, sem sobrecarga
 antiga ou DEFAULT. Nenhum SQL remoto. Matriz anterior402 não certifica esta revisão ainda em andamento.
+
+## Retorno T-001/T-002 concluído localmente · 12/11/2026
+
+SQL isolado bda5b631fd1a24f37d7937513ef023fa8d849d45 corrige abb9031: hash final C5221A2388294302B4493338A9A569A060C987516137C76619C759896B14888C.
+Adaptador adf0f6794bfb95e96e3c9c0fb3e87e35c812b522 passa somente e-mail/UUID da sessão atual, ignora
+identidade forjada no request e preserva DTO mínimo. Sem Auth read/grant/REVOKE ou alteração remota.
+Oficina UPDATE adicional somente de responsável. T-003 dual ledger intencional comentado e coberto;
+T-004 continua conflito, refinamento baixo reservado à UI. Fonte/hash ficaram inalterados nos testes.
+
+Matriz completa:18 contratos por modo ACL,16 PASS e2 falhas também presentes em abb9031~1 nos dois
+modos. Sete regressões Auth e Oficina voltaram a PASS, com assert MVP restaurado exatamente à base.
+Transferência428 verificações PASS por modo + reaplicação populada/replay + upgrade real com54tabelas
+preservadas. Falhas mantidas: A1/atendimentos55000 guarda de posse; Peças antigoP0001 na comparação
+envolvendo atualizado_em. Runner sai1, não toda verde; contratos antigos não foram alterados para passar.
+140 Vitest do adaptador, typecheck,3pontes SQL→leitor original e revisão estática independente passaram;
+diffcheck/gitleaks das fatias passaram. Sem novo build, HTTP/Auth/UI/envio/dev ou disputa multissessão.
+Relatório atual docs/TRANSFERENCIA-SQL-REVISAO.md; usar runner privado validar-transferencia-t001-t002.mjs,
+pois o anterior ainda mira aridade9. Claude revalida o conteúdo final antes de aplicar dev, banco antes
+do adaptador novo. UI/central/dispatch fences e prioridades de agenda/métricas continuam pendentes.

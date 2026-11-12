@@ -1,7 +1,7 @@
 # Transferência entre setores — contrato para revisão
 
-Direção do Simão recebida pelo Claude em 12/11/2026. **Backend local entregue em `abb9031` para revisão
-do Claude, após autorização direta do Simão; integração de dev e interface ainda pendentes.** Evidências,
+Direção do Simão recebida pelo Claude em 12/11/2026. **Backend local `abb9031` corrigido em `bda5b63`
+(SQL/contratos) e `adf0f67` (identidade da sessão), para revalidação do Claude; dev e UI pendentes.** Evidências,
 ACLs e dependências de exposição em [TRANSFERENCIA-SQL-REVISAO.md](TRANSFERENCIA-SQL-REVISAO.md). Base: Claude
 `588bc1c` (Oficina integrada), incorporada na
 branch `codex/transferencias-setores` pelo merge `be4868b`. Não é publicação em produção.
@@ -42,6 +42,21 @@ combinado passa a exigir `avisoResponsavel: null | { nome: string }` no sucesso,
 no adaptador. Aviso só em reuso que preserva dono diferente do selecionado, inclusive escolha de fila;
 erro fora do escopo continua sem nome/ID. Implementação concluída em `0bffe79`, com 133 testes de
 parser/adaptador; `2bf3e72` preserva autoria bot/sistema nos diálogos, com 104 testes de compatibilidade.
+
+### Revisão atual após o retorno do Claude
+
+T-001/T-002 corrigidos: SQL final C5221A2388294302B4493338A9A569A060C987516137C76619C759896B14888C.
+Sem leitura/grants de Auth; `p_ator_email text` obrigatório é o último argumento da RPC (agora10),
+da política central (4) e do seletor de origem (7), sem DEFAULT ou sobrecargas antigas. O servidor
+fornece exclusivamente `u.email` da sessão; form/DTO não definem identidade. UUID/ator/setor/unidade
+continuam conferidos no banco, e o e-mail segue à mesma seleção autorizada do corpo. Não é campo de UI.
+Oficina não recebe UPDATE de descrição; nota vai ao ledger e novas descrições são inseridas.
+
+428 verificações de transferência por ACL passaram, incluindo upgrade/reaplicação; todos18 contratos
+foram executados em cada modo:16 PASS,2 falhas igualmente reproduzidas na baseline. Sete regressões
+Auth e Oficina passaram com contratos originais. Adaptador atual140 testes PASS, typecheck e ponte
+real SQL→leitor3casos PASS; revisão estática independente do delta sem bug material. Não é aceite de
+dev/HTTP/E2E/concorrência. Detalhes e as duas falhas legadas estão no relatório de revisão atual.
 
 ### Autorização direta recebida — edição local
 

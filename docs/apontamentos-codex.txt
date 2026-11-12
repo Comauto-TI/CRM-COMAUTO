@@ -1522,3 +1522,27 @@ Contrato novo tests/sql/contratos-pecas-sem-canal.sql passou nos dois modos e co
 [OBTIDO] KPIs zero e Nenhum agendamento neste dia, sem erro visível.
 [TIPO] bug novo, reproduzido em memória
 [GRAVIDADE] média
+
+[ID] TRANSF-REV-T001
+[ARQUIVO] supabase/migrations/0006_atendimento.sql; src/modulos/atendimento/transferencias.ts
+[TESTE] Revisão Claude de abb9031 com todos os contratos SQL, seguida de revalidação C522.
+[ESPERADO] Transferência não depender de leitura/grants no Auth compartilhado; mesma identidade da sessão na política e corpo.
+[OBTIDO] Grant antigo regredia7contratos; removidos grant/read Auth e aridades antigas. p_ator_email obrigatório vem só da sessão, ignorando request. Sete regressões e negativos de e-mail/ACL passaram nos dois modos,428 assertivas da transferência;140 testes wrapper/parser e3pontes passaram. Contrato MVP restaurado exatamente à base, sem enfraquecer assert.
+[TIPO] bug corrigido localmente em bda5b63/adf0f67, aguardando revalidação Claude
+[GRAVIDADE] alta
+
+[ID] TRANSF-REV-T002
+[ARQUIVO] supabase/migrations/0006_atendimento.sql (grant Oficina)
+[TESTE] Contrato original Oficina com service_role após0006.
+[ESPERADO] Permitir atualização de etapa/responsável conforme0004, sem conceder escrita de descrição.
+[OBTIDO] UPDATE adicional de descrição era desnecessário e regredia contrato. Retirado; responsável preservado, descrição nova sóINSERT. Oficina passou nos dois modos; nova negativa de UPDATEdescricao foi coberta.
+[TIPO] bug corrigido localmente em bda5b63, aguardando revalidação Claude
+[GRAVIDADE] alta
+
+[ID] SQL-BASELINE-PECAS-UPDATED-001
+[ARQUIVO] tests/sql/contratos-pecas.sql:786–791; supabase/migrations/0005_pecas.sql:707–710
+[TESTE] Todos os contratos em abb9031~1 e C522, com/sem defaults.
+[ESPERADO] Distinguir regressão nova de falha antiga do contrato de preservação.
+[OBTIDO] P0001 sobre preservação ocorre igualmente nos dois candidatos; assert considera atualizado_em, atualizado pelo trigger existente. Contrato e0005 são idênticos à base. Não alterado para passar, mantido como falha legada separada da guarda55000 de A1.
+[TIPO] incompatibilidade preexistente de validação, não corrigida nesta fatia
+[GRAVIDADE] média
