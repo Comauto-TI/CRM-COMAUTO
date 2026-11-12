@@ -1,8 +1,24 @@
 {
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "framework": "nextjs",
+  "buildCommand": "next build",
+  "installCommand": "npm install",
   "crons": [
-    { "path": "/api/cron/lembretes", "schedule": "*/10 * * * *" },
-    { "path": "/api/cron/campanhas", "schedule": "*/5 11-22 * * *" },
-    { "path": "/api/cron/followups", "schedule": "0 12-21 * * *" },
-    { "path": "/api/cron/custos-fixos", "schedule": "0 9 1 * *" }
+    {
+      "path": "/api/cron/lembretes",
+      "schedule": "*/10 * * * *"
+    },
+    {
+      "path": "/api/cron/campanhas",
+      "schedule": "*/5 11-22 * * *"
+    },
+    {
+      "path": "/api/cron/followups",
+      "schedule": "0 12-21 * * *"
+    },
+    {
+      "path": "/api/cron/custos-fixos",
+      "schedule": "0 9 1 * *"
+    }
   ]
 }
