@@ -10,8 +10,8 @@ const operacao = "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb";
 const registro = "cccccccc-cccc-4ccc-8ccc-cccccccccccc";
 const destino = "dddddddd-dddd-4ddd-8ddd-dddddddddddd";
 const outro = "eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee";
-const u: Usuario = { id: ator, nome: "Pessoa fictícia", email: "teste@fixture.invalid", papel: "recepcao", setor: "oficina", unidade: "comauto", unidades: ["comauto"] };
-const dados: DadosTransferencia = { operacaoId: operacao, origem: "central", registroId: registro,
+const u: Usuario = { id: ator, nome: "Pessoa fictícia", email: "teste@fixture.invalid", papel: "vendedor", setor: "vendas", unidade: "comauto", unidades: ["comauto"] };
+const dados: DadosTransferencia = { operacaoId: operacao, origem: "vendas", registroId: registro,
   destino: "pecas", funil: null, responsavelId: null, nota: "Solicitação fictícia", versao: 0 };
 const sucesso = { ok: true, operacaoId: operacao, setorDestino: "pecas", idDestino: destino, reutilizado: false, avisoResponsavel: null };
 
@@ -25,7 +25,7 @@ describe("transferência pelo adaptador transacional", () => {
   it("faz uma RPC com ator autenticado e nenhum SELECT separado", async () => {
     expect(await transferirAtendimento(u, dados)).toEqual(sucesso);
     expect(f.rpc).toHaveBeenCalledExactlyOnceWith("transferir_atendimento_setor", {
-      p_operacao: operacao, p_origem: "central", p_registro: registro, p_ator: ator,
+      p_operacao: operacao, p_origem: "vendas", p_registro: registro, p_ator: ator,
       p_destino: "pecas", p_funil: null, p_responsavel: null, p_nota: dados.nota, p_versao: 0,
       p_ator_email: u.email,
     });
@@ -37,13 +37,13 @@ describe("transferência pelo adaptador transacional", () => {
       ator: outro, p_ator: outro, email: "forjado@fixture.invalid", ator_email: "forjado@fixture.invalid", p_ator_email: "forjado@fixture.invalid",
       cliente: outro, unidade: "outra", mensagemIds: [outro], historico: [outro] };
     expect(await transferirAtendimento({ ...u, id: ator.toUpperCase() }, entrada)).toEqual(sucesso);
-    expect(f.rpc.mock.calls[0][1]).toEqual({ p_operacao: operacao, p_origem: "central", p_registro: registro, p_ator: ator,
+    expect(f.rpc.mock.calls[0][1]).toEqual({ p_operacao: operacao, p_origem: "vendas", p_registro: registro, p_ator: ator,
       p_destino: "pecas", p_funil: null, p_responsavel: null, p_nota: dados.nota, p_versao: 0, p_ator_email: u.email });
   });
 
   it("ignora e-mail forjado no FormData e envia somente a identidade da sessão", async () => {
     const form = new FormData();
-    for (const [key, value] of Object.entries({ operacao, origem: "central", registro, destino: "pecas", nota: dados.nota, versao: "0",
+    for (const [key, value] of Object.entries({ operacao, origem: "vendas", registro, destino: "pecas", nota: dados.nota, versao: "0",
       ator: outro, email: "forjado@fixture.invalid", ator_email: "forjado@fixture.invalid", p_ator_email: "forjado@fixture.invalid" })) form.set(key, value);
     const entrada = parsearTransferencia(form);
     expect(entrada).toEqual(dados);
@@ -51,7 +51,7 @@ describe("transferência pelo adaptador transacional", () => {
     const r = await transferirAtendimento(u, entrada);
     expect(r).toEqual(sucesso);
     expect(f.rpc).toHaveBeenCalledExactlyOnceWith("transferir_atendimento_setor", {
-      p_operacao: operacao, p_origem: "central", p_registro: registro, p_ator: ator,
+      p_operacao: operacao, p_origem: "vendas", p_registro: registro, p_ator: ator,
       p_destino: "pecas", p_funil: null, p_responsavel: null, p_nota: dados.nota, p_versao: 0, p_ator_email: u.email,
     });
     expect(JSON.stringify(r)).not.toMatch(/forjado@fixture|teste@fixture/);
@@ -143,13 +143,22 @@ describe("transferência pelo adaptador transacional", () => {
   });
 
   it.each([
-    ["central", "recepcao", "oficina"], ["vendas", "vendedor", "vendas"], ["pecas", "pecas", "pecas"],
-    ["oficina", "consultor_tecnico", "oficina"], ["central", "gerente", "oficina"], ["pecas", "admin", "administracao"],
+    ["oficina", "recepcao", "oficina"], ["vendas", "vendedor", "vendas"], ["pecas", "pecas", "pecas"],
+    ["oficina", "consultor_tecnico", "oficina"], ["oficina", "gerente", "oficina"], ["pecas", "admin", "administracao"],
   ] as const)("mapeia origem %s à área correspondente", async (origem, papel, setor) => {
     const d: DadosTransferencia = { ...dados, origem, destino: origem === "pecas" ? "oficina" : "pecas" };
     f.rpc.mockResolvedValue({ data: { ...sucesso, setorDestino: d.destino }, error: null });
     expect(await transferirAtendimento({ ...u, papel, setor }, d)).toMatchObject({ ok: true });
     expect(f.rpc).toHaveBeenCalledOnce();
+  });
+
+  it.each([
+    { papel: "recepcao", setor: "oficina" }, { papel: "gerente", setor: "oficina" },
+    { papel: "gerente", setor: "administracao" }, { papel: "admin", setor: "administracao" },
+  ] as const)("piloto recusa central mesmo para %j antes de chamar RPC", async perfil => {
+    expect(await transferirAtendimento({ ...u, ...perfil }, { ...dados, origem: "central" })).toMatchObject({ ok: false, status: 403 });
+    expect(f.rpc).not.toHaveBeenCalled();
+    expect(f.from).not.toHaveBeenCalled();
   });
 
   it.each([
@@ -182,18 +191,20 @@ describe("transferência pelo adaptador transacional", () => {
 
   it.each(["vendas", "pecas", "oficina"] as const)("transporta pessoa ou fila para %s, com funil apenas em Vendas", async destino => {
     const funil = destino === "vendas" ? "novos" : null;
-    const d: DadosTransferencia = { ...dados, destino, funil, responsavelId: outro.toUpperCase() };
+    const origem = destino === "vendas" ? "pecas" : "vendas";
+    const usuario: Usuario = destino === "vendas" ? { ...u, papel: "pecas", setor: "pecas" } : u;
+    const d: DadosTransferencia = { ...dados, origem, destino, funil, responsavelId: outro.toUpperCase() };
     f.rpc.mockResolvedValue({ data: { ...sucesso, setorDestino: destino }, error: null });
-    expect(await transferirAtendimento(u, d)).toMatchObject({ ok: true, setorDestino: destino });
+    expect(await transferirAtendimento(usuario, d)).toMatchObject({ ok: true, setorDestino: destino });
     expect(f.rpc).toHaveBeenCalledExactlyOnceWith("transferir_atendimento_setor", {
-      p_operacao: operacao, p_origem: "central", p_registro: registro, p_ator: ator,
+      p_operacao: operacao, p_origem: origem, p_registro: registro, p_ator: ator,
       p_destino: destino, p_funil: funil, p_responsavel: outro, p_nota: dados.nota, p_versao: 0,
       p_ator_email: u.email,
     });
     f.rpc.mockClear();
-    expect(await transferirAtendimento(u, { ...d, responsavelId: null })).toMatchObject({ ok: true, setorDestino: destino });
+    expect(await transferirAtendimento(usuario, { ...d, responsavelId: null })).toMatchObject({ ok: true, setorDestino: destino });
     expect(f.rpc).toHaveBeenCalledExactlyOnceWith("transferir_atendimento_setor", {
-      p_operacao: operacao, p_origem: "central", p_registro: registro, p_ator: ator,
+      p_operacao: operacao, p_origem: origem, p_registro: registro, p_ator: ator,
       p_destino: destino, p_funil: funil, p_responsavel: null, p_nota: dados.nota, p_versao: 0,
       p_ator_email: u.email,
     });
@@ -226,6 +237,16 @@ describe("transferência pelo adaptador transacional", () => {
     expect(JSON.stringify(r)).not.toContain("detalhe privado");
     expect(JSON.stringify(r)).not.toContain(u.email);
     expect(f.rpc).toHaveBeenCalledOnce();
+  });
+
+  it.each(["55P03", "40P01"])("SQLSTATE %s com rollback garantido é conflito sem retry ou detalhes", async code => {
+    f.rpc.mockResolvedValue({ data: null, error: { code, message: "detalhe privado " + u.email } });
+    const r = await transferirAtendimento(u, dados);
+    expect(r).toMatchObject({ ok: false, status: 409, codigo: "conflito" });
+    expect(JSON.stringify(r)).not.toContain("detalhe privado");
+    expect(JSON.stringify(r)).not.toContain(u.email);
+    expect(f.rpc).toHaveBeenCalledOnce();
+    expect(f.from).not.toHaveBeenCalled();
   });
 
   it("rejeição da chamada não gera repetição automática", async () => {

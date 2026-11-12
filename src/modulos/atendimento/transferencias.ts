@@ -30,7 +30,8 @@ function falha(status: FalhaTransferencia["status"], codigo?: CodigoTransferenci
 export async function transferirAtendimento(u: Usuario, dados: DadosTransferencia): Promise<ResultadoTransferencia> {
   const d = normalizarDadosTransferencia(dados);
   if (!d || !objeto(u) || !uuid(u.id) || typeof u.email !== "string" || !u.email.trim()) return falha(400);
-  if (!podeAcessar(u, d.origem === "central" ? "atendimento" : d.origem)) return falha(403);
+  // O piloto expõe transferência somente pelos cartões dos três setores.
+  if (d.origem === "central" || !podeAcessar(u, d.origem)) return falha(403);
 
   try {
     const { data, error } = await db().rpc("transferir_atendimento_setor", {
@@ -38,7 +39,12 @@ export async function transferirAtendimento(u: Usuario, dados: DadosTransferenci
       p_destino: d.destino, p_funil: d.funil, p_responsavel: d.responsavelId, p_nota: d.nota, p_versao: d.versao,
       p_ator_email: u.email,
     });
-    if (error || !objeto(data)) return falha(503);
+    if (error) {
+      // Esses SQLSTATEs abortam a transação no PostgreSQL; não são resultado incerto.
+      if (error.code === "55P03" || error.code === "40P01") return falha(409, "conflito");
+      return falha(503);
+    }
+    if (!objeto(data)) return falha(503);
     if (data.ok === false) {
       if (data.codigo === "invalido") return falha(400, data.codigo);
       if (data.codigo === "nao_encontrado") return falha(404, data.codigo);
