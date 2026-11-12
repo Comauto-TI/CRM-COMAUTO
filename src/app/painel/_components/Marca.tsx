@@ -7,7 +7,7 @@
 export default function Marca({ nome = "WAGconnect CRM", sub, grande = false }: { nome?: string; logoUrl?: string | null; sub?: string; grande?: boolean }) {
   return (
     <div className={`marca-sistema${grande ? " marca-selo" : ""}`}>
-      <img src="/marca/wagconnect.webp" alt={nome} className="marca-wordmark" width={grande ? 220 : 168} height={grande ? 57 : 44} />
+      <img src="/branding/wagconnect/logo.webp" alt={nome} className="marca-wordmark" width={grande ? 240 : 168} height={grande ? 67 : 47} />
       {sub && <span className="marca-empresa">{sub}</span>}
     </div>
   );
