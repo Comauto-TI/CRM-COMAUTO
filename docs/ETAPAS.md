@@ -449,3 +449,15 @@ opcional; nota/evento/aviso/audit atômicos. Implementação SQL, adaptador e te
 com donos distintos. SQL primeiro para revisão; guards de código da central antes da UI/transferência
 real, pois consultas extras por cliente e falta de recorte por unidade não são corrigidas pelo ledger.
 Ainda sem SQL remoto, envio, E2E ou transferência concluída.
+
+Repasse posterior173664 mudou para pessoa/fila nos3 destinos e histórico compartilhado por snapshot
+explícito auditado, sem consulta genérica por cliente. Parser/adaptador atualizados:114 testes
+simulados PASS; nenhum endpoint exposto. SQL/testes antigos NÃO aprovados nem compatíveis com esse
+contrato; WIP privado preservado com hashes, migration ativa restaurada à base. Revisão automática
+rejeitou a edição do trigger0006 por alegada falta de autorização de núcleo/permissões; não houve
+reexecução por outro caminho, banco remoto ou Auth alterados. Detalhes, alternativas Oficina e
+questão de reuso/responsável em docs/TRANSFERENCIA-ENTRE-SETORES.md.
+
+Agenda Oficina: Claude assumiu/implementou acompanhamento do dia (C). Codex ficou com descrição
+livre(A) e horário/recurso livres(B), após SQL da transferência e revisão. Ainda não implementados
+aqui; não editar acompanhamento concorrentemente nem retirar as travas de conflito23P01 do banco.

@@ -5,7 +5,52 @@ implementação local em andamento, ainda sem revisão/integração de transfer�
 `588bc1c` (Oficina integrada), incorporada na
 branch `codex/transferencias-setores` pelo merge `be4868b`. Não é publicação em produção.
 
-## Contrato fechado pelo Claude — prevalece sobre a proposta histórica
+## Ajuste posterior do Simão, repassado pelo Claude — contrato atual
+
+Prefixo173664/SHA F9180B99DF24CE695EF048339240C10F0FB17345C6ED401B4F7AB4D7061A5EAD. Este
+repasse substitui as restrições anteriores de destinatário e de compartilhamento:
+
+- Quem encaminha escolhe **fila do setor** ou **pessoa elegível**, nos três destinos. Vendas:
+  vendedor/gerente de Vendas; Peças: equipe/gerente de Peças; Oficina: recepção/consultor/gerente
+  de Oficina. Aviso para a pessoa ou para fila/gestão conforme a escolha.
+- **Histórico compartilhado por snapshot explícito e auditado** da conversa de origem. Não é consulta
+  genérica do histórico do cliente, nem alteração dos vínculos originais das mensagens. A fonte deve
+  selecionar exatamente o contexto autorizado da origem; mensagens de outros atendimentos não são
+  incluídas só por estarem no mesmo canal físico. A leitura do snapshot passa pela política atual
+  do destino, inclusive após mudança de responsável/unidade. Conteúdo interno e segredos não entram.
+- Reuso de aberto permanece. Oficina modular continua **não decidido**: só pedido de domínio nesta
+  fatia, com alternativas abaixo para decisão posterior. Não ampliar sua interface de WhatsApp agora.
+
+Ponto de contrato ainda a explicitar antes de SQL: ao reaproveitar destino que já tem responsável,
+como conciliar a escolha "fila sem dono" ou outra pessoa com a preservação da atribuição existente?
+Recomendação: não reatribuir uma carteira/posse alheia implicitamente. Resolver o conflito de destino
+explicitamente e revalidar elegibilidade sob lock; não conceder histórico só pelo nome escolhido.
+
+### Alternativas para a conversa de Oficina
+
+| Opção | Vantagem | Limite / custo |
+|---|---|---|
+| 1. Fila/triagem + conversa na central da recepção (recorte atual) | Menor mudança; preserva o atendimento já disponível e deixa agendamento/triagem organizados. | Consultor usa a ficha de triagem; recepção continua a porta do WhatsApp. Exige guardar vínculo/corte/snapshot e autorização de unidade na central. |
+| 2. Atalho contextual da triagem para a central, só para quem já pode acessá-la | Reduz navegação da recepção sem ampliar papéis ou criar canal novo. | Não resolve WhatsApp próprio do consultor; o atalho deve provar triagem/conversa/unidade no servidor e mostrar apenas o contexto autorizado. |
+| 3. Oficina como terceiro contexto modular, com componente compartilhado | Consultor acompanha/responde no próprio setor com posse e histórico contextualizados. | Amplia contrato, SQL, roteamento, envio e testes de três setores; precisa decisão explícita e revisão antes de integrar. |
+
+Recomendação: opção1 nesta entrega; escolher depois entre atalho de ergonomia e módulo completo.
+Não criar outro número/integração ou liberar histórico genérico como solução provisória.
+
+### Estado de implementação e revisão automática
+
+Parser/adaptador atualizados para pessoa/fila nos três destinos:114 testes com RPC simulada passaram;
+não há action/endpoint/UI expondo a operação. SQL e contratos locais anteriores ficaram desatualizados.
+O WIP foi preservado privadamente com hashes e retirado do arquivo ativo; `0006` voltou exatamente à
+base revisada. Nada desse SQL foi aplicado no dev ou validado funcionalmente.
+
+A revisão automática rejeitou o `apply_patch` que acrescentaria o trigger de roteamento em `0006`,
+alegando ausência de autorização específica para alterar núcleo/permissões e possível exposição de
+histórico se integrado sem revisão. Um pedido restrito de filesystem do subagente não concedeu acesso.
+O arquivo não foi reeditado por outro caminho. As entregas independentes foram concluídas; retomar a
+edição do núcleo exige resolver essa autorização e alinhar o contrato atual, sem reaplicar o WIP antigo.
+
+## Primeiro contrato fechado (histórico; supersedido nos pontos acima)
 
 Repasse conferido até169975/SHA664291681E143C1A7B8405ACC9FEB0AA0DA469D0C2F40E791A6FD00880671714.
 
