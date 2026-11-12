@@ -2,13 +2,14 @@ import "server-only";
 import type { Usuario } from "@/lib/auth";
 import { podeAcessar } from "@/lib/permissoes";
 import { db } from "@/lib/supabase/admin";
+import { mascararDadosSensiveis } from "@/lib/security/guard";
 import { objeto, uuid } from "./contrato-leitura";
 import { normalizarDadosTransferencia, type DadosTransferencia, type DestinoTransferencia } from "./dados-transferencia";
 
 type CodigoTransferencia = "invalido" | "nao_encontrado" | "conflito" | "origem_ambigua" | "envio_incerto";
 export type FalhaTransferencia = { ok: false; status: 400 | 403 | 404 | 409 | 503; erro: string; codigo?: CodigoTransferencia };
 export type ResultadoTransferencia =
-  | { ok: true; operacaoId: string; setorDestino: DestinoTransferencia; idDestino: string; reutilizado: boolean }
+  | { ok: true; operacaoId: string; setorDestino: DestinoTransferencia; idDestino: string; reutilizado: boolean; avisoResponsavel: { nome: string } | null }
   | FalhaTransferencia;
 
 function falha(status: FalhaTransferencia["status"], codigo?: CodigoTransferencia): FalhaTransferencia {
@@ -45,7 +46,17 @@ export async function transferirAtendimento(u: Usuario, dados: DadosTransferenci
     }
     if (data.ok !== true || !uuid(data.operacaoId) || data.operacaoId.toLowerCase() !== d.operacaoId
       || data.setorDestino !== d.destino || !uuid(data.idDestino) || typeof data.reutilizado !== "boolean") return falha(503);
-    return { ok: true, operacaoId: d.operacaoId, setorDestino: d.destino, idDestino: data.idDestino.toLowerCase(), reutilizado: data.reutilizado };
+    let avisoResponsavel: { nome: string } | null = null;
+    if (data.avisoResponsavel !== null) {
+      const aviso = data.avisoResponsavel;
+      if (!data.reutilizado || !objeto(aviso) || typeof aviso.nome !== "string") return falha(503);
+      const caracteres = Array.from(aviso.nome);
+      if (!aviso.nome.trim() || caracteres.length > 200 || aviso.nome.includes("\0")
+        || caracteres.some(c => c.length === 1 && c.charCodeAt(0) >= 0xd800 && c.charCodeAt(0) <= 0xdfff)) return falha(503);
+      avisoResponsavel = { nome: mascararDadosSensiveis(aviso.nome.trim()).texto };
+    }
+    return { ok: true, operacaoId: d.operacaoId, setorDestino: d.destino, idDestino: data.idDestino.toLowerCase(),
+      reutilizado: data.reutilizado, avisoResponsavel };
   } catch {
     return falha(503);
   }
