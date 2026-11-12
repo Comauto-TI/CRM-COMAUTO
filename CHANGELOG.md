@@ -9,6 +9,9 @@ Versionamento semântico a partir de **0.0.1** (decisão do Simão, 10/11/2026).
 - Quem mescla na `main` (Claude ou Codex) atualiza `package.json`, este arquivo e cria a tag.
 
 ## [Não lançado]
+### Adicionado
+- Fila e triagem de Oficina com duas etapas, filtro Minhas, paginação por cursor e ações autorizadas no servidor; agenda existente preservada.
+
 ### Corrigido
 - Menu do vendedor identifica a visão pessoal como **Minhas métricas**, com o mesmo recorte e permissões existentes.
 
