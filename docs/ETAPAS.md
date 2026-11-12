@@ -520,3 +520,9 @@ Central → Vendas/Peças antes/depois do claim preservam autoria cliente/bot/si
 pendente booleano e mascaramento real; interno/outro negócio omitidos. Reuso Peças sem dono com versão >0
 retorna versão real e resumo vazio, assume com essa versão e lê histórico autorizado. Fontes/hash
 inalterados; sem repetir 402, sem HTTP/Auth/UI/envio reais. Artefatos privados referidos no relatório.
+
+Repasse posterior conferido até 176356/SHA 19DDBCCC0BD3377FB11617925EEFEC58B37C74E649FF1E0C5CE6E921C3CCA240:
+Claude solicitou revisão do PR #9 (claude/pos-v004 → main, futura v0.0.7) entre fatias da transferência.
+Oficina, acompanhamento, marketing por setor, central/triagem, identidade e QA compõem a descrição
+recebida. Revisão ainda não iniciada/pin não conferido; não declarar aprovação, merge ou nova versão.
+Pedido não suspende o backend prioritário, que já foi entregue para revisão local em abb9031.
