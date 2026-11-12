@@ -53,6 +53,7 @@ const GRUPOS: Grupo[] = [
   },
   {
     chave: "administracao", rotulo: "Administração", icone: "financeiro", itens: [
+      { href: "/painel/usuarios", rotulo: "Usuários", icone: "clientes", area: "configuracoes" },
       { href: "/painel/financeiro", rotulo: "Financeiro", icone: "financeiro", area: "financeiro" },
       { href: "/painel/seguranca", rotulo: "Segurança", icone: "seguranca", area: "seguranca" },
       { href: "/painel/piloto", rotulo: "Prontidão do piloto", icone: "seguranca", area: "configuracoes" },

@@ -9,15 +9,15 @@ import type { MetadataRoute } from "next";
 export default function manifest(): MetadataRoute.Manifest {
   return {
     id: "/painel",
-    name: "Plataforma Comauto",
-    short_name: "Comauto",
-    description: "Painel interno da Comauto: atendimento, vendas, oficina e peças.",
+    name: "WAGconnect CRM",
+    short_name: "WAGconnect",
+    description: "WAGconnect CRM — sistema da Comauto: atendimento, vendas, oficina e peças.",
     lang: "pt-BR",
     start_url: "/painel",
     scope: "/",
     display: "standalone",
-    background_color: "#f4f6fb",
-    theme_color: "#001e50",
+    background_color: "#041831",
+    theme_color: "#041831",
     icons: [
       { src: "/icons/icon-192.png", sizes: "192x192", type: "image/png", purpose: "any" },
       { src: "/icons/icon-512.png", sizes: "512x512", type: "image/png", purpose: "any" },

@@ -168,40 +168,8 @@ export default async function Configuracoes() {
           </div>
 
           <div className="card secao">
-            <h2>Equipe e alertas de atendimento</h2>
-            {tabelaEquipe === "usuarios" && (
-              <details className="secao" open={!(equipe.data ?? []).length || (equipe.data ?? []).length < 3}>
-                <summary style={{ cursor: "pointer", fontWeight: 600 }}>+ Cadastrar pessoa</summary>
-                <p className="mudo">Cria o login e já define papel, setor e unidade. Se o e-mail já tiver login em outro sistema do grupo, a pessoa só é vinculada ao painel (a senha dela não muda).</p>
-                <NovoMembro unidades={unidadesLista} />
-              </details>
-            )}
-            <p className="mudo">Quem marcar &quot;recebe alertas&quot; recebe no próprio WhatsApp o aviso de cliente aguardando (template utility, ~R$ 0,035 cada), com link direto para responder pelo painel. Marcar = a pessoa autorizou receber esses alertas.</p>
-            <div className="tabela-wrap">
-              <table className="tabela">
-                <thead><tr><th>Pessoa</th><th colSpan={2}>Configuração</th></tr></thead>
-                <tbody>
-                  {(equipe.data ?? []).map((p) => (
-                    <tr key={p.user_id}>
-                      <td>{p.nome}{p.consentimento_alertas_em && <div className="mudo">alertas autorizados em {formatarDataHora(p.consentimento_alertas_em, cfg.fuso_offset)}</div>}</td>
-                      <td colSpan={2}>
-                        <form action={salvarEquipe} className="linha-form">
-                          <input type="hidden" name="user_id" value={p.user_id} />
-                          <select name="papel" defaultValue={p.papel} aria-label="Papel">{(tabelaEquipe === "usuarios" ? PAPEIS : PAPEIS_LEGADO).map((x) => <option key={x} value={x}>{ROTULO_PAPEL[x]}{x === "atendente" ? " (legado)" : ""}</option>)}</select>
-                          {tabelaEquipe === "usuarios" && <select name="setor" defaultValue={p.setor} aria-label="Setor">{SETORES.map((x) => <option key={x} value={x}>{ROTULO_SETOR[x]}</option>)}</select>}
-                          <input name="telefone" defaultValue={p.telefone_whatsapp ?? ""} placeholder="WhatsApp p/ alertas" />
-                          <label style={{ display: "flex", gap: 4, alignItems: "center", flex: "0 0 auto" }}><input type="checkbox" name="recebe_alertas" defaultChecked={p.recebe_alertas} style={{ width: "auto" }} /> recebe alertas</label>
-                          {p.user_id === u.id && <input type="hidden" name="ativo" value="on" />}
-                          <label style={{ display: "flex", gap: 4, alignItems: "center", flex: "0 0 auto" }}><input type="checkbox" name="ativo" defaultChecked={p.ativo} disabled={p.user_id === u.id} style={{ width: "auto" }} /> {p.user_id === u.id ? "seu acesso ativo" : "ativo"}</label>
-                          <button className="btn pequeno" style={{ flex: "0 0 auto" }}>Salvar</button>
-                        </form>
-                        {tabelaEquipe === "usuarios" && p.user_id !== u.id && <RedefinirSenha userId={p.user_id} />}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+            <h2>Equipe</h2>
+            <p className="mudo">A equipe, os alertas e os links de cadastro agora ficam em <a href="/painel/usuarios">Administração → Usuários</a>.</p>
           </div>
         </>
       )}

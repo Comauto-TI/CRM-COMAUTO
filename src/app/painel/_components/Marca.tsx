@@ -1,15 +1,14 @@
 /* eslint-disable @next/next/no-img-element */
-/** Logo + nome. Usa o logo oficial da empresa se configurado (Configurações → logo), senão o monograma Comauto. */
-export default function Marca({ nome, logoUrl, sub = "Assistente WhatsApp", grande = false }: { nome: string; logoUrl?: string | null; sub?: string; grande?: boolean }) {
-  const t = grande ? 44 : 34;
+/**
+ * Marca do sistema: logo WAGconnect CRM (fundo transparente, letras verde-limão e brancas).
+ * Em fundo escuro (menu lateral) vai direto; em fundo claro (login) "grande" coloca a logo num selo marinho.
+ * `nome` fica só como texto alternativo; `sub` mostra a empresa (Comauto).
+ */
+export default function Marca({ nome = "WAGconnect CRM", sub, grande = false }: { nome?: string; logoUrl?: string | null; sub?: string; grande?: boolean }) {
   return (
-    <div className={`marca ${grande ? "marca-grande" : ""}`}>
-      <img src={logoUrl || "/marca/logo.svg"} alt={nome} width={t} height={t} className="marca-logo" />
-      <div className="marca-texto">
-        <strong>{nome}</strong>
-        <span>{sub}</span>
-      </div>
-      <span className="marca-ponto" title="WhatsApp conectado" />
+    <div className={`marca-sistema${grande ? " marca-selo" : ""}`}>
+      <img src="/marca/wagconnect.webp" alt={nome} className="marca-wordmark" width={grande ? 220 : 168} height={grande ? 57 : 44} />
+      {sub && <span className="marca-empresa">{sub}</span>}
     </div>
   );
 }

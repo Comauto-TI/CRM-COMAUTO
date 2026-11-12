@@ -3,14 +3,14 @@
 import { useMemo } from "react";
 import { moverCartao } from "./actions";
 import QuadroKanban, { type CartaoQuadro, type ColunaQuadro } from "../_components/quadro/QuadroKanban";
-import { TEMPERATURAS, MOTIVOS_PERDA, type Temperatura, type Ordenacao } from "@/modulos/vendas/regras";
+import { TEMPERATURAS, MOTIVOS_PERDA, pontuarLead, type Temperatura, type Ordenacao } from "@/modulos/vendas/regras";
 
 /** Quadro de Vendas = quadro comum (_components/quadro) com os dados das oportunidades. */
 
 type Etapa = { id: string; nome: string; ordem: number; tipo: "aberta" | "ganho" | "perdido"; sla_dias: number | null };
 type Cartao = {
   id: string; etapa_id: string; vendedor_id: string | null; veiculo_interesse: string | null; valor_estimado: number | null;
-  temperatura: string; qualificacao: string; tem_troca: boolean; origem: string; entrou_na_etapa_em: string; posicao: number;
+  temperatura: string; qualificacao: string; pagamento: string; prazo_compra?: string | null; tem_troca: boolean; origem: string; entrou_na_etapa_em: string; posicao: number;
   criado_em: string; atualizado_em: string; ultimo_contato_em: string | null;
   cliente: { nome: string | null; telefone: string };
 };
@@ -58,6 +58,10 @@ export default function Quadro({
     href: `${linkBase}&op=${c.id}`,
     movel: pode.has(c.id),
     hrefTransferir: transferiveis.has(c.id) ? `${linkBase}&op=${c.id}&transferir=1` : undefined,
+    ...(() => {
+      const p = pontuarLead({ temperatura: c.temperatura, prazo: c.prazo_compra ?? null, pagamento: c.pagamento, qualificacao: c.qualificacao, temTroca: c.tem_troca, valor: c.valor_estimado, ultimoContatoEm: c.ultimo_contato_em });
+      return { pontuacao: p.nota, selo: { texto: String(p.nota), tom: p.faixa, titulo: `Chance ${p.faixa} (${p.nota}/100): ${p.motivos.join(", ")}` } };
+    })(),
     }));
   }, [cartoes, podeMover, podeTransferir, vendedores, linkBase]);
 

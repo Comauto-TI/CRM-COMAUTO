@@ -1,7 +1,7 @@
+/* eslint-disable @next/next/no-img-element */
 import { redirect } from "next/navigation";
 import { authClient } from "@/lib/supabase/server";
 import Marca from "../painel/_components/Marca";
-import { IlustracaoLogin } from "../painel/_components/Ilustracoes";
 
 async function entrar(formData: FormData) {
   "use server";
@@ -13,39 +13,40 @@ async function entrar(formData: FormData) {
   redirect("/painel");
 }
 
+/**
+ * Login corporativo: foto à esquerda (Golf GTI Mk8 — Unsplash, David Moffatt / Stable Vehicle Contracts,
+ * licença Unsplash; placa desfocada) e formulário à direita. Sem ilustração, sem efeitos.
+ */
 export default async function Login({ searchParams }: { searchParams: Promise<{ erro?: string }> }) {
   const { erro } = await searchParams;
   return (
-    <main className="login">
-      <div className="login-grade">
-        <section className="login-arte" aria-hidden="true">
-          <IlustracaoLogin />
-          <h2>Agendamentos, atendimento e campanhas num só lugar.</h2>
-          <ul>
-            <li>Assistente no WhatsApp 24h, com regras de segurança</li>
-            <li>Recepção avisada na hora quando o cliente pede atendente</li>
-            <li>Custos de cada mensagem e de cada agendamento</li>
-          </ul>
-        </section>
-        <form action={entrar} className="card login-card">
-          <Marca nome="Comauto" sub="Painel do assistente" grande />
-          <div>
-            <h1>Entrar</h1>
-            <p className="mudo" style={{ margin: 0 }}>Use o e-mail cadastrado pela administração.</p>
+    <main className="acesso">
+      <section className="acesso-foto" aria-hidden="true">
+        <div className="acesso-foto-texto">
+          <img src="/marca/wagconnect.webp" alt="WAGconnect CRM" className="acesso-logo" width={340} height={89} />
+          <p>Vendas, Oficina e Peças com a mesma ficha do cliente.</p>
+        </div>
+      </section>
+      <section className="acesso-painel">
+        <form action={entrar} className="acesso-form">
+          <Marca sub="Comauto" grande />
+          <div className="acesso-titulo">
+            <h1>Acesse sua conta</h1>
+            <p>Use o e-mail e a senha cadastrados pela administração.</p>
           </div>
-          {erro && <p className="alerta erro">E-mail ou senha inválidos.</p>}
+          {erro && <p className="alerta erro" role="alert">E-mail ou senha inválidos.</p>}
           <label>
             E-mail
-            <input name="email" type="email" required autoComplete="username" />
+            <input name="email" type="email" required autoComplete="username" placeholder="nome@comauto.com.br" />
           </label>
           <label>
             Senha
             <input name="senha" type="password" required autoComplete="current-password" />
           </label>
-          <button className="btn primario" type="submit">Entrar no painel</button>
-          <p className="mudo">🔒 Acesso restrito à equipe autorizada. Todas as ações ficam registradas.</p>
+          <button className="btn primario acesso-botao" type="submit">Entrar</button>
+          <p className="acesso-rodape">Acesso restrito à equipe autorizada. Todas as ações ficam registradas.</p>
         </form>
-      </div>
+      </section>
     </main>
   );
 }

@@ -138,7 +138,7 @@ export default async function VisaoGeral({ searchParams }: { searchParams: Promi
 
       {!verAgenda && !verAtendimento && !verCusto && (
         <div className="card secao">
-          <h2>Bem-vindo à Plataforma Comauto</h2>
+          <h2>Bem-vindo ao WAGconnect CRM</h2>
           <p className="mudo">Use o menu ao lado para abrir o seu setor. A busca de clientes procura em todo o grupo.</p>
         </div>
       )}

@@ -79,7 +79,11 @@ async function publico(c: Campanha) {
   return { base: clientes?.length ?? 0, aptos, ...cont };
 }
 
-export async function preChecagem(campanhaId: string): Promise<PreChecagem | null> {
+/**
+ * Pré-checagem do público e do custo. Por padrão SÓ CALCULA (abrir a tela não grava nada — QA-TELAS-CAMPANHAS-GET-003).
+ * persistir=true apenas em ação explícita (enfileirar), que registra total previsto e custo estimado.
+ */
+export async function preChecagem(campanhaId: string, opcoes: { persistir?: boolean } = {}): Promise<PreChecagem | null> {
   const c = await carregar(campanhaId);
   if (!c) return null;
   const p = await publico(c);
@@ -87,7 +91,9 @@ export async function preChecagem(campanhaId: string): Promise<PreChecagem | nul
   const precoUtility = await precoMeta("UTILITY");
   // evento: convite + (confirmação, lembrete, agradecimento) estimados para todos, como no PDF
   const custo = p.aptos.length * precoConvite + (c.tipo === "evento" ? p.aptos.length * 3 * precoUtility : 0);
-  await db().from("campanhas").update({ total_previsto: p.aptos.length, custo_estimado_brl: Number(custo.toFixed(2)) }).eq("id", campanhaId);
+  if (opcoes.persistir) {
+    await db().from("campanhas").update({ total_previsto: p.aptos.length, custo_estimado_brl: Number(custo.toFixed(2)) }).eq("id", campanhaId);
+  }
   return {
     base: p.base,
     semConsentimento: p.semConsentimento,

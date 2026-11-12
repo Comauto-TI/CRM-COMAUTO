@@ -17,8 +17,9 @@ const ORIGEM = "plataforma-comauto";
 const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
 
 /** Senha provisória legível (sem 0/O/1/l/I) com letras e números. */
-export function gerarSenhaProvisoria(tamanho = 12): string {
-  const letras = "ABCDEFGHJKMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz";
+/** Senha provisória fácil de ditar/digitar (pedido do Simão): minúsculas + números, sem caracteres que confundem. A pessoa troca em Minha conta. */
+export function gerarSenhaProvisoria(tamanho = 8): string {
+  const letras = "abcdefghjkmnpqrstuvwxyz";
   const numeros = "23456789";
   const todos = letras + numeros;
   const s = [letras[randomInt(letras.length)], numeros[randomInt(numeros.length)]];
@@ -27,7 +28,7 @@ export function gerarSenhaProvisoria(tamanho = 12): string {
   return s.join("");
 }
 
-async function acharNoAuthPorEmail(email: string): Promise<{ id: string; origem: string | null } | null> {
+export async function acharNoAuthPorEmail(email: string): Promise<{ id: string; origem: string | null } | null> {
   // A listagem admin é paginada: só termina depois de conferir a última página.
   for (let page = 1; ; page++) {
     const { data, error } = await db().auth.admin.listUsers({ page, perPage: 200 });

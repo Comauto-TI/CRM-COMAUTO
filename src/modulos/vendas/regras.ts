@@ -206,3 +206,34 @@ export function distribuirRodizio(quantidade: number, vendedores: { id: string; 
   }
   return destino;
 }
+
+// ---------------------------------------------------------------------------
+// F7 — Pontuação do lead (0–100): chance relativa de compra, TRANSPARENTE (cada ponto tem motivo).
+// Não é IA "caixa-preta": regra simples, ajustável, que o vendedor entende e o gerente pode calibrar
+// depois com as métricas (conversão por faixa de pontuação).
+// ---------------------------------------------------------------------------
+export type DadosPontuacao = {
+  temperatura: string; prazo: string | null; pagamento: string; qualificacao: string;
+  temTroca: boolean; valor: number | null; ultimoContatoEm: string | null;
+};
+export type Pontuacao = { nota: number; faixa: "alta" | "media" | "baixa"; motivos: string[] };
+
+export function pontuarLead(d: DadosPontuacao, agora: Date = new Date()): Pontuacao {
+  if (d.qualificacao === "desqualificado") return { nota: 0, faixa: "baixa", motivos: ["desqualificado"] };
+  let n = 0;
+  const motivos: string[] = [];
+  const soma = (p: number, m: string) => { n += p; if (p) motivos.push(`${p > 0 ? "+" : ""}${p} ${m}`); };
+  soma(({ quente: 30, morno: 15, frio: 0 } as Record<string, number>)[d.temperatura] ?? 0, `temperatura ${d.temperatura}`);
+  soma(({ imediato: 25, ate_30_dias: 18, ate_90_dias: 8, indefinido: 3, sem_prazo: 0 } as Record<string, number>)[d.prazo ?? "indefinido"] ?? 0, "prazo de compra");
+  soma(({ a_vista: 15, financiamento: 10, consorcio: 8 } as Record<string, number>)[d.pagamento] ?? 0, "pagamento definido");
+  soma(({ qualificado: 12, confirmado_cliente: 8 } as Record<string, number>)[d.qualificacao] ?? 0, "qualificação");
+  if (d.temTroca) soma(5, "tem usado na troca");
+  if (d.valor && d.valor > 0) soma(3, "valor estimado informado");
+  if (d.ultimoContatoEm) {
+    const dias = (agora.getTime() - new Date(d.ultimoContatoEm).getTime()) / 86_400_000;
+    if (dias <= 2) soma(10, "contato nos últimos 2 dias");
+    else if (dias > 14) soma(-10, "sem contato há mais de 14 dias");
+  }
+  const nota = Math.max(0, Math.min(100, n));
+  return { nota, faixa: nota >= 60 ? "alta" : nota >= 35 ? "media" : "baixa", motivos };
+}

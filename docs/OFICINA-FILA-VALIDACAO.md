@@ -46,3 +46,17 @@ Recuperação de órfã, WhatsApp de Oficina, transferências, novas etapas e Re
 
 O PR #8 foi revalidado e aprovado em `f12e0c1`, com parecer `202a781` na ref `codex/revalidacao-pr8`;
 merge/tag/deploy seguem com Claude. A aprovação não foi convertida silenciosamente em nova base aqui.
+
+## Base v0.0.6 confirmada e incorporada · 12/11/2026
+
+GitHub confirmou PR #8 mesclado em `bc14aa1e90e440ec87e6fc88a275c817041b7f87`, às 11:34:39 UTC.
+A tag local importada `v0.0.6` resolve para esse commit, e package/lock registram 0.0.6.
+O runtime é o do pin aprovado `f12e0c1`; o delta da release contém versão, changelog e coordenação.
+A ref main do clone compartilhado continuava em `5e73115`; foi usado o SHA confirmado, não essa ref antiga.
+
+Oficina foi alinhada por merge normal, preservando seus commits e stashes. Conflitos de CSS e chat foram
+resolvidos mantendo CSS idêntico à main e os históricos completos dos dois pais. O SQL 0004 e o adaptador
+mantêm os hashes acima; src/app, src/lib, Vendas e 0002 coincidem com a main. A única diferença de
+migration da fatia continua sendo 0004. Typecheck e 99 testes focados (95 Oficina + 4 CSS/conta) passaram.
+Não foi necessário repetir a matriz SQL imutável. Nenhuma migration/dev/servidor foi alterado pelo Codex.
+Claude informou que iniciou revisão/aplicação de 0004; a conclusão remota ainda não foi comprovada aqui.

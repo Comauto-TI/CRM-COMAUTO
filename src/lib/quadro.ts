@@ -40,11 +40,11 @@ export function posicaoEntre(anterior: number | null, proximo: number | null): n
   return (anterior + proximo) / 2;
 }
 
-export const ORDENACOES = { posicao: "Ordem do quadro", recentes: "Mais recentes", valor: "Maior valor", parado: "Parado há mais tempo", contato: "Sem contato há mais tempo" } as const;
+export const ORDENACOES = { posicao: "Ordem do quadro", chance: "Maior chance (pontuação)", recentes: "Mais recentes", valor: "Maior valor", parado: "Parado há mais tempo", contato: "Sem contato há mais tempo" } as const;
 export type Ordenacao = keyof typeof ORDENACOES;
 
 /** Campos que todo cartão de qualquer setor precisa ter para ser ordenado. */
-export type CamposOrdem = { posicao: number; criadoEm: string; valor: number | null; entrouEm: string; ultimoContatoEm: string | null };
+export type CamposOrdem = { posicao: number; criadoEm: string; valor: number | null; entrouEm: string; ultimoContatoEm: string | null; pontuacao?: number | null };
 
 /** Ordena os cartões de uma coluna conforme o filtro "Ordenar por". */
 export function ordenarQuadro<T>(cartoes: T[], ordem: Ordenacao, campos: (c: T) => CamposOrdem): T[] {
@@ -52,6 +52,7 @@ export function ordenarQuadro<T>(cartoes: T[], ordem: Ordenacao, campos: (c: T) 
   const copia = [...cartoes];
   const k = (c: T) => campos(c);
   switch (ordem) {
+    case "chance": return copia.sort((a, b) => (k(b).pontuacao ?? -1) - (k(a).pontuacao ?? -1));
     case "recentes": return copia.sort((a, b) => t(k(b).criadoEm) - t(k(a).criadoEm));
     case "valor": return copia.sort((a, b) => (k(b).valor ?? 0) - (k(a).valor ?? 0));
     case "parado": return copia.sort((a, b) => t(k(a).entrouEm) - t(k(b).entrouEm));

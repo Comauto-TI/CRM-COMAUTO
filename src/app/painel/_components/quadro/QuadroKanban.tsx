@@ -32,6 +32,8 @@ export type CartaoQuadro = {
   href: string; // abre o detalhe do cartão
   movel: boolean;
   hrefTransferir?: string; // presente = mostra o botão de setas
+  pontuacao?: number | null; // 0–100: usado na ordenação "Maior chance"
+  selo?: { texto: string; tom: "alta" | "media" | "baixa"; titulo?: string }; // ex.: pontuação do lead
 };
 
 export type ResultadoMover = { ok: true } | { ok: false; motivo: string };
@@ -152,7 +154,7 @@ export default function QuadroKanban({
                             {iniciais(c.titulo)}
                           </span>
                           <div className="cartao-id">
-                            <strong>{c.titulo}</strong>
+                            <strong>{c.titulo}{c.selo && <span className={`selo-pontuacao selo-${c.selo.tom}`} title={c.selo.titulo}>{c.selo.texto}</span>}</strong>
                             <small>Contato: {tempoAtras(c.ultimoContatoEm, agora)}</small>
                             <small>Atualização: {tempoAtras(c.atualizadoEm, agora)}</small>
                           </div>
