@@ -426,7 +426,33 @@ begin
   foreach tabela in array array['atendimentos_modulares','atendimento_canais','atendimento_mensagens','mensagens','pecas_cotacoes'] loop
     if not exists(select 1 from pg_class where oid=('public.'||tabela)::regclass and relrowsecurity) then raise exception 'RLS desligado: %.',tabela; end if;
   end loop;
-  if has_schema_privilege('service_role','auth','usage') then raise exception 'MVP concedeu acesso ao schema Auth.'; end if;
+  -- Transferência central compara UUID autenticado com a posse legada por e-mail. O grant
+  -- intencional é somente USAGE + SELECT(id,email), sem acesso às outras colunas ou escrita.
+  if exists(select 1 from information_schema.columns where table_schema='auth' and table_name='users' and column_name='email') then
+    if not has_schema_privilege('service_role','auth','usage')
+      or not has_column_privilege('service_role','auth.users','id','select')
+      or not has_column_privilege('service_role','auth.users','email','select') then
+      raise exception 'Servidor sem leitura mínima de identidade para a posse central.';
+    end if;
+  elsif has_schema_privilege('service_role','auth','usage') or has_any_column_privilege('service_role','auth.users','select') then
+    raise exception 'Stub Auth sem e-mail recebeu leitura desnecessária.';
+  end if;
+  if has_table_privilege('service_role','auth.users','select,insert,update,delete,truncate,references,trigger') then
+    raise exception 'Transferência ampliou privilégios de tabela no Auth.';
+  end if;
+  for nome in select column_name from information_schema.columns where table_schema='auth' and table_name='users' loop
+    if nome not in ('id','email') and has_column_privilege('service_role','auth.users',nome,'select') then
+      raise exception 'Servidor lê coluna Auth fora do mínimo: %.',nome;
+    end if;
+    if has_column_privilege('service_role','auth.users',nome,'insert,update,references') then
+      raise exception 'Servidor escreve coluna Auth: %.',nome;
+    end if;
+    foreach papel in array array['anon','authenticated'] loop
+      if has_column_privilege(papel,'auth.users',nome,'select,insert,update,references') then
+        raise exception 'Navegador acessa coluna Auth: % / %.',papel,nome;
+      end if;
+    end loop;
+  end loop;
   foreach nome in array array['conversas_legadas','mensagens_legadas'] loop
     foreach papel in array array['anon','authenticated'] loop
       if has_table_privilege(papel,'public.'||nome,'select') then raise exception 'View legada exposta ao navegador: %.',nome; end if;

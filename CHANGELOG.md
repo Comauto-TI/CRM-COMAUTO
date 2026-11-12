@@ -10,6 +10,7 @@ Versionamento semântico a partir de **0.0.1** (decisão do Simão, 10/11/2026).
 
 ## [Não lançado]
 ### Adicionado
+- Backend local de transferência entre setores: operação atômica, reuso de pedido aberto, responsável preservado, avisos e histórico compartilhado com autorização; SQL ainda depende de revisão e integração no dev.
 - Preparação isolada da transferência entre setores: validação e adaptador servidor; operação ainda sem SQL integrado ou interface disponível.
 - Diálogo preparado para preservar autoria do assistente/sistema em histórico compartilhado autorizado, com validação de direção e pendência.
 - **Oficina**: fila e triagem com duas etapas, filtro “Minhas”, paginação e ações autorizadas no servidor; a agenda continua como estava.
