@@ -38,7 +38,9 @@ export async function marcarPresenca(form: FormData) {
   let para = regra.para;
   if (!para) {
     const { data: marca } = await db().from("agendamento_historico").select("de_status")
-      .eq("agendamento_id", id).eq("para_status", ag.status).order("criado_em", { ascending: false }).limit(1).maybeSingle();
+      // ACOMP003-R1: só a marcação EFETIVA (veio de pendente/confirmado); ignora eventos sem mudança (ex.: Salvar mantendo o status)
+      .eq("agendamento_id", id).eq("para_status", ag.status).in("de_status", ["pendente", "confirmado"])
+      .order("criado_em", { ascending: false }).limit(1).maybeSingle();
     para = statusAoDesfazer(marca?.de_status as string | null | undefined, ag.confirmado_em);
   }
   let gravacao = db().from("agendamentos").update({ status: para }).eq("id", id).eq("status", ag.status);

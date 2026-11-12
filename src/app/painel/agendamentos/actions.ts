@@ -34,6 +34,7 @@ export async function mudarStatus(formData: FormData) {
     if (multi) leitura = leitura.in("unidade", u.unidades);
     const { data: ag } = await leitura.maybeSingle();
     if (!ag) return;
+    if (ag.status === status) return; // Salvar sem mudar o status não gera histórico (evita evento X→X)
     let gravacao = db().from("agendamentos").update({ status }).eq("id", id);
     if (multi) gravacao = gravacao.in("unidade", u.unidades);
     const { data: gravou, error } = await gravacao.select("id");
