@@ -10,6 +10,7 @@ Versionamento semântico a partir de **0.0.1** (decisão do Simão, 10/11/2026).
 
 ## [Não lançado]
 ### Adicionado
+- **Oficina**: fila e triagem com duas etapas, filtro “Minhas”, paginação e ações autorizadas no servidor; a agenda continua como estava.
 - **Marketing por setor**: campanhas, eventos e links/QR têm setor; cada setor vê e cria só os seus (com as estatísticas deles); admin e gerente da administração veem tudo, com filtro por setor.
 - **Abertura WAGconnect** depois do login (roda patina, Golf arranca, painel aparece) e identidade final (logo v10 e foto do Golf).
 ### Alterado
@@ -17,8 +18,7 @@ Versionamento semântico a partir de **0.0.1** (decisão do Simão, 10/11/2026).
 ### Corrigido
 - “Agendamentos hoje” não conta mais cancelado como pendente.
 - Telefone do cliente em “Quem confirmou” agora aparece mascarado (LGPD).
-### Corrigido
-- Menu do vendedor identifica a visão pessoal como **Minhas métricas**, com o mesmo recorte e permissões existentes.
+- Menu do vendedor identifica a visão pessoal como **Minhas métricas**.
 
 ## [0.0.6] — 12/11/2026 — Usuários com links de cadastro, Minha conta, login e nome WAGconnect CRM (PR #8; revisado pelo Codex)
 ### Adicionado

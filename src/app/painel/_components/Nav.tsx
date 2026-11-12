@@ -37,6 +37,7 @@ const GRUPOS: Grupo[] = [
   {
     chave: "oficina", rotulo: "Oficina", icone: "agenda", itens: [
       { href: "/painel/agendamentos", rotulo: "Agendamentos", icone: "agenda", area: "agenda" },
+      { href: "/painel/oficina", rotulo: "Fila e triagem", icone: "agenda", area: "oficina" },
     ],
   },
   {
