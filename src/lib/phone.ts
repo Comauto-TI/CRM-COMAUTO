@@ -33,3 +33,10 @@ export function variantesTelefone(n: string): string[] {
   if (/^55\d{2}[6-9]\d{7}$/.test(d)) return [d, d.slice(0, 4) + "9" + d.slice(4)]; // sem 9 → com 9
   return [d];
 }
+
+/** "Quem confirmou" pode ser um e-mail (equipe) ou o telefone do cliente (confirmou pelo WhatsApp): telefone sempre mascarado (LGPD). */
+export function mascararSeTelefone(valor: string | null | undefined): string {
+  const v = (valor ?? "").trim();
+  if (!v) return "—";
+  return /^\+?[\d\s().-]{10,}$/.test(v) ? mascararTelefone(v.replace(/\D/g, "")) : v;
+}

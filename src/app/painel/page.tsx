@@ -5,6 +5,7 @@ import { getConfig } from "@/lib/config";
 import { formatarBRL, formatarDataHora, localParaUtc, dataLocalISO } from "@/lib/time";
 import { Cabecalho, Kpi, Status } from "./_components/ui";
 import { podeAcessar } from "@/lib/permissoes";
+import { mascararSeTelefone } from "@/lib/phone";
 import { nucleoAplicado } from "@/lib/usuarios";
 import { listarAniversarios } from "@/modulos/vendas/aniversarios-dados";
 import { quandoAniversario } from "@/modulos/vendas/aniversarios";
@@ -65,6 +66,7 @@ export default async function VisaoGeral({ searchParams }: { searchParams: Promi
 
   const ags = (agHoje.data ?? []) as { status: string }[];
   const confirmados = ags.filter((a) => a.status === "confirmado").length;
+  const pendentes = ags.filter((a) => a.status === "pendente").length; // cancelado NÃO entra como pendente (QA por cargo)
   const totalMes = ((custosMes.data ?? []) as { total_brl: number }[]).reduce((s: number, r: { total_brl: number }) => s + Number(r.total_brl), 0);
   const contatosHoje = new Set(((conversasHoje.data ?? []) as { cliente_id: string }[]).map((m) => m.cliente_id)).size;
 
@@ -76,7 +78,7 @@ export default async function VisaoGeral({ searchParams }: { searchParams: Promi
       {!cfg.bot_ativo && <div className="alerta erro">O assistente virtual está DESLIGADO. Todas as conversas estão indo para a recepção.</div>}
 
       <div className="grade g4">
-        {verAgenda && <Kpi rotulo="Agendamentos hoje" valor={ags.length} sub={`${confirmados} confirmados · ${ags.length - confirmados} pendentes`} />}
+        {verAgenda && <Kpi rotulo="Agendamentos hoje" valor={confirmados + pendentes} sub={`${confirmados} confirmados · ${pendentes} pendentes`} />}
         {verAtendimento && <Kpi rotulo="Aguardando atendimento" valor={<span style={{ color: (fila.count ?? 0) ? "var(--erro)" : undefined }}>{fila.count ?? 0}</span>} sub={<Link href="/painel/conversas?aba=espera">abrir fila</Link>} />}
         {verAtendimento && <Kpi rotulo="Clientes que falaram hoje" valor={contatosHoje} />}
         {verCusto ? (
@@ -158,7 +160,7 @@ export default async function VisaoGeral({ searchParams }: { searchParams: Promi
                   <td>{a.servicos?.nome}</td>
                   <td>{a.recursos?.nome}</td>
                   <td><Status valor={a.status} /></td>
-                  <td className="mudo">{a.confirmado_por ?? "—"}</td>
+                  <td className="mudo">{mascararSeTelefone(a.confirmado_por)}</td>
                 </tr>
               ))}
               {!proximos.data?.length && <tr><td colSpan={6} className="mudo">Nenhum agendamento futuro.</td></tr>}

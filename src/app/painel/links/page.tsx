@@ -1,5 +1,7 @@
 import Link from "next/link";
 import { exigirAcesso } from "@/lib/auth";
+import { setorDoMarketing } from "@/lib/escopo-setor";
+import { SETORES, ROTULO_SETOR, type Setor } from "@/lib/permissoes";
 import { db } from "@/lib/supabase/admin";
 import { env } from "@/lib/env";
 import { getConfig } from "@/lib/config";
@@ -10,6 +12,7 @@ import Copiar from "../_components/Copiar";
 import { criarLink, alternarLink } from "./actions";
 
 const MSGS: Record<string, [string, string]> = {
+  fora_do_setor: ["erro", "Esse link é de outro setor."],
   incompleto: ["erro", "Preencha nome, canal e mensagem."],
   mensagem_bloqueada: ["erro", "Essa mensagem seria barrada pela segurança do próprio assistente. Use uma mensagem de agendamento ou dúvida."],
   erro: ["erro", "Não foi possível criar o link."],
@@ -17,14 +20,19 @@ const MSGS: Record<string, [string, string]> = {
 
 type LinkRow = { id: string; codigo: string; nome: string; canal: string; mensagem_inicial: string; ativo: boolean; criado_por: string | null; criado_em: string };
 
-export default async function Links({ searchParams }: { searchParams: Promise<{ novo?: string; msg?: string }> }) {
-  await exigirAcesso("links");
+export default async function Links({ searchParams }: { searchParams: Promise<{ novo?: string; msg?: string; setor?: string }> }) {
+  const u = await exigirAcesso("links");
+  // marketing por setor: cada setor vê só os próprios links/QR e as estatísticas deles; admin vê todos
+  const fixo = setorDoMarketing(u);
   const cfg = await getConfig();
   const sp = await searchParams;
+  const filtroSetor: Setor | null = fixo ?? ((SETORES as readonly string[]).includes(sp.setor ?? "") ? (sp.setor as Setor) : null);
   const numero = cfg.empresa.whatsapp_numero?.replace(/\D/g, "") ?? "";
   const base = env().APP_URL.replace(/\/$/, "");
 
-  const { data } = await db().from("links_rastreados").select("*").order("criado_em", { ascending: false }).limit(100);
+  let q = db().from("links_rastreados").select("*");
+  if (filtroSetor) q = q.eq("setor", filtroSetor);
+  const { data } = await q.order("criado_em", { ascending: false }).limit(100);
   const links = (data ?? []) as LinkRow[];
   const ids = links.map((l) => l.id);
 
@@ -61,7 +69,17 @@ export default async function Links({ searchParams }: { searchParams: Promise<{ 
 
   return (
     <>
-      <Cabecalho titulo="Links e QR Code" sub="O cliente chama primeiro: abre a janela de 24h, então a resposta não precisa de template nem custa disparo. Cada link mostra de onde veio cada agendamento." />
+      <Cabecalho titulo="Links e QR Code" sub={`${fixo ? "Setor " + ROTULO_SETOR[fixo] : filtroSetor ? "Setor " + ROTULO_SETOR[filtroSetor] : "Todos os setores"} · o cliente chama primeiro: abre a janela de 24h, sem template nem custo de disparo`}>
+        {!fixo && (
+          <form className="linha-form">
+            <select name="setor" defaultValue={filtroSetor ?? ""} aria-label="Setor">
+              <option value="">Todos os setores</option>
+              {SETORES.map((x) => <option key={x} value={x}>{ROTULO_SETOR[x]}</option>)}
+            </select>
+            <button className="btn">Filtrar</button>
+          </form>
+        )}
+      </Cabecalho>
       {msg && <div className={`alerta ${msg[0]}`}>{msg[1]}</div>}
       {!numero && (
         <div className="alerta aviso">
@@ -101,6 +119,7 @@ export default async function Links({ searchParams }: { searchParams: Promise<{ 
             <label>Canal
               <select name="canal" defaultValue="balcao">{CANAIS.map((c) => <option key={c.valor} value={c.valor}>{c.rotulo}</option>)}</select>
             </label>
+            {!fixo && <label>Setor<select name="setor" defaultValue={filtroSetor ?? "vendas"}>{SETORES.map((x) => <option key={x} value={x}>{ROTULO_SETOR[x]}</option>)}</select></label>}
           </div>
           <label>Mensagem que já vem escrita para o cliente
             <input name="mensagem" required defaultValue={MENSAGENS_SUGERIDAS[0]} list="sugestoes" maxLength={300} />

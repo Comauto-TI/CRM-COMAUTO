@@ -2,12 +2,14 @@ import { Suspense } from "react";
 import Link from "next/link";
 import { contarNaoLidas } from "@/lib/notificacoes";
 import { redirect } from "next/navigation";
+import { cookies } from "next/headers";
 import { exigirAcesso } from "@/lib/auth";
 import { authClient } from "@/lib/supabase/server";
 import { db } from "@/lib/supabase/admin";
 import { getConfig } from "@/lib/config";
 import Nav from "./_components/Nav";
 import Marca from "./_components/Marca";
+import Abertura from "./_components/Abertura";
 import Icone from "./_components/Icone";
 import AlertaFila from "./_components/AlertaFila";
 import AlertaNotificacoes from "./_components/AlertaNotificacoes";
@@ -24,6 +26,7 @@ async function sair() {
 
 export default async function PainelLayout({ children }: { children: React.ReactNode }) {
   const u = await exigirAcesso();
+  const abertura = (await cookies()).get("wag_abertura")?.value === "1";
   const [{ count }, cfg, naoLidas] = await Promise.all([
     db().from("conversas").select("id", { count: "exact", head: true }).eq("status", "humano").is("assumida_por", null),
     getConfig(),
@@ -33,6 +36,7 @@ export default async function PainelLayout({ children }: { children: React.React
 
   return (
     <div className="app">
+      {abertura && <Abertura />}
       <aside className="lateral">
         <Marca sub={cfg.empresa.nome} />
         <Nav papel={u.papel} setor={u.setor} fila={count ?? 0} />

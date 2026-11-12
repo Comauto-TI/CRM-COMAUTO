@@ -23,3 +23,12 @@ describe("cadastro pelo link", () => {
     expect(validarCadastro("Ana", "ana@comauto.com", "abc123", "abc124")).toMatch(/confirmação/);
   });
 });
+
+import { mascararSeTelefone } from "@/lib/phone";
+describe("quem confirmou: telefone sempre mascarado (LGPD)", () => {
+  it("mascara telefone e mantém e-mail da equipe", () => {
+    expect(mascararSeTelefone("5511900000099")).not.toContain("900000");
+    expect(mascararSeTelefone("recepcao@comauto.com")).toBe("recepcao@comauto.com");
+    expect(mascararSeTelefone(null)).toBe("—");
+  });
+});
