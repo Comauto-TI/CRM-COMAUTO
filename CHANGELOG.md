@@ -9,6 +9,8 @@ Versionamento semântico a partir de **0.0.1** (decisão do Simão, 10/11/2026).
 - Quem mescla na `main` (Claude ou Codex) atualiza `package.json`, este arquivo e cria a tag.
 
 ## [Não lançado]
+### Corrigido
+- Menu do vendedor identifica a visão pessoal como **Minhas métricas**, com o mesmo recorte e permissões existentes.
 
 ## [0.0.6] — 12/11/2026 — Usuários com links de cadastro, Minha conta, login e nome WAGconnect CRM (PR #8; revisado pelo Codex)
 ### Adicionado
