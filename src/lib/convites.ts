@@ -83,6 +83,8 @@ export async function cadastrarPeloConvite(token: string, d: { nome: string; ema
   if (invalido) return { ok: false, motivo: invalido };
   const nome = d.nome.trim().replace(/\s+/g, " ").slice(0, 80);
   const email = d.email.trim().toLowerCase();
+  // PR8-CONV-001: o link é validado ANTES de consultar o e-mail — sem link válido, ninguém descobre se um e-mail tem conta
+  if (!(await lerConvite(token))) return { ok: false, motivo: "Este link expirou, foi cancelado ou já foi usado." };
   if (await acharNoAuthPorEmail(email)) {
     return { ok: false, motivo: "Esse e-mail já tem login em um sistema do grupo. Peça ao administrador para incluir você pelo painel." };
   }

@@ -28,7 +28,8 @@ export function validarNovaSenha(atual: string, nova: string, confirmar: string)
 export async function contaDaPlataforma(userId: string): Promise<boolean> {
   const { data, error } = await db().auth.admin.getUserById(userId);
   if (error || !data.user) return false;
-  return data.user.app_metadata?.origem === ORIGEM || data.user.user_metadata?.origem === ORIGEM;
+  // PR8-CONTA-002: só a marca controlada pelo servidor (app_metadata); user_metadata a própria pessoa pode editar
+  return data.user.app_metadata?.origem === ORIGEM;
 }
 
 export async function trocarMinhaSenha(u: Usuario, atual: string, nova: string, confirmar: string): Promise<ResultadoConta> {
