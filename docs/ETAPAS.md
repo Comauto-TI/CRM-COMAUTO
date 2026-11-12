@@ -397,3 +397,13 @@ pendentes na A4**: o menu só tem Cotações e não existe página ligada ao set
 f2b5cb6 muda somente seu rótulo para Minhas métricas, mantendo permissões e consultas. Peças precisa
 da entrega A4 com carteira própria, gerente por setor/unidades e admin; não liberar métricas de Vendas
 para Peças nem fingir que o dashboard pessoal já foi entregue nesse módulo.
+
+## Tela essencial de Oficina pronta · 12/11/2026
+
+Código isolado6f75cd0: /painel/oficina com fila geral/Minhas, duas etapas, cursor, registro e início de
+triagem autorizados. Agenda existente preservada; sem dinheiro/WhatsApp/etapas extras. 65 testes de
+ações/filtros +33 SSR passaram; revisão React/Next/acesso independente aprovada; 34 medições offline
+passaram em390/1440px sem overflow do documento. Build Webpack/TypeScript/diffcheck/gitleaks passaram.
+Detalhes e limites em docs/OFICINA-TELA-MVP.md. SQL0004 foi aplicado pelo Claude e lido realmente em11
+casos readonly; filas vazias não provam cartões, escrita ou E2E. Integração do adaptador3ee0a95 precede
+esta UI; servidor/dev e testes reais continuam com Claude/Simão. Nenhum novo servidor ou write remoto.
