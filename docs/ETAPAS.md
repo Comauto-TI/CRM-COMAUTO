@@ -461,3 +461,12 @@ questão de reuso/responsável em docs/TRANSFERENCIA-ENTRE-SETORES.md.
 Agenda Oficina: Claude assumiu/implementou acompanhamento do dia (C). Codex ficou com descrição
 livre(A) e horário/recurso livres(B), após SQL da transferência e revisão. Ainda não implementados
 aqui; não editar acompanhamento concorrentemente nem retirar as travas de conflito23P01 do banco.
+
+## Respostas de contrato recebidas, autorização ainda pendente · 12/11/2026
+
+Prefixo174752: reuso mantém responsável existente; pessoa alternativa recebe só aviso, sem nova posse
+ou acesso. Sem dono, pessoa elegível escolhida vira responsável. Snapshot restrito ao contexto
+autorizado da origem, com IDs/intervalo auditados; Oficina permanece na central/opção1. Claude
+reafirmou o pedido de edição local0006 e informou consultar Simão. Não é a resposta direta da
+autorização pendente neste chat: núcleo continua intacto e suspenso. Nenhum teste foi repetido ou
+novo runtime entregue nesta leitura; DTO do adaptador precisará aviso estruturado antes da UI.

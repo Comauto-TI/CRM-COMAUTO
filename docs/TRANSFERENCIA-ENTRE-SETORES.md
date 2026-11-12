@@ -21,10 +21,24 @@ repasse substitui as restrições anteriores de destinatário e de compartilhame
 - Reuso de aberto permanece. Oficina modular continua **não decidido**: só pedido de domínio nesta
   fatia, com alternativas abaixo para decisão posterior. Não ampliar sua interface de WhatsApp agora.
 
-Ponto de contrato ainda a explicitar antes de SQL: ao reaproveitar destino que já tem responsável,
-como conciliar a escolha "fila sem dono" ou outra pessoa com a preservação da atribuição existente?
-Recomendação: não reatribuir uma carteira/posse alheia implicitamente. Resolver o conflito de destino
-explicitamente e revalidar elegibilidade sob lock; não conceder histórico só pelo nome escolhido.
+Respostas posteriores do Claude, conferidas até174752/SHA
+21F97DB68A2C53604129C6C11BA1CC397039E40D5AB96D68300A97772A903775:
+
+- Se o destino aberto já tem dono, **mantém esse dono**. Nota/snapshot vão para o item e o dono atual
+  é avisado. Se outra pessoa foi escolhida, ela recebe somente aviso; não ganha propriedade ou
+  leitura por isso. A tela explica que o gerente do setor pode reatribuir. Se o item aberto não tem
+  dono e uma pessoa elegível foi escolhida, ela passa a ser a responsável.
+- Snapshot confirmado: só mensagens da conversa/contexto autorizado da origem, excluindo negócios
+  anteriores que apenas compartilhem canal; registrar IDs/intervalo no audit. Isso não concede
+  acesso ao histórico inteiro do cliente nem altera os vínculos originais.
+- Oficina fica na **opção1** nesta fatia; opções2/3 ficam para decisão posterior do Simão.
+- Claude reafirmou o pedido de edição local do `0006` como revisor, sem aplicar no dev, e informou
+  levar a confirmação ao Simão. **A resposta direta à autorização pendente ainda não chegou neste
+  chat.** Esse repasse não substitui a resposta; a edição do núcleo continua suspensa.
+
+O DTO mínimo do adaptador `b9e64dd` ainda não transporta o aviso de responsável preservado. Ampliá-lo
+de forma estruturada e validada depois de fechar o retorno da RPC, antes da UI; não descartar o aviso
+nem expor nomes/IDs em erros fora do escopo. Os114 testes atuais não comprovam essa parte futura.
 
 ### Alternativas para a conversa de Oficina
 
@@ -34,7 +48,7 @@ explicitamente e revalidar elegibilidade sob lock; não conceder histórico só 
 | 2. Atalho contextual da triagem para a central, só para quem já pode acessá-la | Reduz navegação da recepção sem ampliar papéis ou criar canal novo. | Não resolve WhatsApp próprio do consultor; o atalho deve provar triagem/conversa/unidade no servidor e mostrar apenas o contexto autorizado. |
 | 3. Oficina como terceiro contexto modular, com componente compartilhado | Consultor acompanha/responde no próprio setor com posse e histórico contextualizados. | Amplia contrato, SQL, roteamento, envio e testes de três setores; precisa decisão explícita e revisão antes de integrar. |
 
-Recomendação: opção1 nesta entrega; escolher depois entre atalho de ergonomia e módulo completo.
+Decisão recebida: opção1 nesta entrega; as demais permanecem propostas futuras.
 Não criar outro número/integração ou liberar histórico genérico como solução provisória.
 
 ### Estado de implementação e revisão automática
