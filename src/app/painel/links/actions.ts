@@ -7,6 +7,7 @@ import { db } from "@/lib/supabase/admin";
 import { auditar } from "@/lib/audit";
 import { gerarCodigo, CANAIS } from "@/lib/links";
 import { verificarEntrada } from "@/lib/security/guard";
+import { noEscopo, setorParaGravar } from "@/lib/escopo-setor";
 
 export async function criarLink(formData: FormData) {
   const u = await exigirAcesso("links");
@@ -22,7 +23,7 @@ export async function criarLink(formData: FormData) {
     const codigo = gerarCodigo();
     const { data, error } = await db()
       .from("links_rastreados")
-      .insert({ codigo, nome, canal, mensagem_inicial: mensagem, criado_por: u.email })
+      .insert({ codigo, nome, canal, mensagem_inicial: mensagem, criado_por: u.email, setor: setorParaGravar(u, formData.get("setor")) })
       .select("id")
       .single();
     if (!error && data) {
@@ -38,6 +39,9 @@ export async function alternarLink(formData: FormData) {
   const u = await exigirAcesso("links");
   const id = String(formData.get("id"));
   const ativo = formData.get("ativo") === "1";
+  // marketing por setor: só mexe em link do próprio setor (admin em todos)
+  const { data: link } = await db().from("links_rastreados").select("setor").eq("id", id).maybeSingle();
+  if (!link || !noEscopo(u, link.setor as string)) redirect("/painel/links?msg=fora_do_setor");
   await db().from("links_rastreados").update({ ativo }).eq("id", id);
   await auditar(u.email, ativo ? "ativar_link" : "desativar_link", "links_rastreados", id);
   revalidatePath("/painel/links");

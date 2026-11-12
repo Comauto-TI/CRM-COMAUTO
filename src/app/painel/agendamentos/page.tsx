@@ -3,7 +3,7 @@ import { exigirAcesso } from "@/lib/auth";
 import { db } from "@/lib/supabase/admin";
 import { getConfig } from "@/lib/config";
 import { formatarDataHora, dataLocalISO, localParaUtc } from "@/lib/time";
-import { mascararTelefone } from "@/lib/phone";
+import { mascararTelefone, mascararSeTelefone } from "@/lib/phone";
 import { nucleoAplicado } from "@/lib/usuarios";
 import { Cabecalho, Status } from "../_components/ui";
 import { mudarStatus, novoAgendamento } from "./actions";
@@ -113,7 +113,7 @@ export default async function Agendamentos({ searchParams }: { searchParams: Pro
                 <td>
                   {a.confirmado_por ? (
                     <>
-                      <div>{a.confirmado_por}</div>
+                      <div>{mascararSeTelefone(a.confirmado_por)}</div>
                       <div className="mudo">{a.confirmado_canal?.replace(/_/g, " ")} · {a.confirmado_em ? formatarDataHora(a.confirmado_em, off) : ""}</div>
                     </>
                   ) : <span className="mudo">—</span>}

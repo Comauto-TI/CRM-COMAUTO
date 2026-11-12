@@ -9,6 +9,14 @@ Versionamento semântico a partir de **0.0.1** (decisão do Simão, 10/11/2026).
 - Quem mescla na `main` (Claude ou Codex) atualiza `package.json`, este arquivo e cria a tag.
 
 ## [Não lançado]
+### Adicionado
+- **Marketing por setor**: campanhas, eventos e links/QR têm setor; cada setor vê e cria só os seus (com as estatísticas deles); admin e gerente da administração veem tudo, com filtro por setor.
+- **Abertura WAGconnect** depois do login (roda patina, Golf arranca, painel aparece) e identidade final (logo v10 e foto do Golf).
+### Alterado
+- Central geral de atendimento só para triagem (recepção, gerente de Oficina/administração e admin); os setores atendem pelos próprios cartões.
+### Corrigido
+- “Agendamentos hoje” não conta mais cancelado como pendente.
+- Telefone do cliente em “Quem confirmou” agora aparece mascarado (LGPD).
 ### Corrigido
 - Menu do vendedor identifica a visão pessoal como **Minhas métricas**, com o mesmo recorte e permissões existentes.
 

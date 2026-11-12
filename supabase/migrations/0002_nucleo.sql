@@ -265,3 +265,22 @@ begin
     grant execute on function devolver_convite(uuid) to service_role;
   end if;
 end $$;
+
+-- ---------------------------------------------------------------------
+-- Marketing por setor (decisão do Simão, 12/11): cada setor tem as próprias campanhas, eventos e links/QR
+-- e vê só as suas estatísticas; admin (e gerente da administração) vê o geral.
+-- Registros antigos ficam em 'vendas' (era o uso até aqui); o admin pode reclassificar.
+-- ---------------------------------------------------------------------
+alter table campanhas add column if not exists setor text not null default 'vendas';
+alter table eventos add column if not exists setor text not null default 'vendas';
+alter table links_rastreados add column if not exists setor text not null default 'vendas';
+do $$
+declare t text;
+begin
+  foreach t in array array['campanhas', 'eventos', 'links_rastreados'] loop
+    if not exists (select 1 from pg_constraint where conname = t || '_setor_chk') then
+      execute format('alter table %I add constraint %I check (setor in (''vendas'', ''oficina'', ''pecas'', ''administracao''))', t, t || '_setor_chk');
+    end if;
+    execute format('create index if not exists %I on %I (setor)', t || '_setor_idx', t);
+  end loop;
+end $$;

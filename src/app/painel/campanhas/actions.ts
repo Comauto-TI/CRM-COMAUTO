@@ -8,6 +8,14 @@ import { getConfig } from "@/lib/config";
 import { localParaUtc } from "@/lib/time";
 import { auditar } from "@/lib/audit";
 import { preChecagem, enfileirar } from "@/lib/campaigns";
+import { noEscopo, setorParaGravar } from "@/lib/escopo-setor";
+import type { Usuario } from "@/lib/auth";
+
+/** Marketing por setor: a campanha precisa ser do setor da pessoa (admin vê todas); senão volta para a lista. */
+async function garantirCampanha(u: Usuario, id: string) {
+  const { data } = await db().from("campanhas").select("setor").eq("id", id).maybeSingle();
+  if (!data || !noEscopo(u, data.setor as string)) redirect("/painel/campanhas?msg=fora_do_setor");
+}
 
 export async function criarEvento(formData: FormData) {
   const u = await exigirAcesso("campanhas");
@@ -23,6 +31,7 @@ export async function criarEvento(formData: FormData) {
       inicio: inicio.toISOString(),
       vagas,
       status: "ativo",
+      setor: setorParaGravar(u, formData.get("setor")),
     })
     .select("id")
     .single();
@@ -35,6 +44,10 @@ export async function criarCampanha(formData: FormData) {
   const tags = String(formData.get("tags") || "").split(",").map((t) => t.trim().toLowerCase()).filter(Boolean);
   const cidade = String(formData.get("cidade") || "").trim();
   const eventoId = String(formData.get("evento") || "") || null;
+  if (eventoId) {
+    const { data: ev } = await db().from("eventos").select("setor").eq("id", eventoId).maybeSingle();
+    if (!ev || !noEscopo(u, ev.setor as string)) redirect("/painel/campanhas?msg=fora_do_setor");
+  }
   const { data, error } = await db()
     .from("campanhas")
     .insert({
@@ -46,6 +59,7 @@ export async function criarCampanha(formData: FormData) {
       lote_tamanho: Math.min(500, Math.max(1, Number(formData.get("lote")) || 50)),
       limite_diario: Math.max(1, Number(formData.get("limite")) || 250),
       criado_por: u.email,
+      setor: setorParaGravar(u, formData.get("setor")),
     })
     .select("id")
     .single();
@@ -56,8 +70,9 @@ export async function criarCampanha(formData: FormData) {
 }
 
 export async function rodarPreChecagem(formData: FormData) {
-  await exigirAcesso("campanhas");
+  const u = await exigirAcesso("campanhas");
   const id = String(formData.get("id"));
+  await garantirCampanha(u, id);
   await preChecagem(id, { persistir: true });
   redirect(`/painel/campanhas?ver=${id}`);
 }
@@ -65,6 +80,7 @@ export async function rodarPreChecagem(formData: FormData) {
 export async function iniciarTeste(formData: FormData) {
   const u = await exigirAcesso("campanhas");
   const id = String(formData.get("id"));
+  await garantirCampanha(u, id);
   const r = await enfileirar(id, true, u.email);
   redirect(`/painel/campanhas?ver=${id}&msg=${r.ok ? "teste_ok" : r.motivo}`);
 }
@@ -72,6 +88,7 @@ export async function iniciarTeste(formData: FormData) {
 export async function iniciarEnvio(formData: FormData) {
   const u = await exigirAcesso("campanhas");
   const id = String(formData.get("id"));
+  await garantirCampanha(u, id);
   if (formData.get("confirmo") !== "on") redirect(`/painel/campanhas?ver=${id}&msg=confirme`);
   const r = await enfileirar(id, false, u.email);
   redirect(`/painel/campanhas?ver=${id}&msg=${r.ok ? "envio_ok" : r.motivo}`);
@@ -80,6 +97,7 @@ export async function iniciarEnvio(formData: FormData) {
 export async function pausar(formData: FormData) {
   const u = await exigirAcesso("campanhas");
   const id = String(formData.get("id"));
+  await garantirCampanha(u, id);
   await db().from("campanhas").update({ status: "pausada", motivo_pausa: `Pausada manualmente por ${u.email}` }).eq("id", id);
   await auditar(u.email, "pausar_campanha", "campanha", id);
   revalidatePath("/painel/campanhas");
@@ -88,6 +106,7 @@ export async function pausar(formData: FormData) {
 export async function retomar(formData: FormData) {
   const u = await exigirAcesso("campanhas");
   const id = String(formData.get("id"));
+  await garantirCampanha(u, id);
   await db().from("campanhas").update({ status: "enviando", motivo_pausa: null }).eq("id", id).eq("status", "pausada");
   await auditar(u.email, "retomar_campanha", "campanha", id);
   revalidatePath("/painel/campanhas");

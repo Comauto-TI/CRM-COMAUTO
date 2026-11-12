@@ -6,8 +6,11 @@ import { formatarBRL, formatarDataHora, dataLocalISO } from "@/lib/time";
 import { preChecagem } from "@/lib/campaigns";
 import { Cabecalho, Status, Kpi } from "../_components/ui";
 import { criarEvento, criarCampanha, rodarPreChecagem, iniciarTeste, iniciarEnvio, pausar, retomar } from "./actions";
+import { setorDoMarketing } from "@/lib/escopo-setor";
+import { SETORES, ROTULO_SETOR, type Setor } from "@/lib/permissoes";
 
 const MSGS: Record<string, [string, string]> = {
+  fora_do_setor: ["erro", "Essa campanha/evento é de outro setor."],
   teste_ok: ["ok", "Grupo de teste enfileirado. Os envios saem em lotes no horário comercial. Confira os resultados antes de liberar o envio completo."],
   envio_ok: ["ok", "Envio completo liberado. O sistema respeita lote, limite diário, horário e pausa automática."],
   template_nao_aprovado: ["erro", "O template desta campanha ainda não está APROVADO na Meta. Atualize o status em Configurações depois da aprovação."],
@@ -15,15 +18,19 @@ const MSGS: Record<string, [string, string]> = {
   erro: ["erro", "Não foi possível criar a campanha."],
 };
 
-export default async function Campanhas({ searchParams }: { searchParams: Promise<{ ver?: string; msg?: string }> }) {
-  await exigirAcesso("campanhas");
+export default async function Campanhas({ searchParams }: { searchParams: Promise<{ ver?: string; msg?: string; setor?: string }> }) {
+  const u = await exigirAcesso("campanhas");
+  // marketing por setor: cada setor vê só o seu; admin/gerente da administração veem tudo (com filtro opcional)
+  const fixo = setorDoMarketing(u);
   const cfg = await getConfig();
   const off = cfg.fuso_offset;
   const sp = await searchParams;
+  const filtroSetor: Setor | null = fixo ?? ((SETORES as readonly string[]).includes(sp.setor ?? "") ? (sp.setor as Setor) : null);
+  const porSetor = <Q,>(q: Q): Q => (filtroSetor ? (q as unknown as { eq: (c: string, v: string) => Q }).eq("setor", filtroSetor) : q);
 
   const [{ data: eventos }, { data: campanhas }, { data: templates }] = await Promise.all([
-    db().from("eventos").select("id, nome, inicio, local, vagas, status, inscricoes_evento(status)").order("inicio", { ascending: false }).limit(30),
-    db().from("campanhas").select("id, nome, tipo, status, total_previsto, custo_estimado_brl, motivo_pausa, criado_em, templates(nome, status_aprovacao), eventos(nome)").order("criado_em", { ascending: false }).limit(50),
+    porSetor(db().from("eventos").select("id, nome, inicio, local, vagas, status, setor, inscricoes_evento(status)")).order("inicio", { ascending: false }).limit(30),
+    porSetor(db().from("campanhas").select("id, nome, tipo, status, total_previsto, custo_estimado_brl, motivo_pausa, criado_em, setor, templates(nome, status_aprovacao), eventos(nome)")).order("criado_em", { ascending: false }).limit(50),
     db().from("templates").select("id, nome, categoria_meta, finalidade, status_aprovacao").in("finalidade", ["eventos", "marketing"]).eq("ativo", true).order("nome"),
   ]);
 
@@ -46,7 +53,17 @@ export default async function Campanhas({ searchParams }: { searchParams: Promis
 
   return (
     <>
-      <Cabecalho titulo="Eventos e campanhas" sub="Disparos só para quem autorizou eventos/marketing, com template aprovado, teste antes e pausa automática" />
+      <Cabecalho titulo="Eventos e campanhas" sub={`${fixo ? "Setor " + ROTULO_SETOR[fixo] : filtroSetor ? "Setor " + ROTULO_SETOR[filtroSetor] : "Todos os setores"} · só para quem autorizou eventos/marketing, com template aprovado, teste antes e pausa automática`}>
+        {!fixo && (
+          <form className="linha-form">
+            <select name="setor" defaultValue={filtroSetor ?? ""} aria-label="Setor">
+              <option value="">Todos os setores</option>
+              {SETORES.map((x) => <option key={x} value={x}>{ROTULO_SETOR[x]}</option>)}
+            </select>
+            <button className="btn">Filtrar</button>
+          </form>
+        )}
+      </Cabecalho>
       {msg && <div className={`alerta ${msg[0]}`}>{msg[1]}</div>}
 
       {detalhe && (
@@ -105,6 +122,7 @@ export default async function Campanhas({ searchParams }: { searchParams: Promis
               <label>Vagas<input type="number" name="vagas" min={1} placeholder="sem limite" /></label>
             </div>
             <label>Local<input name="local" required /></label>
+            {!fixo && <label>Setor<select name="setor" defaultValue={filtroSetor ?? "vendas"}>{SETORES.map((x) => <option key={x} value={x}>{ROTULO_SETOR[x]}</option>)}</select></label>}
             <label>Descrição (o assistente usa para responder dúvidas)<textarea name="descricao" rows={2} /></label>
             <div><button className="btn primario">Criar evento</button></div>
           </form>
@@ -114,6 +132,7 @@ export default async function Campanhas({ searchParams }: { searchParams: Promis
           <h2>Nova campanha</h2>
           <form action={criarCampanha} className="form">
             <label>Nome<input name="nome" required /></label>
+            {!fixo && <label>Setor<select name="setor" defaultValue={filtroSetor ?? "vendas"}>{SETORES.map((x) => <option key={x} value={x}>{ROTULO_SETOR[x]}</option>)}</select></label>}
             <div className="linha-form">
               <label>Evento (opcional)
                 <select name="evento" defaultValue="">
