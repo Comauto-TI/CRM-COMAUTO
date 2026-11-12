@@ -1,5 +1,22 @@
 import { describe, expect, it } from "vitest";
-import { grupoDoAgendamento, resumoDoDia, textoAtraso, minutosDeAtraso } from "@/lib/scheduling/acompanhamento";
+import { grupoDoAgendamento, resumoDoDia, textoAtraso, minutosDeAtraso, statusAoDesfazer, dataValida } from "@/lib/scheduling/acompanhamento";
+
+describe("desfazer e data (revisão PR #9)", () => {
+  it("desfazer volta ao status gravado na marcação, não ao confirmado_em antigo", () => {
+    expect(statusAoDesfazer("pendente", "2026-11-10T10:00:00Z")).toBe("pendente"); // PR9-ACOMP-003
+    expect(statusAoDesfazer("confirmado", null)).toBe("confirmado");
+    expect(statusAoDesfazer(null, "2026-11-10T10:00:00Z")).toBe("confirmado");
+    expect(statusAoDesfazer(undefined, null)).toBe("pendente");
+    expect(statusAoDesfazer("cancelado", null)).toBe("pendente");
+  });
+  it("data só vale se existir no calendário", () => {
+    expect(dataValida("2026-11-12")).toBe(true);
+    expect(dataValida("2026-13-01")).toBe(false); // PR9-BAIXA-005
+    expect(dataValida("2026-02-30")).toBe(false);
+    expect(dataValida("12/11/2026")).toBe(false);
+    expect(dataValida(undefined)).toBe(false);
+  });
+});
 
 const agora = new Date("2026-11-12T13:00:00Z");
 const ha = (min: number) => new Date(agora.getTime() - min * 60_000).toISOString();

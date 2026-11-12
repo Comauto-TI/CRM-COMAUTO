@@ -5,7 +5,7 @@ import { getConfig } from "@/lib/config";
 import { dataLocalISO, localParaUtc, horaLocal } from "@/lib/time";
 import { mascararTelefone } from "@/lib/phone";
 import { nucleoAplicado } from "@/lib/usuarios";
-import { GRUPOS, grupoDoAgendamento, minutosDeAtraso, resumoDoDia, textoAtraso, type GrupoAcompanhamento } from "@/lib/scheduling/acompanhamento";
+import { GRUPOS, dataValida, grupoDoAgendamento, minutosDeAtraso, resumoDoDia, textoAtraso, type GrupoAcompanhamento } from "@/lib/scheduling/acompanhamento";
 import { Cabecalho } from "../../_components/ui";
 import { marcarPresenca } from "./actions";
 import AtualizarSozinho from "./AtualizarSozinho";
@@ -31,7 +31,7 @@ export default async function Acompanhamento({ searchParams }: { searchParams: P
   const sp = await searchParams;
   const agora = new Date();
   const hoje = dataLocalISO(agora, off);
-  const dia = sp.dia && DATA_VALIDA.test(sp.dia) ? sp.dia : hoje;
+  const dia = dataValida(sp.dia) ? sp.dia : hoje; // PR9-BAIXA-005
   const ehHoje = dia === hoje;
   const passado = dia < hoje;
 
@@ -44,7 +44,7 @@ export default async function Acompanhamento({ searchParams }: { searchParams: P
     .order("inicio")
     .limit(300);
   if (multi) q = q.in("unidade", u.unidades);
-  const { data } = await q;
+  const { data, error } = await q;
   const lista = (data ?? []) as unknown as Ag[];
 
   const porGrupo = new Map<GrupoAcompanhamento, Ag[]>(GRUPOS.map((g) => [g.chave, []]));
@@ -118,8 +118,10 @@ export default async function Acompanhamento({ searchParams }: { searchParams: P
         </div>
       </Cabecalho>
 
+      {error && <div className="alerta erro">Não foi possível carregar os agendamentos agora. <Link href={volta}>Tentar de novo</Link></div>}
       {sp.msg === "conflito" && <div className="alerta erro">Não deu para desfazer: outro agendamento já ocupa esse horário no mesmo box.</div>}
 
+      {!error && (<>
       <div className="acomp-kpis">
         <div className="card acomp-kpi"><span>Agendados</span><strong>{r.total}</strong></div>
         <div className="card acomp-kpi"><span>Aguardando</span><strong>{r.aguardando}</strong></div>
@@ -130,8 +132,9 @@ export default async function Acompanhamento({ searchParams }: { searchParams: P
       </div>
 
       {!lista.length && <div className="card mudo">Nenhum agendamento neste dia.</div>}
+      </>)}
 
-      {GRUPOS.map(({ chave, rotulo }) => {
+      {!error && GRUPOS.map(({ chave, rotulo }) => {
         const itens = porGrupo.get(chave)!;
         if (!itens.length) return null;
         const corpo = <ul className="acomp-lista">{itens.map((a) => linha(a, chave))}</ul>;

@@ -45,3 +45,19 @@ export function resumoDoDia(grupos: GrupoAcompanhamento[]) {
     taxaComparecimento: decididos ? Math.round((c.veio / decididos) * 100) : null,
   };
 }
+
+/**
+ * Status a restaurar no "Desfazer": o de_status gravado no histórico da marcação (fonte da verdade).
+ * Só cai no confirmado_em quando não há histórico utilizável (registro antigo).
+ */
+export function statusAoDesfazer(deStatusRegistrado: string | null | undefined, confirmadoEm: string | null): "pendente" | "confirmado" {
+  if (deStatusRegistrado === "pendente" || deStatusRegistrado === "confirmado") return deStatusRegistrado;
+  return confirmadoEm ? "confirmado" : "pendente";
+}
+
+/** Data AAAA-MM-DD que existe no calendário (rejeita 2026-13-01, 2026-02-30). */
+export function dataValida(iso: string | undefined): iso is string {
+  if (!iso || !/^\d{4}-\d{2}-\d{2}$/.test(iso)) return false;
+  const d = new Date(`${iso}T12:00:00Z`);
+  return !Number.isNaN(d.getTime()) && d.toISOString().slice(0, 10) === iso;
+}

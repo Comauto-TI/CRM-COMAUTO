@@ -36,11 +36,12 @@ export default function Abertura() {
     };
     // "pronto" = documento carregado (HTML do servidor + imagens/estilos) e já hidratado (estamos no useEffect)
     if (document.readyState === "complete") timers.push(window.setTimeout(partir, 350));
-    else window.addEventListener("load", () => timers.push(window.setTimeout(partir, 200)), { once: true });
+    const aoCarregar = () => timers.push(window.setTimeout(partir, 200));
+    if (document.readyState !== "complete") window.addEventListener("load", aoCarregar, { once: true });
     timers.push(window.setTimeout(partir, LIMITE_ESPERA_MS));
     // finalização segura: nada fica preso por cima da tela
     timers.push(window.setTimeout(() => setFase("fim"), LIMITE_ESPERA_MS + DURACAO_SAIDA_MS + 500));
-    return () => timers.forEach((t) => window.clearTimeout(t));
+    return () => { window.removeEventListener("load", aoCarregar); timers.forEach((t) => window.clearTimeout(t)); }; // PR9-BAIXA-006
   }, []);
 
   if (fase === "fim") return null;

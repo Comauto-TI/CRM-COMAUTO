@@ -6,16 +6,18 @@ import { exigirAcesso } from "@/lib/auth";
 import { db } from "@/lib/supabase/admin";
 import { auditar } from "@/lib/audit";
 import { nucleoAplicado } from "@/lib/usuarios";
+import { statusAoDesfazer } from "@/lib/scheduling/acompanhamento";
 
 /**
  * Atalhos da tela de acompanhamento: "Chegou", "Não veio" e "Desfazer".
  * Grava só se o agendamento ainda estiver no status esperado (evita sobrescrever quem marcou antes)
  * e só nas unidades do operador. Histórico + auditoria só depois de gravar de verdade.
  */
-const DE_PARA: Record<string, { de: string[]; para: (confirmadoEm: string | null) => string }> = {
-  chegou: { de: ["pendente", "confirmado"], para: () => "compareceu" },
-  nao_veio: { de: ["pendente", "confirmado"], para: () => "nao_compareceu" },
-  desfazer: { de: ["compareceu", "nao_compareceu"], para: (c) => (c ? "confirmado" : "pendente") },
+const DE_PARA: Record<string, { de: string[]; para?: string }> = {
+  chegou: { de: ["pendente", "confirmado"], para: "compareceu" },
+  nao_veio: { de: ["pendente", "confirmado"], para: "nao_compareceu" },
+  // PR9-ACOMP-003: desfazer volta ao de_status gravado na marcação (não infere pelo confirmado_em)
+  desfazer: { de: ["compareceu", "nao_compareceu"] },
 };
 
 export async function marcarPresenca(form: FormData) {
@@ -33,7 +35,12 @@ export async function marcarPresenca(form: FormData) {
   const { data: ag } = await leitura.maybeSingle();
   if (!ag || !regra.de.includes(ag.status)) { revalidatePath("/painel/agendamentos/acompanhamento"); return; }
 
-  const para = regra.para(ag.confirmado_em);
+  let para = regra.para;
+  if (!para) {
+    const { data: marca } = await db().from("agendamento_historico").select("de_status")
+      .eq("agendamento_id", id).eq("para_status", ag.status).order("criado_em", { ascending: false }).limit(1).maybeSingle();
+    para = statusAoDesfazer(marca?.de_status as string | null | undefined, ag.confirmado_em);
+  }
   let gravacao = db().from("agendamentos").update({ status: para }).eq("id", id).eq("status", ag.status);
   if (multi) gravacao = gravacao.in("unidade", u.unidades);
   const { data: gravou, error } = await gravacao.select("id");
