@@ -101,9 +101,10 @@ export default function Nav({ papel, setor, fila }: { papel: Papel; setor: Setor
       );
     }
     const ativo = ativoEm(i.href, pathname);
+    const rotulo = i.href === "/painel/metricas" && papel === "vendedor" ? "Minhas métricas" : i.rotulo;
     return (
       <Link key={i.href} href={i.href} className={`${ativo ? "ativo" : ""}${sub ? " sub" : ""}`} prefetch aria-current={ativo ? "page" : undefined}>
-        <span className="nav-rotulo"><Icone nome={i.icone} />{i.rotulo}</span>
+        <span className="nav-rotulo"><Icone nome={i.icone} />{rotulo}</span>
         {i.badge && fila > 0 && <span className="badge">{fila}</span>}
       </Link>
     );
