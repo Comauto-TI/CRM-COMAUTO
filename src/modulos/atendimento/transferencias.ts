@@ -29,13 +29,14 @@ function falha(status: FalhaTransferencia["status"], codigo?: CodigoTransferenci
 /** Uma chamada transacional; o banco revalida vínculo, posse, replay e responsável elegível nos três destinos. */
 export async function transferirAtendimento(u: Usuario, dados: DadosTransferencia): Promise<ResultadoTransferencia> {
   const d = normalizarDadosTransferencia(dados);
-  if (!d || !objeto(u) || !uuid(u.id)) return falha(400);
+  if (!d || !objeto(u) || !uuid(u.id) || typeof u.email !== "string" || !u.email.trim()) return falha(400);
   if (!podeAcessar(u, d.origem === "central" ? "atendimento" : d.origem)) return falha(403);
 
   try {
     const { data, error } = await db().rpc("transferir_atendimento_setor", {
       p_operacao: d.operacaoId, p_origem: d.origem, p_registro: d.registroId, p_ator: u.id.toLowerCase(),
       p_destino: d.destino, p_funil: d.funil, p_responsavel: d.responsavelId, p_nota: d.nota, p_versao: d.versao,
+      p_ator_email: u.email,
     });
     if (error || !objeto(data)) return falha(503);
     if (data.ok === false) {

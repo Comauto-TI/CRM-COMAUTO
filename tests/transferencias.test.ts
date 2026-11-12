@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { Usuario } from "@/lib/auth";
 import { transferirAtendimento } from "@/modulos/atendimento/transferencias";
-import type { DadosTransferencia } from "@/modulos/atendimento/dados-transferencia";
+import { parsearTransferencia, type DadosTransferencia } from "@/modulos/atendimento/dados-transferencia";
 
 const f = vi.hoisted(() => ({ rpc: vi.fn(), from: vi.fn() }));
 vi.mock("@/lib/supabase/admin", () => ({ db: () => ({ rpc: f.rpc, from: f.from }) }));
@@ -27,16 +27,49 @@ describe("transferência pelo adaptador transacional", () => {
     expect(f.rpc).toHaveBeenCalledExactlyOnceWith("transferir_atendimento_setor", {
       p_operacao: operacao, p_origem: "central", p_registro: registro, p_ator: ator,
       p_destino: "pecas", p_funil: null, p_responsavel: null, p_nota: dados.nota, p_versao: 0,
+      p_ator_email: u.email,
     });
     expect(f.from).not.toHaveBeenCalled();
   });
 
   it("normaliza IDs e nota, ignorando ator/cliente/unidade do objeto", async () => {
     const entrada = { ...dados, operacaoId: operacao.toUpperCase(), registroId: registro.toUpperCase(), nota: `  ${dados.nota}  `,
-      ator: outro, p_ator: outro, cliente: outro, unidade: "outra", mensagemIds: [outro], historico: [outro] };
+      ator: outro, p_ator: outro, email: "forjado@fixture.invalid", ator_email: "forjado@fixture.invalid", p_ator_email: "forjado@fixture.invalid",
+      cliente: outro, unidade: "outra", mensagemIds: [outro], historico: [outro] };
     expect(await transferirAtendimento({ ...u, id: ator.toUpperCase() }, entrada)).toEqual(sucesso);
     expect(f.rpc.mock.calls[0][1]).toEqual({ p_operacao: operacao, p_origem: "central", p_registro: registro, p_ator: ator,
-      p_destino: "pecas", p_funil: null, p_responsavel: null, p_nota: dados.nota, p_versao: 0 });
+      p_destino: "pecas", p_funil: null, p_responsavel: null, p_nota: dados.nota, p_versao: 0, p_ator_email: u.email });
+  });
+
+  it("ignora e-mail forjado no FormData e envia somente a identidade da sessão", async () => {
+    const form = new FormData();
+    for (const [key, value] of Object.entries({ operacao, origem: "central", registro, destino: "pecas", nota: dados.nota, versao: "0",
+      ator: outro, email: "forjado@fixture.invalid", ator_email: "forjado@fixture.invalid", p_ator_email: "forjado@fixture.invalid" })) form.set(key, value);
+    const entrada = parsearTransferencia(form);
+    expect(entrada).toEqual(dados);
+    if (!entrada) throw new Error("Fixture inválida");
+    const r = await transferirAtendimento(u, entrada);
+    expect(r).toEqual(sucesso);
+    expect(f.rpc).toHaveBeenCalledExactlyOnceWith("transferir_atendimento_setor", {
+      p_operacao: operacao, p_origem: "central", p_registro: registro, p_ator: ator,
+      p_destino: "pecas", p_funil: null, p_responsavel: null, p_nota: dados.nota, p_versao: 0, p_ator_email: u.email,
+    });
+    expect(JSON.stringify(r)).not.toMatch(/forjado@fixture|teste@fixture/);
+    expect(f.from).not.toHaveBeenCalled();
+  });
+
+  it("troca de sessão envia o UUID e e-mail atuais sem reutilizar autorização anterior", async () => {
+    f.rpc.mockResolvedValueOnce({ data: sucesso, error: null }).mockResolvedValueOnce({ data: { ok: false, codigo: "nao_encontrado" }, error: null });
+    expect(await transferirAtendimento(u, dados)).toEqual(sucesso);
+    const atual = { ...u, id: outro, email: "outra-sessao@fixture.invalid" };
+    const entrada = { ...dados, ator, email: u.email, p_ator_email: u.email };
+    const r = await transferirAtendimento(atual, entrada);
+    expect(r).toMatchObject({ ok: false, status: 404 });
+    expect(f.rpc).toHaveBeenCalledTimes(2);
+    expect(f.rpc.mock.calls[0][1]).toMatchObject({ p_ator: ator, p_ator_email: u.email });
+    expect(f.rpc.mock.calls[1][1]).toMatchObject({ p_ator: outro, p_ator_email: atual.email });
+    expect(JSON.stringify(r)).not.toContain(atual.email);
+    expect(JSON.stringify(r)).not.toContain(u.email);
   });
 
   it("retorna somente DTO mínimo e aceita reuso explícito", async () => {
@@ -142,6 +175,11 @@ describe("transferência pelo adaptador transacional", () => {
     expect(f.rpc).not.toHaveBeenCalled();
   });
 
+  it.each([null, undefined, "", " \t ", 10])("recusa identidade de sessão sem e-mail válido: %j", async email => {
+    expect(await transferirAtendimento({ ...u, email } as unknown as Usuario, dados)).toMatchObject({ ok: false, status: 400 });
+    expect(f.rpc).not.toHaveBeenCalled();
+  });
+
   it.each(["vendas", "pecas", "oficina"] as const)("transporta pessoa ou fila para %s, com funil apenas em Vendas", async destino => {
     const funil = destino === "vendas" ? "novos" : null;
     const d: DadosTransferencia = { ...dados, destino, funil, responsavelId: outro.toUpperCase() };
@@ -150,12 +188,14 @@ describe("transferência pelo adaptador transacional", () => {
     expect(f.rpc).toHaveBeenCalledExactlyOnceWith("transferir_atendimento_setor", {
       p_operacao: operacao, p_origem: "central", p_registro: registro, p_ator: ator,
       p_destino: destino, p_funil: funil, p_responsavel: outro, p_nota: dados.nota, p_versao: 0,
+      p_ator_email: u.email,
     });
     f.rpc.mockClear();
     expect(await transferirAtendimento(u, { ...d, responsavelId: null })).toMatchObject({ ok: true, setorDestino: destino });
     expect(f.rpc).toHaveBeenCalledExactlyOnceWith("transferir_atendimento_setor", {
       p_operacao: operacao, p_origem: "central", p_registro: registro, p_ator: ator,
       p_destino: destino, p_funil: funil, p_responsavel: null, p_nota: dados.nota, p_versao: 0,
+      p_ator_email: u.email,
     });
   });
 
@@ -180,10 +220,11 @@ describe("transferência pelo adaptador transacional", () => {
   });
 
   it.each(["PGRST202", "42501", "23505", "08006"])("não repete erro de banco %s e não exporta detalhes", async code => {
-    f.rpc.mockResolvedValue({ data: sucesso, error: { code, message: "detalhe privado" } });
+    f.rpc.mockResolvedValue({ data: sucesso, error: { code, message: "detalhe privado " + u.email } });
     const r = await transferirAtendimento(u, dados);
     expect(r).toMatchObject({ ok: false, status: 503 });
     expect(JSON.stringify(r)).not.toContain("detalhe privado");
+    expect(JSON.stringify(r)).not.toContain(u.email);
     expect(f.rpc).toHaveBeenCalledOnce();
   });
 
