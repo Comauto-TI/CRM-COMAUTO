@@ -13,6 +13,7 @@ import {
 import { Cabecalho, Vazio } from "../_components/ui";
 import Quadro from "./Quadro";
 import ConversaVendas from "./ConversaVendas";
+import TransferirCartao from "../_components/TransferirCartao";
 import { novaOportunidade, assumir, salvarQualificacao, novaAtividade, novaTarefa, concluir, moverPeloFormulario, agendarNoCartao, vincular, desvincular, transferir, transferirCarteiraAction } from "./actions";
 import Icone from "../_components/Icone";
 import { lerVinculos, linkProcessoVendas, linkAvaliex } from "@/modulos/vendas/vinculos";
@@ -230,6 +231,7 @@ export default async function Vendas({ searchParams }: { searchParams: Promise<S
                 <ConversaVendas oportunidadeId={op.id} />
               </section>
             )}
+            {!op.fechado_em && op.etapa?.tipo === "aberta" && <TransferirCartao origem="vendas" registroId={op.id} unidade={op.unidade} />}
             {sp.erro && <div className="alerta erro">{sp.erro}</div>}
             {sp.ok === "salvo" && <div className="alerta ok">Salvo.</div>}
             {sp.ok === "agendado" && <div className="alerta ok">Agendado. Acompanhe em <Link href="/painel/lembretes">Meus lembretes</Link>.</div>}

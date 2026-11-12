@@ -22,6 +22,7 @@ vi.mock("@/app/painel/oficina/actions", () => ({ criarAtendimento: f.criarAtendi
 vi.mock("next/link", () => ({
   default: ({ href, children, ...props }: ComponentProps<"a">) => createElement("a", { ...props, href }, children),
 }));
+vi.mock("next/navigation", () => ({ useRouter: () => ({ refresh: vi.fn() }) }));
 // Fora do runtime Next, useFormStatus não reproduz o envio de uma Server Action.
 // O botão é a única parte visual substituída; página, quadro, parser e formatação são reais.
 vi.mock("@/app/painel/oficina/BotaoOficina", () => ({
@@ -199,7 +200,7 @@ describe("página Oficina: falha, dados autorizados e vazio", () => {
     for (const proibido of ["<script>marcador_ficticio", '<img src="x">', "<b>& Maria</b>", "5511900000099", "oculto@example.invalid", "nota_nao_autorizada_ficticia", "98765", "R$"]) {
       expect(html).not.toContain(proibido);
     }
-    expect(html).not.toContain("Transferir");
+    expect(html.match(/>Transferir para setor<\/button>/g)).toHaveLength(2);
     expect(html).not.toContain("arrastar");
   });
 
@@ -239,7 +240,8 @@ describe("quadro Oficina: capacidade e responsabilidade", () => {
     expect(texto(cartoes[2])).toContain("Responsável: Responsável fictícia");
     expect(formularios(cartoes[2])).toHaveLength(0);
     expect(formularios(html)).toHaveLength(1);
-    expect(html).not.toMatch(/<select\b|Transferir|Reatribuir|Devolver|draggable=/);
+    expect(html.match(/>Transferir para setor<\/button>/g)).toHaveLength(3);
+    expect(html).not.toMatch(/<select\b|Reatribuir|Devolver|draggable=/);
   });
 });
 

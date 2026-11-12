@@ -593,4 +593,7 @@ inalteradas não foram repetidas. docs/APROVACAO-PR9.md; PR permanecia aberto/n�
 Antes da UI Transferir, dois inventários readonly fecharam proposta concreta de leitura/posse/
 despacho central em docs/TRANSFERENCIA-CENTRAL-PREREQUISITOS.md. Unidade/corpo/contagens juntos,
 versão e reserva central, templates/bot e respostas tardias precisam contrato/donos com Claude.
-Não expor endpoint/action/botão baseado só no ledger novo. Preparação isolada do formulário é possível.
+Recorte posterior fechado com Claude: piloto somente nos três cartões, central desativada no adaptador;
+hardening central fica com Claude. Em 12/11, a pedido direto do Simão, botão ligado em Vendas/Peças/Oficina,
+preparo servidor de opções/versão e confirmação pela RPC10 existente, sem migration nova. Testes de actions,
+cartões e navegador offline; consultas PostgREST de metadados sem escrita. Login/transferência real não executados.

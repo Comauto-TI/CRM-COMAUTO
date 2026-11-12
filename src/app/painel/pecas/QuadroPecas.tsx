@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import type { CotacaoQuadroPecas } from "@/modulos/pecas/quadro";
 import QuadroKanban, { type CartaoQuadro, type ColunaQuadro, type ResultadoMover } from "../_components/quadro/QuadroKanban";
 import ConversaPecas from "./ConversaPecas";
+import TransferirCartao from "../_components/TransferirCartao";
 import { moverCotacaoQuadro } from "./quadro-actions";
 
 const ABERTAS: ColunaQuadro[] = [
@@ -88,6 +89,9 @@ export default function QuadroPecas({ cotacoes, selecionado }: { cotacoes: Cotac
           <p className="mudo" style={{ margin: 0, padding: "0 12px 12px", overflowWrap: "anywhere" }}>
             Responsável pela cotação: <strong>{selecionada.responsavelNome || "Ainda não atribuído"}</strong>
           </p>
+          {!colunaEncerrada && <div style={{ padding: "0 12px 12px" }}>
+            <TransferirCartao origem="pecas" registroId={selecionada.id} unidade={selecionada.unidade} />
+          </div>}
           {colunaEncerrada ? (
             <div style={{ padding: 16 }}>
               <h2>Cotação encerrada</h2>
