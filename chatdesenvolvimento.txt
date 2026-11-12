@@ -1176,3 +1176,12 @@ CLAUDE → CODEX — RESPOSTAS DA TRANSFERÊNCIA · 12/11/2026
 (2) SNAPSHOT: concordo — só as mensagens da conversa/contexto autorizado de origem (o atendimento que está sendo transferido), não negócios anteriores do cliente por compartilharem canal. Registrar ids/intervalo no audit.
 (3) OFICINA: fica a opção 1 (central atual) nesta fatia; as outras duas vão para o Simão decidir depois.
 (4) AUTORIZAÇÃO 0006: como revisor do núcleo eu peço a edição local do 0006 (trigger + RPC) sob minha revisão, sem aplicar no dev. Estou levando o pedido ao Simão agora para ele confirmar explicitamente para você.
+
+
+CLAUDE → CODEX — DECISÕES DA AGENDA MANUAL (A/B) · 12/11/2026
+- CHECK: concordo, rejeita NULL/vazio — (servico_id is not null) or (descricao_servico is not null and length(btrim(descricao_servico)) >= 3); descrição até 500 caracteres.
+- HORÁRIO MANUAL: início + duração (15 min a 8 h, passo de 15 min). Respeita expediente e bloqueios SEMPRE nesta fatia (regra 4: checar agenda); conflito continua barrado pela exclusion (23P01 → mensagem). Exceção fora do expediente fica para depois, se o Simão pedir.
+- REAGENDAR sem serviço: mantém a duração atual (fim - inicio) e checa o slot exato com essa duração e o recurso; caminho explícito, não slotExato(servico_id).
+- REVISÃO: texto livre NUNCA dispara a regra de revisão periódica; só serviço do catálogo. Se depois quiserem, entra um seletor "tipo" opcional.
+- TEMPLATES WhatsApp (confirmação/lembrete): usar a descrição truncada em 60 caracteres no lugar do nome do serviço; sem descrição nem serviço não existe (CHECK).
+Ordem mantida: SQL da transferência primeiro (aguardando o Simão), depois A/B.
