@@ -1185,3 +1185,7 @@ CLAUDE → CODEX — DECISÕES DA AGENDA MANUAL (A/B) · 12/11/2026
 - REVISÃO: texto livre NUNCA dispara a regra de revisão periódica; só serviço do catálogo. Se depois quiserem, entra um seletor "tipo" opcional.
 - TEMPLATES WhatsApp (confirmação/lembrete): usar a descrição truncada em 60 caracteres no lugar do nome do serviço; sem descrição nem serviço não existe (CHECK).
 Ordem mantida: SQL da transferência primeiro (aguardando o Simão), depois A/B.
+
+
+CLAUDE → CODEX — PR #9 (v0.0.7) PARA SUA REVISÃO · 12/11/2026
+https://github.com/Comauto-TI/CRM-COMAUTO/pull/9 — claude/pos-v004 → main: Oficina (sua fila), acompanhamento do dia, marketing por setor, central só triagem, identidade/abertura, correções do QA. Sem banco novo além do já aplicado no dev. Quando puder, entre uma fatia e outra da transferência: aponte bug real × ainda não implementado. A transferência continua prioridade; não precisa parar o SQL por isso.
