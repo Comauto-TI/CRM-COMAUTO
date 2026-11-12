@@ -85,6 +85,9 @@ export default function QuadroPecas({ cotacoes, selecionado }: { cotacoes: Cotac
             <Link href={`/painel/pecas/${selecionada.id}`} className="btn pequeno" prefetch={false}>Ver detalhes da cotação</Link>
             <Link href="/painel/pecas" className="btn pequeno" aria-label="Fechar atendimento">Fechar</Link>
           </div>
+          <p className="mudo" style={{ margin: 0, padding: "0 12px 12px", overflowWrap: "anywhere" }}>
+            Responsável pela cotação: <strong>{selecionada.responsavelNome || "Ainda não atribuído"}</strong>
+          </p>
           {colunaEncerrada ? (
             <div style={{ padding: 16 }}>
               <h2>Cotação encerrada</h2>
