@@ -483,3 +483,12 @@ Claude fechou A/B no prefixo175859: descrição3..500 com NULL explicitamente re
 15min..8h em passos15min; expediente/bloqueios sempre respeitados; reagendamento manual mantém
 duração/recurso por caminho explícito; revisão periódica só catálogo; templates usam rótulo até60
 caracteres. Documento atualizado, sem código/SQL/testes novos. Ordem e autorização pendente mantidas.
+
+## Autorização direta para retomar núcleo local · 12/11/2026
+
+Simão respondeu à pergunta específica de núcleo/roteamento/snapshot: "Autorizar implementação local
+com revisão do Claude". Retomada em codex/transferencias-setores a partir da base revisada; sem
+aplicar o WIP antigo. Subagentes com arquivos separados implementam0006, contratos SQL e aviso
+estruturado do adaptador; revisão independente e revisão do Claude precedem banco/dev. A rejeição
+anterior ficou documentada; a autorização direta posterior resolve aquela falta de escopo.
+Nada aplicado remotamente. Ainda não afirmar transferência pronta ou teste SQL funcional aprovado.

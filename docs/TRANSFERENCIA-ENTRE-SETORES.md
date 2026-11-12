@@ -1,7 +1,7 @@
 # Transferência entre setores — contrato para revisão
 
 Direção do Simão recebida pelo Claude em 12/11/2026. **Contrato fechado no repasse posterior abaixo;
-implementação local em andamento, ainda sem revisão/integração de transferência no dev.** Base: Claude
+implementação local retomada após autorização direta do Simão, ainda sem revisão/integração no dev.** Base: Claude
 `588bc1c` (Oficina integrada), incorporada na
 branch `codex/transferencias-setores` pelo merge `be4868b`. Não é publicação em produção.
 
@@ -33,12 +33,24 @@ Respostas posteriores do Claude, conferidas até174752/SHA
   acesso ao histórico inteiro do cliente nem altera os vínculos originais.
 - Oficina fica na **opção1** nesta fatia; opções2/3 ficam para decisão posterior do Simão.
 - Claude reafirmou o pedido de edição local do `0006` como revisor, sem aplicar no dev, e informou
-  levar a confirmação ao Simão. **A resposta direta à autorização pendente ainda não chegou neste
-  chat.** Esse repasse não substitui a resposta; a edição do núcleo continua suspensa.
+  levar a confirmação ao Simão. Esse repasse sozinho não substituiu a resposta direta; a autorização
+  chegou posteriormente, conforme registro abaixo.
 
-O DTO mínimo do adaptador `b9e64dd` ainda não transporta o aviso de responsável preservado. Ampliá-lo
-de forma estruturada e validada depois de fechar o retorno da RPC, antes da UI; não descartar o aviso
-nem expor nomes/IDs em erros fora do escopo. Os114 testes atuais não comprovam essa parte futura.
+O DTO mínimo do adaptador `b9e64dd` ainda não transportava o aviso de responsável preservado. O retorno
+combinado passa a exigir `avisoResponsavel: null | { nome: string }` no sucesso, validado e mascarado
+no adaptador. Aviso só em reuso que preserva dono diferente do selecionado, inclusive escolha de fila;
+erro fora do escopo continua sem nome/ID. Implementação/testes dessa ampliação ainda em andamento.
+
+### Autorização direta recebida — edição local
+
+Simão respondeu diretamente à pergunta assíncrona deste chat: **"Autorizar implementação local com
+revisão do Claude"**. A pergunta nomeava núcleo/roteamento, destinatário fila/pessoa e snapshot
+auditado; a resposta libera essa implementação na branch local, com revisão do Claude antes de
+qualquer aplicação no banco. A rejeição anterior permanece registrada como histórico, sem ser
+contornada: a nova autorização é o fato que permite retomar.
+
+Retomar da base ativa revisada, não reaplicar o WIP antigo. SQL, contratos de teste e adaptador têm
+arquivos/donos separados. Dados remotos, Auth, produção e implantação continuam fora desta edição.
 
 ### Alternativas para a conversa de Oficina
 
@@ -61,8 +73,9 @@ base revisada. Nada desse SQL foi aplicado no dev ou validado funcionalmente.
 A revisão automática rejeitou o `apply_patch` que acrescentaria o trigger de roteamento em `0006`,
 alegando ausência de autorização específica para alterar núcleo/permissões e possível exposição de
 histórico se integrado sem revisão. Um pedido restrito de filesystem do subagente não concedeu acesso.
-O arquivo não foi reeditado por outro caminho. As entregas independentes foram concluídas; retomar a
-edição do núcleo exige resolver essa autorização e alinhar o contrato atual, sem reaplicar o WIP antigo.
+O arquivo não foi reeditado por outro caminho. As entregas independentes foram concluídas; a edição
+local agora foi autorizada diretamente pelo Simão, como registrado acima. O WIP antigo permanece
+incompleto/superado e não deve ser reaplicado.
 
 ## Primeiro contrato fechado (histórico; supersedido nos pontos acima)
 
