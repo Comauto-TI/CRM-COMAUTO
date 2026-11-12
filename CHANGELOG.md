@@ -9,6 +9,8 @@ Versionamento semântico a partir de **0.0.1** (decisão do Simão, 10/11/2026).
 - Quem mescla na `main` (Claude ou Codex) atualiza `package.json`, este arquivo e cria a tag.
 
 ## [Não lançado]
+
+## [0.0.7] — 12/11/2026 — Oficina integrada, acompanhamento do dia, marketing por setor e identidade final (PR #9; revisado e aprovado pelo Codex)
 ### Adicionado
 - **Oficina · Acompanhamento do dia**: atrasados (tolerância de 15 min, “há X min”), aguardando, vieram, não vieram e cancelados; atalhos Chegou / Não veio / Desfazer; totais e taxa de comparecimento; atualiza sozinha a cada minuto. Sem mudança de banco.
 - **Oficina**: fila e triagem com duas etapas, filtro “Minhas”, paginação e ações autorizadas no servidor; a agenda continua como estava.
@@ -21,6 +23,7 @@ Versionamento semântico a partir de **0.0.1** (decisão do Simão, 10/11/2026).
 - “Agendamentos hoje” não conta mais cancelado como pendente.
 - Telefone do cliente em “Quem confirmou” agora aparece mascarado (LGPD).
 - Menu do vendedor identifica a visão pessoal como **Minhas métricas**.
+- Revisão do Codex (PR #9): QR de link e métricas de eventos respeitam o setor; Desfazer volta ao status real da marcação; falha de leitura não aparece como dia vazio; data inválida não derruba a tela.
 
 ## [0.0.6] — 12/11/2026 — Usuários com links de cadastro, Minha conta, login e nome WAGconnect CRM (PR #8; revisado pelo Codex)
 ### Adicionado
