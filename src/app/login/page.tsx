@@ -1,3 +1,4 @@
+/* eslint-disable @next/next/no-img-element */
 import { redirect } from "next/navigation";
 import { authClient } from "@/lib/supabase/server";
 import Marca from "../painel/_components/Marca";
@@ -22,13 +23,13 @@ export default async function Login({ searchParams }: { searchParams: Promise<{ 
     <main className="acesso">
       <section className="acesso-foto" aria-hidden="true">
         <div className="acesso-foto-texto">
-          <span className="acesso-selo">ShiftUP · Comauto</span>
+          <img src="/marca/wagconnect.webp" alt="WAGconnect CRM" className="acesso-logo" width={340} height={89} />
           <p>Vendas, Oficina e Peças com a mesma ficha do cliente.</p>
         </div>
       </section>
       <section className="acesso-painel">
         <form action={entrar} className="acesso-form">
-          <Marca nome="ShiftUP" sub="Comauto" grande />
+          <Marca sub="Comauto" grande />
           <div className="acesso-titulo">
             <h1>Acesse sua conta</h1>
             <p>Use o e-mail e a senha cadastrados pela administração.</p>

@@ -1244,3 +1244,12 @@ a { color: var(--vw-azul); }
 @media (max-width: 560px) {
   .cabecalho .linha-form { flex-wrap: wrap; }
 }
+
+/* Marca WAGconnect CRM (logo transparente: limão + branco) */
+.marca-sistema { display: grid; gap: 4px; justify-items: start; padding: 4px 2px 10px; }
+.marca-wordmark { display: block; width: 168px; height: auto; }
+.marca-empresa { font-size: 11px; font-weight: 600; letter-spacing: .12em; text-transform: uppercase; color: rgba(255, 255, 255, .62); }
+.marca-selo { background: #041831; border-radius: 12px; padding: 16px 18px; justify-items: start; }
+.marca-selo .marca-wordmark { width: 220px; }
+.acesso-logo { display: block; width: 340px; max-width: 100%; height: auto; }
+@media (max-width: 900px) { .acesso-logo { width: 220px; } }

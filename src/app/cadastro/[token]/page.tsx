@@ -1,3 +1,4 @@
+/* eslint-disable @next/next/no-img-element */
 import Link from "next/link";
 import Marca from "../../painel/_components/Marca";
 import { lerConvite, TIPOS_CONVITE } from "@/lib/convites";
@@ -14,13 +15,13 @@ export default async function Cadastro({ params, searchParams }: { params: Promi
     <main className="acesso">
       <section className="acesso-foto" aria-hidden="true">
         <div className="acesso-foto-texto">
-          <span className="acesso-selo">ShiftUP · Comauto</span>
+          <img src="/marca/wagconnect.webp" alt="WAGconnect CRM" className="acesso-logo" width={340} height={89} />
           <p>Bem-vindo à equipe.</p>
         </div>
       </section>
       <section className="acesso-painel">
         <div className="acesso-form">
-          <Marca nome="ShiftUP" sub="Comauto" grande />
+          <Marca sub="Comauto" grande />
           {sp.ok ? (
             <>
               <h1>Cadastro feito!</h1>
