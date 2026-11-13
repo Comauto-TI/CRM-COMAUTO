@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { Usuario } from "@/lib/auth";
 import { criarMembro, definirAtivo, gerarSenhaProvisoria, redefinirSenha } from "@/lib/equipe";
 import { criarMembroAction, definirAtivoAction, redefinirSenhaAction, salvarEquipe } from "@/app/painel/configuracoes/actions";
@@ -88,6 +88,7 @@ function consulta(tabela: string) {
   return {
     select() { return this; },
     eq(coluna: string, valor: unknown) { filtros.push(linha => linha[coluna] === valor); return this; },
+    in(coluna: string, valores: unknown[]) { filtros.push(linha => valores.includes(linha[coluna])); return this; },
     insert(d: Linha) { operacao = "insert"; valores = d; return this; },
     update(d: Linha) { operacao = "update"; valores = d; return this; },
     async maybeSingle() { const r = executar(); return { ...r, data: r.data?.[0] ?? null }; },
@@ -124,6 +125,7 @@ function semMutacaoAuth() {
 }
 
 beforeEach(() => {
+  vi.stubEnv("ADMIN_PRINCIPAL_ID", admin.id);
   vi.clearAllMocks();
   fixture.falhasInsert = 0;
   fixture.erroBuscaPagina = null;
@@ -170,6 +172,7 @@ beforeEach(() => {
     return { data: { user: structuredClone(usuario) }, error: null };
   });
 });
+afterEach(() => vi.unstubAllEnvs());
 
 describe("origem confiável e senha da equipe", () => {
   it("cria conta controlada com origem em app_metadata e somente nome em user_metadata", async () => {

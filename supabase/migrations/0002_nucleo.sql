@@ -47,6 +47,15 @@ end $$;
 
 alter table usuarios add column if not exists setor text not null default 'administracao';
 alter table usuarios add column if not exists unidade text not null default 'comauto';
+-- Permissão explícita para redefinir senha alheia; o administrador principal é configurado no servidor.
+alter table usuarios add column if not exists pode_redefinir_senhas boolean not null default false;
+do $$
+begin
+  if not exists (select 1 from pg_constraint where conrelid='public.usuarios'::regclass and conname='usuarios_permissao_senhas_check') then
+    alter table usuarios add constraint usuarios_permissao_senhas_check
+      check (not pode_redefinir_senhas or (papel='admin' and ativo is true));
+  end if;
+end $$;
 do $$
 begin
   if not exists (select 1 from pg_constraint where conname = 'usuarios_setor_check') then
@@ -68,6 +77,55 @@ create table if not exists usuario_unidades (
   unidade text not null references unidades (chave),
   primary key (user_id, unidade)
 );
+
+-- A identidade principal e o e-mail vêm exclusivamente da configuração/sessão verificadas no servidor.
+-- O parâmetro principal não é uma permissão pública: esta RPC é exclusiva do service_role.
+create or replace function public.definir_permissao_senhas(
+  p_ator uuid,p_principal uuid,p_destino uuid,p_permitir boolean,p_ator_email text
+) returns jsonb language plpgsql security invoker set search_path='' as $$
+declare ator record; destino record;
+begin
+  if p_ator is null or p_principal is null or p_destino is null or p_permitir is null
+    or p_ator_email is null or p_ator_email='' or p_ator_email<>btrim(p_ator_email)
+    or char_length(p_ator_email)>320 or position(chr(10) in p_ator_email)>0 or position(chr(13) in p_ator_email)>0 then
+    return pg_catalog.jsonb_build_object('ok',false,'motivo','invalido');
+  end if;
+  if p_ator<>p_principal or p_destino=p_principal then
+    return pg_catalog.jsonb_build_object('ok',false,'motivo','sem_permissao');
+  end if;
+  begin
+    -- Ordem estável para os dois perfis, inclusive quando o destino ordena antes do principal.
+    perform u.user_id from public.usuarios u where u.user_id in(p_ator,p_destino)
+      order by u.user_id for update nowait;
+    select u.user_id,u.papel,u.ativo into ator from public.usuarios u where u.user_id=p_ator;
+    if not found or ator.papel<>'admin' or ator.ativo is not true then
+      return pg_catalog.jsonb_build_object('ok',false,'motivo','sem_permissao');
+    end if;
+    select u.user_id,u.papel,u.ativo,u.pode_redefinir_senhas into destino from public.usuarios u where u.user_id=p_destino;
+    if not found then return pg_catalog.jsonb_build_object('ok',false,'motivo','nao_encontrado'); end if;
+    if p_permitir and (destino.papel<>'admin' or destino.ativo is not true) then
+      return pg_catalog.jsonb_build_object('ok',false,'motivo','sem_permissao');
+    end if;
+    if destino.pode_redefinir_senhas=p_permitir then
+      return pg_catalog.jsonb_build_object('ok',true,'alterado',false);
+    end if;
+    update public.usuarios set pode_redefinir_senhas=p_permitir where user_id=p_destino;
+    insert into public.audit_log(ator,acao,entidade,entidade_id,dados)
+      values(p_ator_email,'definir_permissao_senhas','usuarios',p_destino::text,
+        pg_catalog.jsonb_build_object('ator_id',p_ator,'destino_id',p_destino,'permitir',p_permitir));
+    return pg_catalog.jsonb_build_object('ok',true,'alterado',true);
+  exception
+    when lock_not_available or deadlock_detected then
+      return pg_catalog.jsonb_build_object('ok',false,'motivo','conflito');
+    when others then
+      -- O sub-bloco desfaz a flag se a auditoria ou qualquer outra escrita falhar.
+      return pg_catalog.jsonb_build_object('ok',false,'motivo','indisponivel');
+  end;
+end $$;
+revoke all on function public.definir_permissao_senhas(uuid,uuid,uuid,boolean,text) from public,anon,authenticated,service_role;
+grant execute on function public.definir_permissao_senhas(uuid,uuid,uuid,boolean,text) to service_role;
+grant select(user_id,papel,ativo,pode_redefinir_senhas),update(pode_redefinir_senhas) on public.usuarios to service_role;
+grant insert(ator,acao,entidade,entidade_id,dados) on public.audit_log to service_role;
 
 -- ---------------------------------------------------------------------
 -- Ficha única do cliente (válida para o grupo inteiro)

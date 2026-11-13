@@ -9,6 +9,7 @@ Versionamento semântico a partir de **0.0.1** (decisão do Simão, 10/11/2026).
 - Quem mescla na `main` (Claude ou Codex) atualiza `package.json`, este arquivo e cria a tag.
 
 ## [Não lançado]
+- Simão definido por configuração do servidor como administrador principal de senhas; os demais admins precisam de delegação explícita e revogável. Perfil principal protegido, recuperação de contas sem atalho e troca própria sem encerrar sessões globais. Banco de testes atualizado; publicação do código ainda pendente.
 - Administrador pode emitir convite administrativo individual de 24 horas; papel e setor ficam fixos no servidor, com emissor ativo revalidado na reserva. Formulário preserva o tipo após gerações sucessivas. SQL e código preparados para integração, sem convite ou conta real criados pelo Codex.
 - Lint instala suas dependências isoladas; oito erros corrigidos sem desativar regras. Menu e notificações usam snapshots seguros para hidratação; troca de aba/conversa descarta respostas atrasadas e limpa os rascunhos do contexto anterior.
 

@@ -607,3 +607,16 @@ delta isolado 57C0E7BD..., sem aplicação remota ou geração de convite/conta.
 WhatsApp: token fornecido pelo Simão aceito em dois GETs oficiais; número VERIFIED e pertencente à conta
 informada. Token/IDs atualizados como Secret em Production e fonte 0.0.7 republicada no deploy 5jkhQ3ZSipYGpLVziiHBFFsZuQff.
 Usuários abriu autenticado na sessão já existente do usuário; Codex não enviou mensagens nem validou HMAC/webhook.
+
+13/11 — Senhas: pedido direto do Simão implementado em codex/administrador-principal. Principal por UUID
+configurado no servidor; outros admins só com delegação explícita/revogável, sem editar ou redefinir o principal.
+Troca própria mantém senha atual e identidade da sessão; exceção de origem compartilhada só para o principal;
+signOut do verificador limitado à sessão local. Revalidação atual de ator, principal e alvo antes do Auth.
+2.241 Vitest/58 arquivos, build Webpack/TypeScript e ESLint passaram; revisão independente confirmou oito
+casos de revogação/desativação, mais 14 SSR/12 casos UI offline. SQL: 212 verificações em dois modos ACL.
+Delta isolado D7C78917 aplicado no Ambiente de testes csgrnmoyowjhzlibbilk em 13/11 14:46 UTC;
+COMMIT confirmado após preservar dados/identidades das 57 tabelas, Auth/ACL/FKs e regras anteriores.
+Nenhuma delegação concedida nem convite real gerado. Separadamente, senha da conta Simão foi definida
+conforme pedido explícito e login real confirmado, com auditoria e demais campos Auth preservados.
+Fonte ainda não publicada: aguarda autorização oficial do CLI Vercel na conta comautomgo-4088.
+Production mantém WhatsApp validado no deploy 5jkhQ3ZSipYGpLVziiHBFFsZuQff; não reimportar .env local antigo.

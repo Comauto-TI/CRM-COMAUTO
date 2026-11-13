@@ -9,6 +9,7 @@ import { auditar } from "@/lib/audit";
 import { tabelaUsuarios } from "@/lib/usuarios";
 import { criarMembro, definirAtivo, redefinirSenha, type ResultadoEquipe } from "@/lib/equipe";
 import { papelValido, setorValido, PAPEIS_LEGADO } from "@/lib/permissoes";
+import { obterPermissoesSenhas, podeAlterarPerfilUsuario } from "@/lib/permissoes-senhas";
 
 async function salvarChave(chave: string, valor: unknown, email: string) {
   await db().from("config").upsert({ chave, valor, atualizado_em: new Date().toISOString() });
@@ -132,6 +133,7 @@ export async function salvarEquipe(formData: FormData) {
   if (!papelValido(papel)) return;
   const tabela = await tabelaUsuarios();
   if (tabela !== "usuarios" && !(PAPEIS_LEGADO as readonly string[]).includes(papel)) return; // F0-3-003
+  if (!(await podeAlterarPerfilUsuario(u, userId, ativo, papel))) return;
   const { data: atual } = await db().from(tabela).select("consentimento_alertas_em").eq("user_id", userId).single();
   const { error } = await db()
     .from(tabela)
@@ -139,6 +141,7 @@ export async function salvarEquipe(formData: FormData) {
       papel,
       ...(tabela === "usuarios" && setorValido(setor) ? { setor } : {}),
       ativo,
+      ...(tabela === "usuarios" && (!ativo || papel !== "admin") ? { pode_redefinir_senhas: false } : {}),
       telefone_whatsapp: tel,
       recebe_alertas: recebe,
       consentimento_alertas_em: recebe ? atual?.consentimento_alertas_em ?? new Date().toISOString() : null,
@@ -170,6 +173,26 @@ export async function criarMembroAction(_prev: ResultadoEquipe | null, formData:
 export async function redefinirSenhaAction(_prev: ResultadoEquipe | null, formData: FormData): Promise<ResultadoEquipe> {
   const u = await exigirAcesso("configuracoes");
   return redefinirSenha(u, String(formData.get("user_id") ?? ""));
+}
+
+export async function definirPermissaoSenhasAction(formData: FormData): Promise<ResultadoEquipe> {
+  const u = await exigirAcesso("configuracoes");
+  const permissoes = await obterPermissoesSenhas(u);
+  const destino = String(formData.get("user_id") ?? "").toLowerCase();
+  const permitir = formData.get("permitir");
+  if (!permissoes.principal || !permissoes.principalId) return { ok: false, motivo: "Só o administrador principal pode conceder ou revogar esta permissão." };
+  if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/.test(destino) || (permitir !== "1" && permitir !== "0")) {
+    return { ok: false, motivo: "Dados da permissão inválidos." };
+  }
+  try {
+    const { data, error } = await db().rpc("definir_permissao_senhas", {
+      p_ator: u.id.toLowerCase(), p_principal: permissoes.principalId, p_destino: destino, p_permitir: permitir === "1", p_ator_email: u.email,
+    });
+    if (error || !data || data.ok !== true) return { ok: false, motivo: "Não foi possível alterar a permissão. Confira o usuário e seu acesso atual." };
+    revalidatePath("/painel/usuarios");
+    revalidatePath("/painel/configuracoes");
+    return { ok: true, mensagem: permitir === "1" ? "Permissão para redefinir senhas concedida." : "Permissão para redefinir senhas revogada." };
+  } catch { return { ok: false, motivo: "Não foi possível confirmar a alteração da permissão. Atualize a página." }; }
 }
 
 export async function definirAtivoAction(formData: FormData) {

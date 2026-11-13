@@ -1,8 +1,8 @@
 "use client";
 
-import { useActionState } from "react";
+import { startTransition, useActionState, useRef, useState } from "react";
 import Copiar from "../_components/Copiar";
-import { criarMembroAction, redefinirSenhaAction } from "./actions";
+import { criarMembroAction, definirPermissaoSenhasAction, redefinirSenhaAction } from "./actions";
 import { PAPEIS, SETORES, ROTULO_PAPEL, ROTULO_SETOR } from "@/lib/permissoes";
 
 type Resultado = { ok: true; mensagem: string; senhaProvisoria?: string } | { ok: false; motivo: string } | null;
@@ -45,7 +45,11 @@ export function NovoMembro({ unidades }: { unidades: { chave: string; nome: stri
   );
 }
 
-export function RedefinirSenha({ userId }: { userId: string }) {
+export function RedefinirSenha({ userId, permitido = false }: { userId: string; permitido?: boolean }) {
+  return permitido ? <FormularioRedefinirSenha key={userId} userId={userId} /> : null;
+}
+
+function FormularioRedefinirSenha({ userId }: { userId: string }) {
   const [r, acao, enviando] = useActionState(redefinirSenhaAction, null as Resultado);
   return (
     <div className="redefinir">
@@ -56,4 +60,35 @@ export function RedefinirSenha({ userId }: { userId: string }) {
       <Retorno r={r} />
     </div>
   );
+}
+
+/** A capacidade vem da página no servidor; a action revalida principal, alvo e permissão atual. */
+export function PermissaoSenhas({ userId, liberado, permitido = false }: { userId: string; liberado: boolean; permitido?: boolean }) {
+  return permitido ? <FormularioPermissaoSenhas key={`${userId}:${liberado}`} userId={userId} liberado={liberado} /> : null;
+}
+
+function FormularioPermissaoSenhas({ userId, liberado }: { userId: string; liberado: boolean }) {
+  const [marcado, setMarcado] = useState(liberado);
+  const trava = useRef(false);
+  const [r, acao, enviando] = useActionState(async (_anterior: Resultado, form: FormData) => {
+    try { return await definirPermissaoSenhasAction(form); }
+    finally { trava.current = false; }
+  }, null as Resultado);
+  return <div className="secao">
+    <form onSubmit={evento => {
+      evento.preventDefault();
+      if (trava.current || enviando) return;
+      const form = new FormData(evento.currentTarget);
+      form.set("permitir", marcado ? "1" : "0");
+      trava.current = true;
+      startTransition(() => acao(form));
+    }}>
+      <fieldset className="linha-form" disabled={enviando} style={{ border: 0, padding: 0, margin: 0, minWidth: 0, flexWrap: "wrap" }}>
+        <input type="hidden" name="user_id" value={userId} />
+        <label className="check"><input type="checkbox" name="permitir" value="1" checked={marcado} onChange={evento => setMarcado(evento.target.checked)} /> Pode redefinir senhas de outras pessoas</label>
+        <button type="submit" className="btn pequeno">{enviando ? "Salvando…" : "Salvar permissão"}</button>
+      </fieldset>
+    </form>
+    <Retorno r={r} />
+  </div>;
 }

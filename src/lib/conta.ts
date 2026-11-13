@@ -3,13 +3,15 @@ import { createClient } from "@supabase/supabase-js";
 import { db } from "@/lib/supabase/admin";
 import { auditar } from "@/lib/audit";
 import type { Usuario } from "@/lib/auth";
+import { obterPermissoesSenhas } from "@/lib/permissoes-senhas";
 
 /**
  * "Minha conta" — a própria pessoa troca a senha.
  * Regra leve (pedido do Simão): mínimo de 6 caracteres, sem exigir maiúscula/símbolo.
  * Login COMPARTILHADO: o banco de dev usa o mesmo Auth do processo-vendas-teste. Trocar aqui mudaria a senha
- * lá também, então só troca quem foi CRIADO pela plataforma; conta vinculada de outro sistema é recusada com
- * explicação. No banco oficial da plataforma (projeto próprio) os logins já são independentes.
+ * lá também, então contas vinculadas de outro sistema são preservadas. A exceção explícita é o próprio
+ * administrador principal configurado por UUID, com perfil atual validado e prova da senha atual do mesmo
+ * login. No banco oficial da plataforma (projeto próprio) os logins já são independentes.
  */
 const ORIGEM = "plataforma-comauto";
 export const SENHA_MINIMA = 6;
@@ -32,19 +34,44 @@ export async function contaDaPlataforma(userId: string): Promise<boolean> {
   return data.user.app_metadata?.origem === ORIGEM;
 }
 
+export async function verificarTrocaMinhaSenha(u: Usuario): Promise<{ ok: true; compartilhada: boolean } | { ok: false; motivo: string }> {
+  try {
+    const { data, error } = await db().auth.admin.getUserById(u.id);
+    if (error || !data.user || data.user.id.toLowerCase() !== u.id.toLowerCase()) {
+      return { ok: false, motivo: "Não foi possível verificar seu login agora. Tente novamente." };
+    }
+    if (data.user.app_metadata?.origem === ORIGEM) return { ok: true, compartilhada: false };
+    const permissoes = await obterPermissoesSenhas(u);
+    if (permissoes.principal && permissoes.principalId === u.id.toLowerCase()) return { ok: true, compartilhada: true };
+    return { ok: false, motivo: "Seu login é o mesmo de outro sistema do grupo. Para não mudar a senha de lá, troque a senha no sistema de origem." };
+  } catch { return { ok: false, motivo: "Não foi possível verificar seu login agora. Tente novamente." }; }
+}
+
 export async function trocarMinhaSenha(u: Usuario, atual: string, nova: string, confirmar: string): Promise<ResultadoConta> {
   const invalida = validarNovaSenha(atual, nova, confirmar);
   if (invalida) return { ok: false, motivo: invalida };
-  if (!(await contaDaPlataforma(u.id))) {
-    return { ok: false, motivo: "Seu login é o mesmo de outro sistema do grupo. Para não mudar a senha de lá, troque a senha no sistema de origem." };
-  }
+  const verificacao = await verificarTrocaMinhaSenha(u);
+  if (!verificacao.ok) return verificacao;
   // confirma a senha atual sem criar sessão no navegador
   const verificador = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!, {
     auth: { persistSession: false, autoRefreshToken: false },
   });
-  const { error: errAtual } = await verificador.auth.signInWithPassword({ email: u.email, password: atual });
-  if (errAtual) return { ok: false, motivo: "Senha atual incorreta" };
-  await verificador.auth.signOut().catch(() => undefined);
+  let autenticado = false;
+  try {
+    const { data, error: errAtual } = await verificador.auth.signInWithPassword({ email: u.email, password: atual });
+    if (errAtual) return { ok: false, motivo: errAtual.code === "invalid_credentials" ? "Senha atual incorreta"
+      : "Não foi possível confirmar a senha atual agora. Tente novamente." };
+    autenticado = true;
+    if (!data.user || data.user.id.toLowerCase() !== u.id.toLowerCase()) {
+      return { ok: false, motivo: "A confirmação não corresponde ao seu login atual. Entre novamente." };
+    }
+  } catch { return { ok: false, motivo: "Não foi possível confirmar a senha atual agora. Tente novamente." }; }
+  finally {
+    // O cliente temporário não pode encerrar as sessões do painel ou de outros dispositivos.
+    if (autenticado) await verificador.auth.signOut({ scope: "local" }).catch(() => undefined);
+  }
+  const atualizada = await verificarTrocaMinhaSenha(u);
+  if (!atualizada.ok) return atualizada;
 
   const { error } = await db().auth.admin.updateUserById(u.id, { password: nova });
   if (error) {

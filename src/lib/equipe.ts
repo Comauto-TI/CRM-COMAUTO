@@ -4,12 +4,14 @@ import { db } from "@/lib/supabase/admin";
 import { auditar } from "@/lib/audit";
 import { papelValido, setorValido } from "@/lib/permissoes";
 import type { Usuario } from "@/lib/auth";
+import { obterPermissoesSenhas, podeAlterarPerfilUsuario } from "@/lib/permissoes-senhas";
 
 /**
  * Equipe da plataforma (cadastro pelo admin, sem mexer no Supabase na mão).
  * CUIDADO: o Auth do banco de dev é COMPARTILHADO com o processo-vendas-teste.
  *  - e-mail que já tem login em outro sistema → só vincula ao painel (não troca a senha dele);
- *  - redefinir senha → só de quem foi criado pela plataforma (app_metadata controlado pelo servidor);
+ *  - redefinir senha → só de quem foi criado pela plataforma (app_metadata do servidor), exceto o próprio
+ *    administrador principal identificado pelo UUID de configuração, com sua autoridade atual validada;
  *  - desativar → tira o acesso ao PAINEL (usuarios.ativo = false); nunca apaga usuário do Auth.
  */
 
@@ -60,6 +62,7 @@ export async function criarMembro(
   let senhaProvisoria: string | undefined;
   let vinculado = false;
   let recuperado = false;
+  let principalRecuperacao: string | null = null;
   let existente: Awaited<ReturnType<typeof acharNoAuthPorEmail>>;
   try {
     existente = await acharNoAuthPorEmail(email);
@@ -75,6 +78,11 @@ export async function criarMembro(
       // Retoma somente um login cuja criação pelo CRM foi registrada pelo servidor.
       // A primeira tentativa pode ter criado o Auth e falhado ao incluir na equipe.
       recuperado = true;
+      const permissoes = await obterPermissoesSenhas(admin);
+      if (!permissoes.podeRedefinir || (userId.toLowerCase() === permissoes.principalId && !permissoes.principal)) {
+        return { ok: false, motivo: "Só o administrador principal ou um administrador autorizado pode recuperar esse login." };
+      }
+      principalRecuperacao = permissoes.principalId;
     } else {
       vinculado = true;
     }
@@ -94,6 +102,10 @@ export async function criarMembro(
   if (recuperado) {
     // O INSERT único escolhe quem pode recuperar. Uma tentativa concorrente que
     // perdeu a inclusão não pode invalidar a senha devolvida pela vencedora.
+    const permissoes = await obterPermissoesSenhas(admin, userId);
+    if (!permissoes.podeRedefinir || !permissoes.alvoAtivo || permissoes.principalId !== principalRecuperacao || (userId.toLowerCase() === permissoes.principalId && !permissoes.principal)) {
+      return { ok: false, motivo: "A pessoa foi incluída, mas seu acesso ou a permissão para redefinir senhas mudou. Peça ao administrador principal." };
+    }
     senhaProvisoria = gerarSenhaProvisoria();
     const { error } = await db().auth.admin.updateUserById(userId, { password: senhaProvisoria });
     if (error) {
@@ -111,20 +123,31 @@ export async function definirAtivo(admin: Usuario, userId: string, ativo: boolea
   userId = userId.toLowerCase();
   if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/.test(userId)) return { ok: false, motivo: "Usuário inválido" };
   if (userId === admin.id.toLowerCase() && !ativo) return { ok: false, motivo: "Você não pode desativar o próprio acesso" };
-  const { data } = await db().from("usuarios").update({ ativo }).eq("user_id", userId).select("user_id");
+  if (!(await podeAlterarPerfilUsuario(admin, userId, ativo, "admin"))) return { ok: false, motivo: "A conta principal está protegida ou seu acesso não está disponível." };
+  const { data } = await db().from("usuarios").update({ ativo, ...(!ativo ? { pode_redefinir_senhas: false } : {}) }).eq("user_id", userId).select("user_id");
   if (!data?.length) return { ok: false, motivo: "Usuário não encontrado" };
   await auditar(admin.email, ativo ? "equipe_reativar" : "equipe_desativar", "usuarios", userId);
   return { ok: true, mensagem: ativo ? "Acesso reativado." : "Acesso ao painel desativado (o login nos outros sistemas não muda)." };
 }
 
 export async function redefinirSenha(admin: Usuario, userId: string): Promise<ResultadoEquipe> {
-  if (!/^[0-9a-f-]{36}$/i.test(userId)) return { ok: false, motivo: "Usuário inválido" };
-  const { data: membro } = await db().from("usuarios").select("nome").eq("user_id", userId).maybeSingle();
-  if (!membro) return { ok: false, motivo: "Usuário não encontrado" };
+  if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(userId)) return { ok: false, motivo: "Usuário inválido" };
+  userId = userId.toLowerCase();
+  const permissoes = await obterPermissoesSenhas(admin);
+  if (!permissoes.podeRedefinir || (userId === permissoes.principalId && !permissoes.principal)) {
+    return { ok: false, motivo: "Só o administrador principal ou um administrador autorizado pode redefinir esta senha." };
+  }
+  const { data: membro, error: erroMembro } = await db().from("usuarios").select("nome,ativo").eq("user_id", userId).maybeSingle();
+  if (erroMembro || !membro || membro.ativo !== true) return { ok: false, motivo: "Usuário ativo não encontrado" };
   const { data: au, error } = await db().auth.admin.getUserById(userId);
-  if (error || !au.user) return { ok: false, motivo: "Login não encontrado" };
-  if (au.user.app_metadata?.origem !== ORIGEM) {
+  if (error || !au.user || au.user.id.toLowerCase() !== userId) return { ok: false, motivo: "Login não encontrado" };
+  const proprioPrincipal = permissoes.principal && userId === permissoes.principalId;
+  if (au.user.app_metadata?.origem !== ORIGEM && !proprioPrincipal) {
     return { ok: false, motivo: "O CRM não tem comprovação de que criou este login. A senha foi preservada; faça a recuperação pelo sistema de origem." };
+  }
+  const atual = await obterPermissoesSenhas(admin, userId);
+  if (!atual.podeRedefinir || !atual.alvoAtivo || atual.principalId !== permissoes.principalId || (userId === atual.principalId && !atual.principal)) {
+    return { ok: false, motivo: "O acesso do usuário ou sua permissão para redefinir senhas mudou. Peça ao administrador principal." };
   }
   const senhaProvisoria = gerarSenhaProvisoria();
   const { error: e2 } = await db().auth.admin.updateUserById(userId, { password: senhaProvisoria });

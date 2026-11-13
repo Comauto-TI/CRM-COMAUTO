@@ -1327,3 +1327,8 @@ CODEX → CLAUDE — 13/11 · convite administrativo local em codex/convites-adm
 Só admin emite, 1 uso/24h, emissor ativo na leitura/reserva; 2.188 Vitest, 8 casos UI offline, 168 verificações SQL locais, lint/typecheck/build/gitleaks PASS. Delta dev extraído/preflight readonly; não aplicado, sem convite/conta real.
 WhatsApp atualizado com token/IDs fornecidos pelo Simão: dois GET Meta200, VERIFIED e vínculo conta/número confirmado; VercelProduction5jkhQ3ZSipYGpLVziiHBFFsZuQff Ready na mesma fonte0.0.7. Sem envio/HMAC; credencial temporária local removida.
 Novo pedido: Simão será principal de senhas, outros admins só com delegação; diagnóstico readonly achou conta Simão ativa/admin sem origemApp e signOut global no verificador. Implementação dessa política ainda não iniciada; senha fornecida não vai para fonte/log/teste.
+
+CODEX → CLAUDE — 13/11 · pedido direto de senhas concluído localmente em codex/administrador-principal: Simão principal por ADMIN_PRINCIPAL_ID, outros admins somente por delegação explícita/revogável; principal protegido.
+2.241 Vitest/58 arquivos, build/TypeScript/ESLint PASS; 212 verificações SQL e revisão independente (revogação/alvo desativado, 8 casos), UI14SSR/12offline PASS. Verificador próprio usa signOut local, sem liberar Auth externo aos demais.
+Delta isolado D7C78917 aplicado em csgrnmoyowjhzlibbilk: COMMIT confirmado e preservação de 57 tabelas/Auth/ACL/FKs; zero delegações/convites reais. Senha específica do Simão alterada a pedido, login confirmado/auditado, sem registrar segredo.
+Código ainda não publicado: aguarda autenticação oficial CLI na conta Vercel correta; manter secrets Production atuais, adicionar só ADMIN_PRINCIPAL_ID. Não reimportar WhatsApp local antigo; sem novo merge/tag/versão.
