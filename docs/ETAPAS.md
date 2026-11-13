@@ -620,3 +620,15 @@ Nenhuma delegação concedida nem convite real gerado. Separadamente, senha da c
 conforme pedido explícito e login real confirmado, com auditoria e demais campos Auth preservados.
 Fonte ainda não publicada: aguarda autorização oficial do CLI Vercel na conta comautomgo-4088.
 Production mantém WhatsApp validado no deploy 5jkhQ3ZSipYGpLVziiHBFFsZuQff; não reimportar .env local antigo.
+
+13/11 14:51 UTC — Publicação concluída após autorização oficial do CLI pelo usuário, identidade
+comautomgo-4088 e projeto prj_alybdupRcjkyr1gH75TfBGNnio0B conferidos. Fonte exata e4c6e9569ec391c02888637435dc7e3a36ff99f1
+extraída por git archive, sem envs/credenciais/node_modules locais. Deploy 6EjsQHduy17KztunV2g2M98C46ay
+READY, verificado antes de promover o mesmo build para crm-comauto.vercel.app. Adicionada somente
+ADMIN_PRINCIPAL_ID em Production; secrets existentes preservados, sem reimportar WhatsApp local antigo.
+Seis GETs públicos passaram antes/depois: login/legais HTTP200 e Usuários/Minha conta redirecionam anônimos.
+Navegador na sessão existente Admin Teste confirmou convite administrativo, orientação de pedir delegação,
+ausência de controles de redefinição e perfil Simão protegido. Depois observou-se convite gerado/copiado
+pelo próprio usuário durante a interação; Codex não gerou/cancelou convite nem concedeu delegação/resetou
+outra conta. Principal/delegação não foram exercitados por escrita real no painel. Captura privada sem token.
+Sem merge/tag nova; package permanece 0.0.8, entrega registrada em Não lançado até revisão/merge.
