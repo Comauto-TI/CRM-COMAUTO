@@ -30,9 +30,10 @@ export default async function Agendamentos({ searchParams }: { searchParams: Pro
   const cfg = await getConfig();
   const off = cfg.fuso_offset;
   const sp = await searchParams;
-  const hoje = dataLocalISO(new Date(), off);
+  const agora = new Date();
+  const hoje = dataLocalISO(agora, off);
   const de = sp.de ?? hoje;
-  const ate = sp.ate ?? dataLocalISO(new Date(Date.now() + 7 * 86400_000), off);
+  const ate = sp.ate ?? dataLocalISO(new Date(agora.getTime() + 7 * 86400_000), off);
 
   let q = db()
     .from("agendamentos")

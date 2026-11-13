@@ -9,6 +9,7 @@ Versionamento semântico a partir de **0.0.1** (decisão do Simão, 10/11/2026).
 - Quem mescla na `main` (Claude ou Codex) atualiza `package.json`, este arquivo e cria a tag.
 
 ## [Não lançado]
+- Lint instala suas dependências isoladas; oito erros corrigidos sem desativar regras. Menu e notificações usam snapshots seguros para hidratação; troca de aba/conversa descarta respostas atrasadas e limpa os rascunhos do contexto anterior.
 
 ## [0.0.8] — 12/11/2026 — Transferência entre setores, páginas legais e configuração da Vercel
 ### Adicionado

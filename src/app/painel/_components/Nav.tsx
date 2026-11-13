@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState, useSyncExternalStore } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import Icone from "./Icone";
@@ -65,6 +65,29 @@ const GRUPOS: Grupo[] = [
 ];
 
 const CHAVE_LOCAL = "comauto.menu.abertos";
+const EVENTO_MENU = "comauto:menu-abertos";
+const menuNoServidor = () => null;
+function lerMenuSalvo() {
+  try { return localStorage.getItem(CHAVE_LOCAL); } catch { return null; }
+}
+function observarMenu(notificar: () => void) {
+  const mudou = (event: StorageEvent) => { if (event.key === CHAVE_LOCAL || event.key === null) notificar(); };
+  window.addEventListener("storage", mudou);
+  window.addEventListener(EVENTO_MENU, notificar);
+  return () => {
+    window.removeEventListener("storage", mudou);
+    window.removeEventListener(EVENTO_MENU, notificar);
+  };
+}
+function gruposSalvos(texto: string | null): string[] | null {
+  if (texto === null) return null;
+  try {
+    const salvos: unknown = JSON.parse(texto);
+    if (!Array.isArray(salvos)) return null;
+    const validos = salvos.filter((chave): chave is string => typeof chave === "string" && GRUPOS.some(grupo => grupo.chave === chave));
+    return validos.length ? validos : null;
+  } catch { return null; }
+}
 const ativoEm = (href: string, pathname: string) => (href === "/painel" ? pathname === "/painel" : pathname.startsWith(href));
 
 export default function Nav({ papel, setor, fila }: { papel: Papel; setor: Setor; fila: number }) {
@@ -77,21 +100,21 @@ export default function Nav({ papel, setor, fila }: { papel: Papel; setor: Setor
   // grupos abertos: lembra a escolha da pessoa neste computador; o grupo da página atual e o do
   // SETOR de quem entrou abrem sozinhos
   const padrao = [setor];
-  const [abertos, setAbertos] = useState<string[] | null>(null);
-  useEffect(() => {
-    let salvos: string[] = [];
-    try { salvos = JSON.parse(localStorage.getItem(CHAVE_LOCAL) ?? "[]"); } catch { /* sem armazenamento: usa o padrão */ }
-    // chaves antigas do menu por função ("relacionamento", "gestao") não valem mais
-    const validos = Array.isArray(salvos) ? salvos.filter((c) => GRUPOS.some((g) => g.chave === c)) : [];
-    setAbertos(validos.length ? validos : padrao);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  const salvo = useSyncExternalStore(observarMenu, lerMenuSalvo, menuNoServidor);
+  const [escolha, setEscolha] = useState<{ salvo: string | null; grupos: string[] } | null>(null);
+  const abertos = escolha?.salvo === salvo ? escolha.grupos : gruposSalvos(salvo);
   const estaAberto = (chave: string) => chave === grupoAtual || (abertos ?? padrao).includes(chave);
   function alternar(chave: string) {
     const atual = abertos ?? padrao;
     const novo = atual.includes(chave) ? atual.filter((c) => c !== chave) : [...atual, chave];
-    setAbertos(novo);
-    try { localStorage.setItem(CHAVE_LOCAL, JSON.stringify(novo)); } catch { /* ignora */ }
+    let proximoSalvo = salvo;
+    try {
+      const texto = JSON.stringify(novo);
+      localStorage.setItem(CHAVE_LOCAL, texto);
+      proximoSalvo = texto;
+      window.dispatchEvent(new Event(EVENTO_MENU));
+    } catch { /* mantém a escolha desta interação mesmo sem armazenamento */ }
+    setEscolha({ salvo: proximoSalvo, grupos: novo });
   }
 
   const link = (i: Item, sub = false) => {

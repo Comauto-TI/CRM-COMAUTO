@@ -15,7 +15,8 @@ export function aniversarioMaisProximo(nascimento: string, hojeISO: string): { d
   const hoje = Date.UTC(+h[1], +h[2] - 1, +h[3]);
   let melhor: { data: string; dias: number } | null = null;
   for (const ano of [+h[1] - 1, +h[1], +h[1] + 1]) {
-    let mes = +m[2] - 1, dia = +m[3];
+    const mes = +m[2] - 1;
+    let dia = +m[3];
     const bissexto = (ano % 4 === 0 && ano % 100 !== 0) || ano % 400 === 0;
     if (mes === 1 && dia === 29 && !bissexto) dia = 28;
     const t = Date.UTC(ano, mes, dia);

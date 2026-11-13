@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { useRouter, useSearchParams, usePathname } from "next/navigation";
 import Conversa, { corAvatar, iniciais } from "./Conversa";
 
@@ -29,6 +29,20 @@ function quando(d: string | null) {
 }
 const minutos = (d: string | null) => (d ? Math.max(0, Math.floor((Date.now() - new Date(d).getTime()) / 60000)) : 0);
 
+const EVENTO_NOTIFICACAO = "comauto:notificacao-permissao";
+function observarNotificacoes(atualizar: () => void) {
+  window.addEventListener("focus", atualizar);
+  window.addEventListener(EVENTO_NOTIFICACAO, atualizar);
+  document.addEventListener("visibilitychange", atualizar);
+  return () => {
+    window.removeEventListener("focus", atualizar);
+    window.removeEventListener(EVENTO_NOTIFICACAO, atualizar);
+    document.removeEventListener("visibilitychange", atualizar);
+  };
+}
+const permissaoNotificacao = (): NotificationPermission | "indisponivel" => typeof Notification === "undefined" ? "indisponivel" : Notification.permission;
+const permissaoServidor = (): NotificationPermission => "granted";
+
 export default function Inbox({ slaMin }: { slaMin: number }) {
   const router = useRouter();
   const pathname = usePathname();
@@ -36,33 +50,50 @@ export default function Inbox({ slaMin }: { slaMin: number }) {
   const aba = params.get("aba") ?? "espera";
   const selecionada = params.get("c") ?? params.get("abrir");
   const [busca, setBusca] = useState("");
-  const [dados, setDados] = useState<Resp | null>(null);
-  const [notif, setNotif] = useState<NotificationPermission | "indisponivel">("granted");
-  useEffect(() => setNotif(typeof Notification === "undefined" ? "indisponivel" : Notification.permission), []);
+  const chave = JSON.stringify([aba, busca]);
+  const [resposta, setResposta] = useState<{ chave: string; dados: Resp | null }>({ chave, dados: null });
+  // Ajuste de identidade durante a renderização: A→B→A também começa sem a lista antiga de A.
+  if (resposta.chave !== chave) setResposta({ chave, dados: null });
+  const dados = resposta.chave === chave ? resposta.dados : null;
+  const escopoRef = useRef<{ chave: string; controller: AbortController; sequencia: number } | null>(null);
+  const notif = useSyncExternalStore(observarNotificacoes, permissaoNotificacao, permissaoServidor);
 
   const irPara = (novo: Record<string, string | null>) => {
     const p = new URLSearchParams(params.toString());
     p.delete("abrir");
-    for (const [k, v] of Object.entries(novo)) (v === null ? p.delete(k) : p.set(k, v));
+    for (const [k, v] of Object.entries(novo)) {
+      if (v === null) p.delete(k);
+      else p.set(k, v);
+    }
     router.replace(`${pathname}?${p.toString()}`, { scroll: false });
   };
 
-  // troca de aba: limpa a lista na hora (mostra esqueleto) para nunca clicar num item da aba anterior
-  useEffect(() => setDados(null), [aba]);
-
   const carregar = useCallback(async () => {
-    const r = await fetch(`/api/painel/inbox?aba=${aba}&q=${encodeURIComponent(busca)}`, { cache: "no-store" });
-    if (r.ok) setDados(await r.json());
-  }, [aba, busca]);
+    const escopo = escopoRef.current;
+    if (!escopo || escopo.chave !== chave || escopo.controller.signal.aborted) return;
+    const sequencia = ++escopo.sequencia;
+    const atual = () => escopoRef.current === escopo && !escopo.controller.signal.aborted && escopo.sequencia === sequencia;
+    try {
+      const r = await fetch(`/api/painel/inbox?aba=${aba}&q=${encodeURIComponent(busca)}`, { cache: "no-store", signal: escopo.controller.signal });
+      const dados: Resp | null = r.ok ? await r.json() : null;
+      if (atual()) setResposta({ chave, dados });
+    } catch {
+      if (atual()) setResposta({ chave, dados: null });
+    }
+  }, [aba, busca, chave]);
 
   useEffect(() => {
+    const escopo = { chave, controller: new AbortController(), sequencia: 0 };
+    escopoRef.current = escopo;
     const t0 = setTimeout(carregar, busca ? 250 : 0); // debounce da busca
     const t = setInterval(carregar, 5000);
     return () => {
       clearTimeout(t0);
       clearInterval(t);
+      escopo.controller.abort();
+      if (escopoRef.current === escopo) escopoRef.current = null;
     };
-  }, [carregar, busca]);
+  }, [carregar, busca, chave]);
 
   return (
     <div className={`wa ${selecionada ? "tem-selecao" : ""}`}>
@@ -73,7 +104,7 @@ export default function Inbox({ slaMin }: { slaMin: number }) {
             {dados && <span className="mudo">{dados.contagem.minhas} com você · limite de espera {slaMin} min</span>}
           </div>
           {notif === "default" && (
-            <button className="wa-notif" onClick={() => Notification.requestPermission().then(setNotif)}>🔔 Ativar notificações de novos atendimentos</button>
+            <button className="wa-notif" onClick={() => Notification.requestPermission().then(() => window.dispatchEvent(new Event(EVENTO_NOTIFICACAO)))}>🔔 Ativar notificações de novos atendimentos</button>
           )}
           <div className="wa-busca">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true"><circle cx="11" cy="11" r="7" /><path d="m20 20-3.5-3.5" /></svg>

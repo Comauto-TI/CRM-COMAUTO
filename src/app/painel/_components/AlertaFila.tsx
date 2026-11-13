@@ -1,9 +1,43 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { useRouter, useSearchParams, usePathname } from "next/navigation";
 
 type Item = { id: string; cliente: string; telefone: string; motivo: string | null; aguardandoDesde: string | null };
+type PermissaoNotificacao = NotificationPermission | "indisponivel";
+const EVENTO_PERMISSAO = "comauto:notificacao-permissao";
+const permissaoNoServidor = (): PermissaoNotificacao => "indisponivel";
+const lerPermissao = (): PermissaoNotificacao => typeof Notification === "undefined" ? "indisponivel" : Notification.permission;
+
+/** A permissão pertence ao navegador; acompanha mudanças externas sem copiá-la para estado React. */
+function observarPermissao(notificar: () => void) {
+  let ativo = true;
+  let permissao: PermissionStatus | null = null;
+  window.addEventListener("focus", notificar);
+  window.addEventListener(EVENTO_PERMISSAO, notificar);
+  document.addEventListener("visibilitychange", notificar);
+  if (navigator.permissions?.query) {
+    navigator.permissions.query({ name: "notifications" }).then(status => {
+      if (!ativo) return;
+      permissao = status;
+      status.addEventListener("change", notificar);
+      notificar();
+    }).catch(() => { /* alguns navegadores não expõem notifications na Permissions API */ });
+  }
+  return () => {
+    ativo = false;
+    window.removeEventListener("focus", notificar);
+    window.removeEventListener(EVENTO_PERMISSAO, notificar);
+    document.removeEventListener("visibilitychange", notificar);
+    permissao?.removeEventListener("change", notificar);
+  };
+}
+
+function pedirPermissao() {
+  if (typeof Notification === "undefined") return;
+  const atualizar = () => window.dispatchEvent(new Event(EVENTO_PERMISSAO));
+  Notification.requestPermission().then(atualizar, atualizar);
+}
 
 function tempo(desde: string | null) {
   if (!desde) return "";
@@ -43,16 +77,12 @@ export default function AlertaFila() {
     e.stopPropagation();
     setDispensados((d) => new Set(d).add(id));
   };
-  const [permissao, setPermissao] = useState<NotificationPermission | "indisponivel">("default");
+  const permissao = useSyncExternalStore(observarPermissao, lerPermissao, permissaoNoServidor);
 
   // abre a conversa na central de atendimento (estilo WhatsApp)
   const abrir = (id: string) => router.push(`/painel/conversas?aba=espera&c=${id}`, { scroll: false });
   const naCentral = pathname.startsWith("/painel/conversas");
   void params;
-
-  useEffect(() => {
-    setPermissao(typeof Notification === "undefined" ? "indisponivel" : Notification.permission);
-  }, []);
 
   useEffect(() => {
     let ativo = true;
@@ -103,7 +133,7 @@ export default function AlertaFila() {
   return (
     <div className="toast-pilha" aria-live="polite">
       {permissao === "default" && !dispensados.has("notif") && !naCentral && (
-        <div className="toast info" onClick={() => Notification.requestPermission().then(setPermissao)}>
+        <div className="toast info" onClick={pedirPermissao}>
           <button className="toast-fechar" onClick={dispensar("notif")} aria-label="Dispensar">×</button>
           <strong>Ativar notificações</strong>
           <div className="mudo">Clique para ser avisada de novos atendimentos mesmo com o painel em outra aba.</div>

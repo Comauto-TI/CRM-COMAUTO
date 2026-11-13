@@ -35,7 +35,11 @@ export function iniciais(nome: string) {
 }
 
 /** Conversa estilo WhatsApp (chat + ficha do lead). Usada na caixa de entrada do Atendimento. */
-export default function Conversa({ id, onMudou, onVoltar }: { id: string; onMudou?: () => void; onVoltar?: () => void }) {
+export default function Conversa(props: { id: string; onMudou?: () => void; onVoltar?: () => void }) {
+  return <ConversaDoCliente key={props.id} {...props} />;
+}
+
+function ConversaDoCliente({ id, onMudou, onVoltar }: { id: string; onMudou?: () => void; onVoltar?: () => void }) {
   const [dados, setDados] = useState<Dados | null>(null);
   const [texto, setTexto] = useState("");
   const [nota, setNota] = useState("");
@@ -44,20 +48,32 @@ export default function Conversa({ id, onMudou, onVoltar }: { id: string; onMudo
   const [pendente, iniciar] = useTransition();
   const fimRef = useRef<HTMLDivElement>(null);
   const qtdMsgs = useRef(0);
+  const requisicoes = useRef<{ controller: AbortController; sequencia: number } | null>(null);
 
   const carregar = useCallback(async () => {
-    const r = await fetch(`/api/painel/conversa/${id}`, { cache: "no-store" });
-    if (r.ok) setDados(await r.json());
+    const escopo = requisicoes.current;
+    if (!escopo || escopo.controller.signal.aborted) return;
+    const sequencia = ++escopo.sequencia;
+    const atual = () => requisicoes.current === escopo && !escopo.controller.signal.aborted && escopo.sequencia === sequencia;
+    try {
+      const r = await fetch(`/api/painel/conversa/${id}`, { cache: "no-store", signal: escopo.controller.signal });
+      const dados: Dados | null = r.ok ? await r.json() : null;
+      if (atual()) setDados(dados);
+    } catch {
+      if (atual()) setDados(null);
+    }
   }, [id]);
 
   useEffect(() => {
-    setDados(null);
-    setErro(null);
-    setTexto("");
-    qtdMsgs.current = 0;
+    const escopo = { controller: new AbortController(), sequencia: 0 };
+    requisicoes.current = escopo;
     carregar();
     const t = setInterval(carregar, 4000);
-    return () => clearInterval(t);
+    return () => {
+      clearInterval(t);
+      escopo.controller.abort();
+      if (requisicoes.current === escopo) requisicoes.current = null;
+    };
   }, [id, carregar]);
 
   useEffect(() => {
@@ -68,15 +84,19 @@ export default function Conversa({ id, onMudou, onVoltar }: { id: string; onMudo
     }
   }, [dados?.mensagens.length]);
 
-  const acao = (fn: () => Promise<{ ok: boolean; erro?: string }>, depois?: () => void) =>
+  const acao = (fn: () => Promise<{ ok: boolean; erro?: string }>, depois?: () => void) => {
+    const escopo = requisicoes.current;
+    if (!escopo || escopo.controller.signal.aborted) return;
     iniciar(async () => {
       setErro(null);
       const r = await fn();
+      if (requisicoes.current !== escopo || escopo.controller.signal.aborted) return;
       if (!r.ok) setErro(r.erro ?? "Não foi possível concluir.");
       else depois?.();
       await carregar();
-      onMudou?.();
+      if (requisicoes.current === escopo && !escopo.controller.signal.aborted) onMudou?.();
     });
+  };
 
   const c = dados?.conversa;
   const minha = c?.assumida_por === dados?.eu;

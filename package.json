@@ -11,7 +11,7 @@
     "test": "vitest run",
     "lint:secrets": "gitleaks dir . --config .gitleaks.toml --redact --no-banner",
     "lint:secrets:git": "gitleaks git . --config .gitleaks.toml --redact --no-banner",
-    "lint": "node tools/lint/node_modules/eslint/bin/eslint.js --config tools/lint/eslint.config.mjs .",
+    "lint": "npm ci --prefix tools/lint --no-audit --no-fund --silent && node tools/lint/node_modules/eslint/bin/eslint.js --config tools/lint/eslint.config.mjs .",
     "test:e2e": "playwright test --config tests/e2e/playwright.config.mjs"
   },
   "engines": {

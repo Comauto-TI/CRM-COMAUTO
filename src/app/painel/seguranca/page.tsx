@@ -20,7 +20,8 @@ const ROTULO: Record<string, string> = {
 export default async function Seguranca() {
   await exigirAcesso("seguranca");
   const cfg = await getConfig();
-  const desde = new Date(Date.now() - 30 * 86400_000).toISOString();
+  const agora = new Date();
+  const desde = new Date(agora.getTime() - 30 * 86400_000).toISOString();
   const [{ data: eventos }, { data: auditoria }] = await Promise.all([
     db().from("eventos_seguranca").select("id, telefone, tipo, trecho, acao, criado_em").gte("criado_em", desde).order("criado_em", { ascending: false }).limit(300),
     db().from("audit_log").select("id, ator, acao, entidade, entidade_id, criado_em").order("criado_em", { ascending: false }).limit(150),
