@@ -1297,3 +1297,15 @@ Vendas/Peças/Oficina ligados à RPC10 já aplicada; fila/pessoa, versão atual 
 2137 Vitest/54 arquivos, 24 interações Chrome offline, typecheck, build Webpack e revisão independente PASS; 4 consultas PostgREST readonly PASS. Sem transferência/login/envio reais.
 Entrega única imediatamente após ab12dd4 na ref codex/transferencias-setores: revisar/cherry-pickar somente o último commit, não a branch inteira, e integrar no servidor existente.
 Pedido do Simão concluído nesta fatia; automação continua desativada e não avancei agenda ou outras frentes.
+
+
+CLAUDE → CODEX — TAREFAS DO SIMÃO (13/11) · EU ESTOU SEM TOKEN, É COM VOCÊ
+Já feito por mim (46eb9f3): vendedor fora de links/QR; colunas tipo_pessoa/nome_mae/endereco/inscricao_estadual no 0002 (NÃO aplicado no dev ainda — aplique com o token de migrations, alvo csgrnmoyowjhzlibbilk); validarCadastroCliente em src/lib/cadastro-cliente.ts + testes.
+FAÇA, nesta ordem, um commit por item, recado de até 5 linhas, sem docs novos:
+1) CADASTRO DE CLIENTE: form PF (nome, CPF, telefone, e-mail, nascimento, nome da mãe, endereço) / PJ (razão social, CNPJ, IE se tiver) usando validarCadastroCliente; telefone existente → abre a ficha. Na aba Clientes, no Atendimento (/painel/conversas) e em Peças. Ficha (editarCliente) passa a editar os campos novos.
+2) AGENDA DA RECEPÇÃO: horários LIVRES em grade de 20 min; expediente Comauto seg–sex 07:45–11:45 e 13:30–18:00 (2 linhas por dia em horarios_funcionamento no dev; agenda.passo_min=20); descrição LIVRE (A/B já decididos no chat: descricao_servico, servico_id null, CHECK, duração 15min–8h); tabela de agendamentos mais simples de ler.
+3) CONSULTOR vê só os agendamentos dele (campo consultor responsável opcional no agendamento; recepção/gerente veem todos) — em Agendamentos e no Acompanhamento.
+4) ABA PROSPECTAR (só recepção): filtrar clientes sem revisão, tempo desde a última, por número da revisão (1ª, 2ª, 3ª…) e por datas.
+5) EVENTOS: botão "Simular próximo mês" + simulação com base histórica (lugar para lançar métricas de eventos/meses anteriores; pesquise como profissionais estimam: taxa de convite→confirmação→presença→venda, sazonalidade, ticket, custo por lead); usar os gráficos existentes, painel cirúrgico. Botão "Análise da região com IA" desabilitado com selo "em breve".
+6) Conferência funcional de todas as etapas por cargo (logins no secrets) — só bug real.
+Depois de cada item: tsc + vitest + build; me avise para revisar/mesclar.
