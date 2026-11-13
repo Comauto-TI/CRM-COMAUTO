@@ -77,6 +77,16 @@ alter table clientes add column if not exists data_nascimento date;
 alter table clientes add column if not exists vendedor_id uuid references usuarios (user_id) on delete set null; -- carteira
 alter table clientes add column if not exists unidade_origem text references unidades (chave);
 alter table clientes add column if not exists ids_externos jsonb not null default '{}'; -- {bravus, processo_vendas, revisao, avaliex}
+-- Cadastro completo pela recepção/Peças (13/11): física ou jurídica
+alter table clientes add column if not exists tipo_pessoa text not null default 'fisica';
+alter table clientes add column if not exists nome_mae text;
+alter table clientes add column if not exists endereco text;
+alter table clientes add column if not exists inscricao_estadual text;
+do $ begin
+  if not exists (select 1 from pg_constraint where conname = 'clientes_tipo_pessoa_check') then
+    alter table clientes add constraint clientes_tipo_pessoa_check check (tipo_pessoa in ('fisica','juridica'));
+  end if;
+end $;
 create index if not exists clientes_cpf_cnpj_idx on clientes (cpf_cnpj);
 create index if not exists clientes_vendedor_idx on clientes (vendedor_id);
 do $$

@@ -52,7 +52,7 @@ export const AREAS = {
   clientes: ["gerente", "vendedor", "consultor_tecnico", "pecas", ...RECEPCAO],
   atendimento: ["gerente", ...RECEPCAO], // central geral = triagem (recepção + gerente de Oficina/administração + admin); cada setor atende pelos próprios cartões (decisão do Simão 12/11)
   agenda: ["gerente", "consultor_tecnico", ...RECEPCAO],
-  links: ["gerente", "vendedor", ...RECEPCAO],
+  links: ["gerente", ...RECEPCAO], // QR/links são de eventos e ações dos gerentes (Simão 13/11): vendedor fora
   followups: ["gerente", ...RECEPCAO],
   campanhas: ["gerente"],
   financeiro: ["financeiro"],
