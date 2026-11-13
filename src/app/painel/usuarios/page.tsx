@@ -32,7 +32,7 @@ export default async function Usuarios() {
       {tabela === "usuarios" && (
         <section className="card">
           <h2>Link de cadastro</h2>
-          <p className="mudo">Gere um link e mande no WhatsApp da pessoa: ela cria o próprio acesso já como vendedor, peças ou agendamento, na unidade escolhida. O link expira e tem limite de pessoas.</p>
+          <p className="mudo">Gere um link para vendedor, peças, agendamento ou administrador. A pessoa cria o próprio acesso; o convite de administrador concede acesso global e vale por 24 horas para uma única pessoa.</p>
           <NovoLink unidades={listaUnidades} />
           {convites.length > 0 && (
             <div className="tabela-wrap secao">

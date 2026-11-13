@@ -17,6 +17,7 @@ export const TIPOS_CONVITE = {
   vendas: { rotulo: "Vendedor (Vendas)", papel: "vendedor", setor: "vendas" },
   pecas: { rotulo: "Peças", papel: "pecas", setor: "pecas" },
   agendamento: { rotulo: "Agendamento / Recepção (Oficina)", papel: "recepcao", setor: "oficina" },
+  administrador: { rotulo: "Administrador (acesso global)", papel: "admin", setor: "administracao" },
 } as const;
 export type TipoConvite = keyof typeof TIPOS_CONVITE;
 
@@ -30,16 +31,20 @@ export type ConviteResumo = {
 
 export async function criarConvite(admin: Usuario, tipo: string, unidade: string, dias: number, usos: number):
   Promise<{ ok: true; token: string } | { ok: false; motivo: string }> {
-  if (!(tipo in TIPOS_CONVITE)) return { ok: false, motivo: "Tipo de cadastro inválido" };
+  if (admin?.papel !== "admin") return { ok: false, motivo: "Só um administrador pode gerar links de cadastro" };
+  if (typeof tipo !== "string" || !Object.hasOwn(TIPOS_CONVITE, tipo)) return { ok: false, motivo: "Tipo de cadastro inválido" };
   const { data: un } = await db().from("unidades").select("chave").eq("chave", unidade).maybeSingle();
   if (!un) return { ok: false, motivo: "Unidade inválida" };
-  const d = Math.min(30, Math.max(1, Math.floor(dias) || 7));
-  const n = Math.min(50, Math.max(1, Math.floor(usos) || 1));
+  // Convite administrativo é individual e curto, mesmo se o formulário for adulterado.
+  const d = tipo === "administrador" ? 1 : Math.min(30, Math.max(1, Math.floor(dias) || 7));
+  const n = tipo === "administrador" ? 1 : Math.min(50, Math.max(1, Math.floor(usos) || 1));
   const t = TIPOS_CONVITE[tipo as TipoConvite];
   const token = randomBytes(32).toString("base64url");
+  const agora = Date.now();
   const { error } = await db().from("plataforma_convites").insert({
     token_hash: hash(token), tipo, papel: t.papel, setor: t.setor, unidade, criado_por: admin.id,
-    expira_em: new Date(Date.now() + d * 86_400_000).toISOString(), max_usos: n,
+    ...(tipo === "administrador" ? { criado_em: new Date(agora).toISOString() } : {}),
+    expira_em: new Date(agora + d * 86_400_000).toISOString(), max_usos: n,
   });
   if (error) return { ok: false, motivo: "Não foi possível criar o link" };
   await auditar(admin.email, "criar_convite", "plataforma_convites", null, { tipo, unidade, dias: d, usos: n });
@@ -62,8 +67,15 @@ export async function revogarConvite(admin: Usuario, id: string): Promise<boolea
 /** Para a página pública: o link ainda vale? (não reserva uso) */
 export async function lerConvite(token: string): Promise<{ tipo: TipoConvite; unidade: string } | null> {
   if (!TOKEN.test(token)) return null;
-  const { data } = await db().from("plataforma_convites").select("tipo, unidade, expira_em, max_usos, usos, revogado_em").eq("token_hash", hash(token)).maybeSingle();
+  const { data } = await db().from("plataforma_convites").select("tipo, unidade, expira_em, max_usos, usos, revogado_em, papel, setor, criado_por, criado_em").eq("token_hash", hash(token)).maybeSingle();
   if (!data || data.revogado_em || new Date(data.expira_em as string) <= new Date() || (data.usos as number) >= (data.max_usos as number)) return null;
+  if (data.tipo === "administrador") {
+    const inicio = Date.parse(data.criado_em as string), fim = Date.parse(data.expira_em as string);
+    if (data.papel !== "admin" || data.setor !== "administracao" || data.max_usos !== 1 || !data.criado_por
+      || !Number.isFinite(inicio) || !Number.isFinite(fim) || fim <= inicio || fim - inicio > 86_400_000) return null;
+    const { data: emissor, error } = await db().from("usuarios").select("user_id").eq("user_id", data.criado_por).eq("ativo", true).eq("papel", "admin").maybeSingle();
+    if (error || !emissor) return null;
+  }
   return { tipo: data.tipo as TipoConvite, unidade: data.unidade as string };
 }
 
@@ -84,7 +96,8 @@ export async function cadastrarPeloConvite(token: string, d: { nome: string; ema
   const nome = d.nome.trim().replace(/\s+/g, " ").slice(0, 80);
   const email = d.email.trim().toLowerCase();
   // PR8-CONV-001: o link é validado ANTES de consultar o e-mail — sem link válido, ninguém descobre se um e-mail tem conta
-  if (!(await lerConvite(token))) return { ok: false, motivo: "Este link expirou, foi cancelado ou já foi usado." };
+  const convite = await lerConvite(token);
+  if (!convite) return { ok: false, motivo: "Este link expirou, foi cancelado ou já foi usado." };
   if (await acharNoAuthPorEmail(email)) {
     return { ok: false, motivo: "Esse e-mail já tem login em um sistema do grupo. Peça ao administrador para incluir você pelo painel." };
   }
@@ -92,6 +105,12 @@ export async function cadastrarPeloConvite(token: string, d: { nome: string; ema
   const { data: r, error: errRes } = await db().rpc("reservar_convite", { p_hash: hash(token) });
   const conv = r as { ok: boolean; id?: string; papel?: string; setor?: string; unidade?: string; criado_por?: string | null; tipo?: string } | null;
   if (errRes || !conv?.ok || !conv.id) return { ok: false, motivo: "Este link expirou, foi cancelado ou já foi usado." };
+  if ((convite.tipo === "administrador" || conv.tipo === "administrador" || conv.papel === "admin")
+    && (convite.tipo !== "administrador" || conv.tipo !== "administrador" || conv.papel !== "admin"
+      || conv.setor !== "administracao" || conv.unidade !== convite.unidade || !conv.criado_por)) {
+    await db().rpc("devolver_convite", { p_id: conv.id });
+    return { ok: false, motivo: "Este link expirou, foi cancelado ou já foi usado." };
+  }
 
   const { data: criado, error: errAuth } = await db().auth.admin.createUser({
     email, password: d.senha, email_confirm: true, user_metadata: { nome }, app_metadata: { origem: ORIGEM },

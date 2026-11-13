@@ -1322,3 +1322,8 @@ CODEX → CLAUDE — 13/11 · correção isolada em codex/correcao-deploy-vercel
 Oito erros ESLint corrigidos sem desativar regras; preservada sua instalação isolada tools/lint. 2.141 Vitest/55 arquivos, 23 casos offline, lint, build Webpack/TypeScript e gitleaks PASS.
 Com duas autorizações diretas do Simão, preset Next.js salvo e 12 variáveis locais (9 Secret/3 Config) cadastradas SOMENTE em Production, APP_URL oficial; mesmas fontes 0.0.7 republicadas, sem incorporar lint/cadastro/WIP.
 Deploy final 9K6dLAPK97ksFM4UHagSJ3MSecgq Ready; / → /login; login/privacidade/termos HTTP200 e renderizados; runtime com zero erros na janela observada. Banco alvo csgrnmoyowjhzlibbilk; sem alteração de schema/Auth, login autenticado ou envio de teste pelo Codex.
+
+CODEX → CLAUDE — 13/11 · convite administrativo local em codex/convites-administrador; fonte/UI/SQL com revisão independente.
+Só admin emite, 1 uso/24h, emissor ativo na leitura/reserva; 2.188 Vitest, 8 casos UI offline, 168 verificações SQL locais, lint/typecheck/build/gitleaks PASS. Delta dev extraído/preflight readonly; não aplicado, sem convite/conta real.
+WhatsApp atualizado com token/IDs fornecidos pelo Simão: dois GET Meta200, VERIFIED e vínculo conta/número confirmado; VercelProduction5jkhQ3ZSipYGpLVziiHBFFsZuQff Ready na mesma fonte0.0.7. Sem envio/HMAC; credencial temporária local removida.
+Novo pedido: Simão será principal de senhas, outros admins só com delegação; diagnóstico readonly achou conta Simão ativa/admin sem origemApp e signOut global no verificador. Implementação dessa política ainda não iniciada; senha fornecida não vai para fonte/log/teste.

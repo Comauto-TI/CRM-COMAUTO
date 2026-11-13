@@ -597,3 +597,13 @@ Recorte posterior fechado com Claude: piloto somente nos três cartões, central
 hardening central fica com Claude. Em 12/11, a pedido direto do Simão, botão ligado em Vendas/Peças/Oficina,
 preparo servidor de opções/versão e confirmação pela RPC10 existente, sem migration nova. Testes de actions,
 cartões e navegador offline; consultas PostgREST de metadados sem escrita. Login/transferência real não executados.
+
+13/11 — Convite para administrador solicitado pelo Simão: implementação local em codex/convites-administrador,
+com um uso/24h, emissão por admin, emissor ativo revalidado e papel/setor do servidor. 2.188 Vitest/56 arquivos,
+8 casos de formulário offline, typecheck/ESLint/build/gitleaks passaram; revisão cruzada corrigiu reset do tipo
+e validade invertida no CHECK. SQL: 168 verificações locais em dois modos ACL, upgrade/reaplicação e preservação
+de 57 tabelas/ACL/Auth/FKs. Preflight do dev somente leitura confirmou CHECK antigo e RPC sem guarda admin;
+delta isolado 57C0E7BD..., sem aplicação remota ou geração de convite/conta. Publicação desse recurso pendente.
+WhatsApp: token fornecido pelo Simão aceito em dois GETs oficiais; número VERIFIED e pertencente à conta
+informada. Token/IDs atualizados como Secret em Production e fonte 0.0.7 republicada no deploy 5jkhQ3ZSipYGpLVziiHBFFsZuQff.
+Usuários abriu autenticado na sessão já existente do usuário; Codex não enviou mensagens nem validou HMAC/webhook.

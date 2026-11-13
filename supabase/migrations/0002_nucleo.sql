@@ -82,11 +82,11 @@ alter table clientes add column if not exists tipo_pessoa text not null default 
 alter table clientes add column if not exists nome_mae text;
 alter table clientes add column if not exists endereco text;
 alter table clientes add column if not exists inscricao_estadual text;
-do $ begin
+do $$ begin
   if not exists (select 1 from pg_constraint where conname = 'clientes_tipo_pessoa_check') then
     alter table clientes add constraint clientes_tipo_pessoa_check check (tipo_pessoa in ('fisica','juridica'));
   end if;
-end $;
+end $$;
 create index if not exists clientes_cpf_cnpj_idx on clientes (cpf_cnpj);
 create index if not exists clientes_vendedor_idx on clientes (vendedor_id);
 do $$
@@ -224,14 +224,14 @@ end $$;
 
 -- ---------------------------------------------------------------------
 -- Links de cadastro da equipe (pedido do Simão, 11/11): o admin gera um link por tipo
--- (vendas / pecas / agendamento) e a pessoa se cadastra já com papel, setor e unidade.
+-- (vendas / pecas / agendamento / administrador) e a pessoa se cadastra já com papel, setor e unidade.
 -- NÃO usar o nome "convites": já existe no banco compartilhado (processo-vendas-teste).
 -- Só o HASH do token é guardado; o link aparece uma única vez para o admin.
 -- ---------------------------------------------------------------------
 create table if not exists plataforma_convites (
   id          uuid primary key default gen_random_uuid(),
   token_hash  text not null unique check (token_hash ~ '^[0-9a-f]{64}$'),
-  tipo        text not null check (tipo in ('vendas', 'pecas', 'agendamento')),
+  tipo        text not null check (tipo in ('vendas', 'pecas', 'agendamento', 'administrador')),
   papel       text not null,
   setor       text not null,
   unidade     text not null references unidades (chave),
@@ -243,6 +243,32 @@ create table if not exists plataforma_convites (
   revogado_em timestamptz,
   check (usos <= max_usos)
 );
+-- Upgrade reaplicável: a tabela já existe no dev. O convite administrativo é individual,
+-- dura no máximo 24h e não permite trocar seu papel/setor por metadados de formulário.
+do $$
+begin
+  if exists (
+    select 1 from pg_constraint
+     where conrelid = 'public.plataforma_convites'::regclass
+       and conname = 'plataforma_convites_tipo_check'
+       and pg_get_constraintdef(oid) not like '%administrador%'
+  ) then
+    alter table plataforma_convites drop constraint plataforma_convites_tipo_check;
+  end if;
+  if not exists (select 1 from pg_constraint where conrelid = 'public.plataforma_convites'::regclass and conname = 'plataforma_convites_tipo_check') then
+    alter table plataforma_convites add constraint plataforma_convites_tipo_check
+      check (tipo in ('vendas', 'pecas', 'agendamento', 'administrador'));
+  end if;
+  if not exists (select 1 from pg_constraint where conrelid = 'public.plataforma_convites'::regclass and conname = 'plataforma_convites_admin_check') then
+    alter table plataforma_convites add constraint plataforma_convites_admin_check check (
+      tipo <> 'administrador' or (
+        papel = 'admin' and setor = 'administracao' and max_usos = 1
+        and expira_em > criado_em
+        and expira_em <= criado_em + interval '24 hours'
+      )
+    );
+  end if;
+end $$;
 create index if not exists plataforma_convites_ativos_idx on plataforma_convites (criado_em desc) where revogado_em is null;
 
 -- reserva atômica de um uso (dois cadastros simultâneos não passam do limite)
@@ -252,6 +278,11 @@ declare c plataforma_convites;
 begin
   update plataforma_convites set usos = usos + 1
    where token_hash = p_hash and revogado_em is null and expira_em > now() and usos < max_usos
+     and (tipo <> 'administrador' or exists (
+       select 1 from usuarios emissor
+        where emissor.user_id = plataforma_convites.criado_por
+          and emissor.ativo is true and emissor.papel = 'admin'
+     ))
   returning * into c;
   if c.id is null then return jsonb_build_object('ok', false); end if;
   return jsonb_build_object('ok', true, 'id', c.id, 'papel', c.papel, 'setor', c.setor, 'unidade', c.unidade, 'criado_por', c.criado_por, 'tipo', c.tipo);
