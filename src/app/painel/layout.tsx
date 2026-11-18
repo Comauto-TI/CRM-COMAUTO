@@ -14,6 +14,7 @@ import Icone from "./_components/Icone";
 import AlertaFila from "./_components/AlertaFila";
 import AlertaNotificacoes from "./_components/AlertaNotificacoes";
 import { atendeFila, ROTULO_PAPEL, ROTULO_SETOR } from "@/lib/permissoes";
+import { encerrarVerComoAction } from "./usuarios/ver-como/actions";
 
 export const dynamic = "force-dynamic";
 
@@ -36,6 +37,12 @@ export default async function PainelLayout({ children }: { children: React.React
 
   return (
     <div className="app">
+      {u.visualizacao && (
+        <div className="alerta aviso" style={{ gridColumn: "1 / -1", borderRadius: 0, margin: 0, display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12 }}>
+          <span>Visualizando como <strong>{u.visualizacao.alvoNome}</strong> · {ROTULO_PAPEL[u.papel]} · somente leitura.</span>
+          <form action={encerrarVerComoAction}><button className="btn pequeno" type="submit">Voltar para o administrador</button></form>
+        </div>
+      )}
       {abertura && <Abertura />}
       <aside className="lateral">
         <Marca sub={cfg.empresa.nome} />

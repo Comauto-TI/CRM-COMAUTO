@@ -2,6 +2,7 @@ import Link from "next/link";
 import { exigirAcesso } from "@/lib/auth";
 import { Cabecalho } from "../../_components/ui";
 import Nav from "../../_components/Nav";
+import BotaoVerComo from "./BotaoVerComo";
 import {
   podeAcessar,
   papelValido,
@@ -73,7 +74,7 @@ export default async function VerComo({ searchParams }: { searchParams: Promise<
                 <span>{ROTULO_SETOR[setor]}</span>
                 <span style={{ display: "inline-flex", alignItems: "center", gap: 8 }}>
                   <strong>{TELAS.filter((t) => podeAcessar({ papel: f.papel, setor }, t.area)).length} telas</strong>
-                  <Link className="btn pequeno" href={`/painel/usuarios/ver-como?papel=${f.papel}&setor=${setor}`}>Ver</Link>
+                  <BotaoVerComo papel={f.papel} setor={setor} />
                 </span>
               </div>)}
             </article>

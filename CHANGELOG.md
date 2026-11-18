@@ -9,7 +9,7 @@ Versionamento semântico a partir de **0.0.1** (decisão do Simão, 10/11/2026).
 - Quem mescla na `main` (Claude ou Codex) atualiza `package.json`, este arquivo e cria a tag.
 
 ## [Não lançado]
-- Administração: botão **Ver telas por função** em Usuários, com prévia somente leitura do menu e áreas liberadas para cada usuário ativo não administrador. A prévia não troca sessão nem executa ações como outra pessoa.
+- Administração: botão **Ver telas por função** em Usuários com fluxo real “Ver como”: seleciona uma função/setor, abre o painel com o menu e escopo daquela função por 30 minutos, bloqueia server actions de escrita, audita início/fim e permite voltar ao administrador. O alvo é um usuário ativo existente; não cria contas nem altera dados.
 - Simão definido por configuração do servidor como administrador principal de senhas; os demais admins precisam de delegação explícita e revogável. Perfil principal protegido, recuperação de contas sem atalho e troca própria sem encerrar sessões globais. Banco de testes e site Vercel atualizados; merge da branch ainda pendente.
 - Administrador pode emitir convite administrativo individual de 24 horas; papel e setor ficam fixos no servidor, com emissor ativo revalidado na reserva. Formulário preserva o tipo após gerações sucessivas. SQL e código publicados, sem convite ou conta real criados pelo Codex.
 - Lint instala suas dependências isoladas; oito erros corrigidos sem desativar regras. Menu e notificações usam snapshots seguros para hidratação; troca de aba/conversa descarta respostas atrasadas e limpa os rascunhos do contexto anterior.
