@@ -82,7 +82,8 @@ Cliente oculto (nós mandando leads de teste)
 Preparação técnica (em paralelo)
 [x] Travar a stack e verificar versões atuais (Regra 8)
 [x] Subir Postgres local no PC (sem Supabase) - PGlite
-[ ] git init + repositório privado (backup - Regra 19)
+[x] git init + repositório privado (backup - Regra 19)
+    (Comauto-TI/CRM-COMAUTO, branch claude/prototipo-mesa-de-leads)
 [x] Criar DECISOES.md (log: "escolhi X porque Y" - Regra 13)
 
 ----------------------------------------------------------------
