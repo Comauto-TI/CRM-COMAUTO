@@ -3,8 +3,6 @@
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { auditar } from "@/lib/audit";
-import { db } from "@/lib/supabase/admin";
-import { tabelaUsuarios } from "@/lib/usuarios";
 import { encerrarVisualizacao, iniciarVisualizacao, usuarioRealAtual } from "@/lib/auth";
 import { papelValido, setorValido, type Papel, type Setor } from "@/lib/permissoes";
 
@@ -18,12 +16,8 @@ export async function iniciarVerComoAction(_prev: ResultadoVisualizacao, formDat
   const papel = campo(formData, "papel");
   const setor = campo(formData, "setor");
   if (!papelValido(papel) || papel === "admin" || !setorValido(setor)) return { ok: false, motivo: "Função inválida." };
-  const tabela = await tabelaUsuarios();
-  if (tabela !== "usuarios") return { ok: false, motivo: "O núcleo de usuários ainda não está aplicado neste ambiente." };
-  const { data: alvo } = await db().from(tabela).select("user_id, nome, papel, setor, ativo").eq("papel", papel).eq("setor", setor).eq("ativo", true).neq("user_id", real.id).order("nome").limit(1).maybeSingle();
-  if (!alvo) return { ok: false, motivo: "Não existe usuário ativo dessa função e setor para abrir a tela." };
-  await auditar(real.email, "ver_como_inicio", "usuarios", alvo.user_id, { papel: papel as Papel, setor: setor as Setor, somente_leitura: true });
-  await iniciarVisualizacao(alvo.user_id as string);
+  await auditar(real.email, "ver_como_inicio", "usuarios", real.id, { papel: papel as Papel, setor: setor as Setor, somente_leitura: true, previa_funcao: true });
+  await iniciarVisualizacao(papel, setor);
   redirect("/painel");
 }
 

@@ -22,29 +22,30 @@ export type Usuario = {
 
 const COOKIE_VISUALIZACAO = "comauto_ver_como";
 const DURACAO_VISUALIZACAO = 30 * 60;
+const ID_PREVIA = "00000000-0000-0000-0000-000000000000";
 
 function segredoVisualizacao() {
   return process.env.VER_COMO_SECRET || process.env.SUPABASE_SERVICE_ROLE_KEY || "";
 }
 
-function assinaturaVisualizacao(alvoId: string, expira: number) {
-  return createHmac("sha256", segredoVisualizacao()).update(`${alvoId}.${expira}`).digest("hex");
+function assinaturaVisualizacao(papel: Papel, setor: Setor, expira: number) {
+  return createHmac("sha256", segredoVisualizacao()).update(`${papel}.${setor}.${expira}`).digest("hex");
 }
 
-function tokenVisualizacaoValido(token: string | undefined): string | null {
+function tokenVisualizacaoValido(token: string | undefined): { papel: Papel; setor: Setor } | null {
   if (!token || !segredoVisualizacao()) return null;
-  const [alvoId, expiraTexto, assinatura] = token.split(".");
+  const [papelTexto, setorTexto, expiraTexto, assinatura] = token.split(".");
   const expira = Number(expiraTexto);
-  if (!alvoId || !/^\d+$/.test(expiraTexto ?? "") || !assinatura || expira < Date.now()) return null;
-  const esperado = assinaturaVisualizacao(alvoId, expira);
+  if (!papelValido(papelTexto) || papelTexto === "admin" || !setorValido(setorTexto) || !/^\d+$/.test(expiraTexto ?? "") || !assinatura || expira < Date.now()) return null;
+  const esperado = assinaturaVisualizacao(papelTexto, setorTexto, expira);
   const a = Buffer.from(assinatura, "utf8");
   const b = Buffer.from(esperado, "utf8");
-  return a.length === b.length && timingSafeEqual(a, b) ? alvoId : null;
+  return a.length === b.length && timingSafeEqual(a, b) ? { papel: papelTexto, setor: setorTexto } : null;
 }
 
-export async function iniciarVisualizacao(alvoId: string) {
+export async function iniciarVisualizacao(papel: Papel, setor: Setor) {
   const expira = Date.now() + DURACAO_VISUALIZACAO * 1000;
-  (await cookies()).set(COOKIE_VISUALIZACAO, `${alvoId}.${expira}.${assinaturaVisualizacao(alvoId, expira)}`, {
+  (await cookies()).set(COOKIE_VISUALIZACAO, `${papel}.${setor}.${expira}.${assinaturaVisualizacao(papel, setor, expira)}`, {
     httpOnly: true, secure: process.env.NODE_ENV === "production", sameSite: "lax", path: "/", maxAge: DURACAO_VISUALIZACAO,
   });
 }
@@ -81,11 +82,19 @@ export const usuarioRealAtual = cache(async function usuarioRealAtual(): Promise
 export const usuarioAtual = cache(async function usuarioAtual(): Promise<Usuario | null> {
   const real = await usuarioRealAtual();
   if (!real || real.papel !== "admin") return real;
-  const alvoId = tokenVisualizacaoValido((await cookies()).get(COOKIE_VISUALIZACAO)?.value);
-  if (!alvoId || alvoId === real.id) return real;
-  const alvo = await buscarUsuarioPorId(alvoId, await tabelaUsuarios());
-  if (!alvo || alvo.papel === "admin") return real;
-  return { ...alvo, visualizacao: { administradorId: real.id, administradorNome: real.nome, alvoId: alvo.id, alvoNome: alvo.nome } };
+  const alvo = tokenVisualizacaoValido((await cookies()).get(COOKIE_VISUALIZACAO)?.value);
+  if (!alvo) return real;
+  const nome = `Prévia: ${alvo.papel} · ${alvo.setor}`;
+  return {
+    id: ID_PREVIA,
+    email: "previa@local.invalid",
+    nome,
+    papel: alvo.papel,
+    setor: alvo.setor,
+    unidade: "__previa__",
+    unidades: [],
+    visualizacao: { administradorId: real.id, administradorNome: real.nome, alvoId: `${alvo.papel}:${alvo.setor}`, alvoNome: nome },
+  };
 });
 
 export class SomenteLeituraError extends Error {
