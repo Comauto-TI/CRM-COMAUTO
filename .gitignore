@@ -1,0 +1,10 @@
+# Segurança: nunca versionar segredos nem dados locais
+.env*
+!.env.example
+*.pem
+*.log
+node_modules/
+.data/
+.next/
+.DS_Store
+Thumbs.db

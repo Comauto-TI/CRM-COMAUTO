@@ -1,0 +1,193 @@
+================================================================
+  CRM COMAUTO VW MONTENEGRO - CHECKLIST DO PROJETO
+  Felder Systems | Início: 02/11/2026 | Apresentação: ~30/11 a 04/12
+================================================================
+
+Como usar: troque [ ] por [x] quando terminar a etapa.
+           Use [~] para "em andamento".
+Base: reports/Pesquisa CRM concessionária Comauto.md
+
+----------------------------------------------------------------
+FASE 0 - PESQUISA (FEITA)
+----------------------------------------------------------------
+[x] Pesquisar CRMs brasileiros (DuLeads, Syonet, AutoForce...)
+[x] Pesquisar CRMs internacionais (Salesforce, CDK, Tekion...)
+[x] Levantar rentabilidade por departamento
+[x] Estudar qualificação e conversão de leads
+[x] Levantar contexto da Comauto e de Montenegro
+[x] Relatório final consolidado
+[ ] Simão ler o relatório inteiro e anotar dúvidas/discordâncias
+[ ] Decidir juntos: construir vs. recomendar comprar (Syonet/AutoForce)
+    -> definir qual é o argumento do CRM próprio na apresentação
+
+----------------------------------------------------------------
+SEMANA 1 (02/11 a 08/11) - COLETA DE DADOS
+----------------------------------------------------------------
+Alinhamento com a Comauto
+[ ] Marcar reunião com quem decide (dono/gerente geral)
+[ ] Explicar a iniciativa: diagnóstico + protótipo em 1 mês
+[ ] Combinar acordo de confidencialidade/LGPD antes de receber
+    dados de clientes (termo simples por escrito)
+[ ] Definir quem é o contato do dia a dia lá dentro
+
+Perguntas de prioridade ALTA
+[ ] 1. Qual DMS usam? Tem API ou exportação? Quem é o técnico?
+[ ] 2. Exportação de 12 meses do DuLeads (data/hora de entrada,
+       origem, loja, vendedor, hora da 1a resposta, etapas,
+       status, motivo de perda, data da venda, veículo)
+[ ] 3. Contrato DealerUp: valor, prazo, multa, módulos usados,
+       quem é dono dos dados
+[ ] 4. Como chegam os leads da VW? A montadora exige algum
+       sistema ou prazo de resposta?
+[ ] 5. Volume de leads por mês por origem + quanto investem em
+       cada canal (Meta, Google, portais, Motorleads)
+[ ] 6. Quem atende o WhatsApp central (51) 2640-0625? O que
+       acontece fora do horário? Seminovos abrem só de manhã?
+[ ] 7. Quantos vendedores por loja, metas, comissão, como medem
+[ ] 8. Vendas por mês (0km, seminovos, venda direta) e margem
+       média por unidade (mesmo aproximada)
+[ ] 9. Pós-venda: passagens por mês, clientes ativos em 12 e
+       24 meses, retenção depois da garantia
+[ ] 10. Entrevistar 3 vendedores + 1 gerente: o que é complexo
+        no DuLeads e o que eles gostam nele
+
+Perguntas de prioridade MÉDIA
+[ ] 11. Nota e nº de avaliações no Google de cada loja; NPS VW
+[ ] 12. Serviços recusados e orçamentos de funilaria são
+        registrados? Onde?
+[ ] 13. Funilaria: % sinistro vs particular, seguradoras parceiras
+[ ] 14. F&I: % com financiamento, bancos, consórcio (cotas/mês),
+        seguros (corretora própria ou parceira)
+[ ] 15. Onde anunciam seminovos e por qual integrador de estoque
+[ ] 16. WhatsApp já está na API oficial? Empresa verificada na Meta?
+[ ] 17. Telefonia: tem PABX/VoIP com gravação?
+[ ] 18. LGPD: tem encarregado (DPO), política, consentimentos?
+[ ] 19. Escopo é só Comauto ou o grupo (Santa Luzia, Motomecânica)?
+        Quem patrocina e decide? Orçamento?
+
+Perguntas de prioridade BAIXA
+[ ] 20. Já usaram/avaliaram Syonet ou outro? Por que o DuLeads?
+
+Cliente oculto (nós mandando leads de teste)
+[ ] Montar planilha de controle (canal, dia, hora, quem respondeu,
+    tempo até resposta, qualidade da resposta)
+[ ] Lead pelo site comautovw.com (Motorleads)
+[ ] Lead pelo site da VW (vw.com.br)
+[ ] Lead pela Webmotors/OLX em um seminovo
+[ ] Lead pelo Instagram/Meta
+[ ] Mensagem direta no WhatsApp central
+[ ] Repetir pelo menos 2 deles FORA do horário (noite/domingo)
+[ ] Anotar todos os resultados
+
+Preparação técnica (em paralelo)
+[x] Travar a stack e verificar versões atuais (Regra 8)
+[x] Subir Postgres local no PC (sem Supabase) - PGlite
+[ ] git init + repositório privado (backup - Regra 19)
+[x] Criar DECISOES.md (log: "escolhi X porque Y" - Regra 13)
+
+----------------------------------------------------------------
+SEMANA 2 (09/11 a 15/11) - DIAGNÓSTICO
+----------------------------------------------------------------
+[ ] Importar a exportação do DuLeads pro banco local
+[ ] Conversão por origem do lead
+[ ] Conversão por vendedor (melhor vs pior)
+[ ] Tempo até a 1a resposta HUMANA (não só a automática)
+[ ] % de leads sem nenhuma ação em 24h
+[ ] % de leads que chegam fora do horário
+[ ] % de leads duplicados
+[ ] Principais motivos de perda
+[ ] Comparar com os benchmarks do relatório
+[ ] Se tiver acesso ao DMS: retenção da oficina (12 e 24 meses)
+[ ] Consolidar os resultados do cliente oculto
+[ ] Resumir em 1 página: "perdemos X leads aqui e Y clientes ali"
+
+----------------------------------------------------------------
+SEMANA 3 (16/11 a 22/11) - PROTÓTIPO "MESA DE LEADS"
+----------------------------------------------------------------
+Antes do código
+[ ] Buscar referências de design (Regra 5) e definir a cara
+[ ] Escrever o prompt especificado do protótipo (Regra 6)
+[ ] Travar o escopo do protótipo: o que ENTRA e o que NÃO entra
+
+Construção (funcionando no celular)
+[x] Login por perfil (vendedor / gerente / pós-venda / admin)
+[x] Admin: opção "Ver como" para abrir as telas de cada função
+    (vendedor, gerente, pós-venda...) sem precisar trocar de login
+    - Faixa no topo avisando "Visualizando como: Vendedor"
+    - Somente leitura (admin não edita nada no lugar de outro)
+    - Registro de quem usou e quando (auditoria/LGPD)
+    - Botão para voltar à visão de admin
+[ ] Cadastro único de cliente (já pensando na oficina depois)
+[ ] Entrada de leads (manual + importação; origens separadas)
+[ ] Deduplicação de leads
+[ ] Roteamento por loja e departamento (5 lojas, 1 WhatsApp)
+[ ] Pontuação A/B/C por regras (test drive, troca, financiamento,
+    prazo, carro específico, cliente da casa, origem)
+[~] Fila de "próximas ações" do vendedor (versão inicial pronta)
+[x] Botão de WhatsApp no card do lead
+[ ] Alerta de prazo (SLA) estourado
+[ ] Cadência de follow-up (D0 a D3 forte, até D60)
+[ ] Motivo de perda obrigatório
+[ ] Checklist de F&I na venda (financiamento, consórcio, seguro)
+[~] Painel do gerente com ~8 indicadores (4 indicadores + tabelas)
+[~] Dados de demonstração realistas (sem dado real de cliente)
+
+Segurança mínima
+[x] Senhas com hash, sessões seguras
+[ ] Nenhuma chave/senha no código
+[ ] gitleaks rodado (obrigatório antes de qualquer deploy)
+
+----------------------------------------------------------------
+SEMANA 4 (23/11 a 29/11) - APRESENTAÇÃO
+----------------------------------------------------------------
+[ ] Roadmap do cliente (linguagem de resultado, sem jargão)
+[ ] Roadmap técnico (para nós)
+[ ] Business case com conta transparente
+    (ex.: cada 1 ponto % de conversão = N carros/mês x margem)
+[ ] Seção "por que próprio e não de prateleira" (funilaria,
+    seguro, consórcio, 5 lojas + grupo, dados da Comauto)
+[ ] Riscos honestos (manutenção, integração com o DMS)
+[ ] Montar o deck: diagnóstico + protótipo + roadmap + números
+[ ] Ensaiar a demo do protótipo no celular
+[ ] Proposta comercial com preço e tiers (Regra 17)
+[ ] Rascunho de contrato: escopo, prazo, valor, pagamento (Regra 18)
+[ ] APRESENTAR À COMAUTO
+[ ] Registrar o feedback deles
+
+----------------------------------------------------------------
+DEPOIS DA APROVAÇÃO - ROADMAP
+----------------------------------------------------------------
+Fase 1 - Mesa de leads (meses 1 a 3)
+[ ] WhatsApp API oficial + verificação da empresa na Meta
+[ ] Integração com Motorleads, portais, Meta e leads VW
+[ ] Resposta automática (4-5 perguntas) + passagem pro humano
+[ ] Registro de base legal LGPD em cada contato
+[ ] Rodar em paralelo com o DuLeads antes de desligar
+[ ] Treinamento dos vendedores
+
+Fase 2 - Pós-venda (meses 3 a 6)
+[ ] Integração com o DMS
+[ ] Lembrete de revisão por km e tempo
+[ ] Alerta de risco à garantia de 3 anos
+[ ] Recall por chassi
+[ ] Follow-up de serviço recusado em 48-72h
+[ ] NPS pós-oficina
+[ ] Oficina como origem de lead de venda
+
+Fase 3 - Seguros, consórcio e funilaria
+[ ] Renovação de seguro 30-45 dias antes
+[ ] Consórcio para quem não fecha financiamento
+[ ] Orçamento de funilaria não aprovado = follow-up
+[ ] Fluxo de sinistro
+
+Fase 4 - Recompra e IA
+[ ] Recompra: carro de 2-4 anos, gasto alto na oficina, fim
+    de financiamento
+[ ] Recalibrar a pontuação com dados reais
+[ ] Expandir para Santa Luzia e Motomecânica
+
+Fechamento (Regras 15, 16, 20, 21)
+[ ] Handoff: acessos, manual, suporte
+[ ] Métrica de resultado combinada (conversão antes x depois)
+[ ] Retrospectiva do projeto
+[ ] Agenda de follow-up com o cliente
