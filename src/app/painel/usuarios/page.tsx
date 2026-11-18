@@ -1,4 +1,5 @@
 import { exigirAcesso } from "@/lib/auth";
+import Link from "next/link";
 import { db } from "@/lib/supabase/admin";
 import { getConfig } from "@/lib/config";
 import { formatarDataHora } from "@/lib/time";
@@ -29,7 +30,9 @@ export default async function Usuarios() {
 
   return (
     <>
-      <Cabecalho titulo="Usuários" sub="Links de cadastro por setor e a equipe da plataforma" />
+      <Cabecalho titulo="Usuários" sub="Links de cadastro por setor e a equipe da plataforma">
+        <Link className="btn" href="/painel/usuarios/ver-como">Ver telas por função</Link>
+      </Cabecalho>
 
       {tabela === "usuarios" && (
         <section className="card">
